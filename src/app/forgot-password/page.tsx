@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { FormEvent, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
+const PASSWORD_RESET_REDIRECT_URL =
+  'https://callflow-crm.netlify.app/auth/callback?next=/reset-password'
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
@@ -16,6 +19,7 @@ export default function ForgotPasswordPage() {
     const normalizedEmail = email.trim().toLowerCase()
 
     if (!normalizedEmail) {
+      setMessage('')
       setErrorMessage('Please enter your email address.')
       return
     }
@@ -27,25 +31,23 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient()
 
-      const redirectTo =
-        `${window.location.origin}/auth/callback?next=/reset-password`
-
       const { error } = await supabase.auth.resetPasswordForEmail(
         normalizedEmail,
         {
-          redirectTo,
+          redirectTo: PASSWORD_RESET_REDIRECT_URL,
         },
       )
 
       if (error) {
-        if (
+        const lowerCaseMessage = error.message.toLowerCase()
+
+        const isRateLimited =
           error.status === 429 ||
-          error.message.toLowerCase().includes('rate limit') ||
-          error.message.toLowerCase().includes('too many requests') ||
-          error.message.toLowerCase().includes(
-            'for security purposes',
-          )
-        ) {
+          lowerCaseMessage.includes('rate limit') ||
+          lowerCaseMessage.includes('too many requests') ||
+          lowerCaseMessage.includes('for security purposes')
+
+        if (isRateLimited) {
           setErrorMessage(
             'Too many reset requests were made. Please wait before trying again.',
           )
@@ -57,7 +59,7 @@ export default function ForgotPasswordPage() {
       }
 
       setMessage(
-        'Password reset instructions have been sent. Check your email and use the newest reset link.',
+        'Password reset instructions have been sent. Check your email and open only the newest reset link in this same browser.',
       )
       setEmail('')
     } catch (error) {
@@ -85,10 +87,7 @@ export default function ForgotPasswordPage() {
             </h1>
           </div>
 
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-6"
-          >
+          <form onSubmit={handleSubmit} className="space-y-6">
             <label className="block">
               <span className="text-sm text-slate-300">
                 Email
@@ -109,6 +108,7 @@ export default function ForgotPasswordPage() {
             {message ? (
               <div
                 role="status"
+                aria-live="polite"
                 className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200"
               >
                 {message}
@@ -118,6 +118,7 @@ export default function ForgotPasswordPage() {
             {errorMessage ? (
               <div
                 role="alert"
+                aria-live="assertive"
                 className="rounded-2xl border border-red-400/20 bg-red-400/10 px-4 py-3 text-sm text-red-200"
               >
                 {errorMessage}
