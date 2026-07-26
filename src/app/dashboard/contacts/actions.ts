@@ -131,8 +131,13 @@ async function getAccessibleContactTask(taskId: string) {
 }
 
 export async function createContact(formData: FormData) {
-  await requirePermission('contacts.create')
-  await assertContactCapacity()
+  const organization = await requirePermission(
+    'contacts.create',
+  )
+
+  await assertContactCapacity(
+    organization.organization_id,
+  )
 
   const values: ContactValues = {
     first_name: getString(formData, 'first_name'),
