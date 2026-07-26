@@ -1,19 +1,69 @@
 'use client'
 
 import Link from 'next/link'
-import { FormEvent, useState } from 'react'
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-const PASSWORD_RESET_REDIRECT_URL =
-  'https://callflow-crm.netlify.app/auth/callback?next=/reset-password'
+function getCanonicalOrigin() {
+  const {
+    protocol,
+    hostname,
+    port,
+    origin,
+  } = window.location
+
+  const isLocalhost =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1'
+
+  if (isLocalhost) {
+    return origin
+  }
+
+  /*
+   * Netlify deploy previews use a hostname such as:
+   *
+   * abc123--callflow-crm.netlify.app
+   *
+   * Removing everything before "--" gives the production hostname:
+   *
+   * callflow-crm.netlify.app
+   */
+  const canonicalHostname = hostname.includes('--')
+    ? hostname.split('--').at(-1) ?? hostname
+    : hostname
+
+  return `${protocol}//${canonicalHostname}${
+    port ? `:${port}` : ''
+  }`
+}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    const canonicalOrigin = getCanonicalOrigin()
+
+    if (canonicalOrigin !== window.location.origin) {
+      setIsRedirecting(true)
+
+      window.location.replace(
+        `${canonicalOrigin}/forgot-password`,
+      )
+    }
+  }, [])
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault()
 
     const normalizedEmail = email.trim().toLowerCase()
@@ -24,6 +74,23 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    const canonicalOrigin = getCanonicalOrigin()
+
+    /*
+     * The reset request and email callback must use the
+     * same hostname so the browser can read the PKCE
+     * verifier created by Supabase.
+     */
+    if (canonicalOrigin !== window.location.origin) {
+      setIsRedirecting(true)
+
+      window.location.replace(
+        `${canonicalOrigin}/forgot-password`,
+      )
+
+      return
+    }
+
     setIsSubmitting(true)
     setMessage('')
     setErrorMessage('')
@@ -31,21 +98,30 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient()
 
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        normalizedEmail,
-        {
-          redirectTo: PASSWORD_RESET_REDIRECT_URL,
-        },
-      )
+      const redirectTo =
+        `${canonicalOrigin}/auth/callback?next=/reset-password`
+
+      const { error } =
+        await supabase.auth.resetPasswordForEmail(
+          normalizedEmail,
+          {
+            redirectTo,
+          },
+        )
 
       if (error) {
-        const lowerCaseMessage = error.message.toLowerCase()
+        const lowerCaseMessage =
+          error.message.toLowerCase()
 
         const isRateLimited =
           error.status === 429 ||
           lowerCaseMessage.includes('rate limit') ||
-          lowerCaseMessage.includes('too many requests') ||
-          lowerCaseMessage.includes('for security purposes')
+          lowerCaseMessage.includes(
+            'too many requests',
+          ) ||
+          lowerCaseMessage.includes(
+            'for security purposes',
+          )
 
         if (isRateLimited) {
           setErrorMessage(
@@ -61,9 +137,13 @@ export default function ForgotPasswordPage() {
       setMessage(
         'Password reset instructions have been sent. Check your email and open only the newest reset link in this same browser.',
       )
+
       setEmail('')
     } catch (error) {
-      console.error('Password reset request failed:', error)
+      console.error(
+        'Password reset request failed:',
+        error,
+      )
 
       setErrorMessage(
         'We could not send the reset email. Please try again.',
@@ -72,6 +152,9 @@ export default function ForgotPasswordPage() {
       setIsSubmitting(false)
     }
   }
+
+  const formDisabled =
+    isSubmitting || isRedirecting
 
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
@@ -87,7 +170,10 @@ export default function ForgotPasswordPage() {
             </h1>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
             <label className="block">
               <span className="text-sm text-slate-300">
                 Email
@@ -97,10 +183,12 @@ export default function ForgotPasswordPage() {
                 name="email"
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) =>
+                  setEmail(event.target.value)
+                }
                 autoComplete="email"
                 required
-                disabled={isSubmitting}
+                disabled={formDisabled}
                 className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
@@ -127,12 +215,14 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={formDisabled}
               className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
             >
-              {isSubmitting
-                ? 'Sending reset email...'
-                : 'Send reset email'}
+              {isRedirecting
+                ? 'Opening production site...'
+                : isSubmitting
+                  ? 'Sending reset email...'
+                  : 'Send reset email'}
             </button>
           </form>
 
