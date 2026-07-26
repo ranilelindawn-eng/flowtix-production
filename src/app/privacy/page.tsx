@@ -1,0 +1,12 @@
+import type { Metadata } from 'next'
+import PolicyPage from '@/components/PolicyPage'
+export const metadata: Metadata = { title: 'Privacy Policy', description: 'How CallFlow handles personal information.' }
+export default function Page() { return <PolicyPage eyebrow="Legal" title="Privacy Policy" description="Effective July 24, 2026. This policy explains the information processed through the CallFlow website and application.">
+<section><h2>Information we process</h2><p>CallFlow may process account details, organization membership, contacts, tasks, notes, campaign records, call metadata, uploaded recordings, transcripts, summaries, insights, security logs, and support messages when users choose to provide or create that information.</p></section>
+<section><h2>How information is used</h2><p>Information is used to provide and secure the service, authenticate users, maintain organization workspaces, support requested workflows, respond to inquiries, troubleshoot problems, prevent abuse, and comply with legal obligations.</p></section>
+<section><h2>Service providers</h2><p>Hosting, database, authentication, telephony, storage, email, transcription, analytics, and AI providers may process information only when configured for the relevant workflow. Customers must review and approve providers before production use.</p></section>
+<section><h2>Data separation and security</h2><p>Application records are designed to be scoped by organization and protected using server-side authorization and PostgreSQL Row Level Security. No system can guarantee absolute security, and users must protect their credentials and report suspected compromise promptly.</p></section>
+<section><h2>Retention and deletion</h2><p>Records should be retained only as long as needed for the stated purpose, legal obligations, dispute resolution, and security. Workspace administrators are responsible for defining appropriate retention for contacts, recordings, transcripts, and related content.</p></section>
+<section><h2>Your choices</h2><p>Depending on applicable law, individuals may request access, correction, deletion, restriction, or other privacy rights. Requests involving customer-controlled workspace data should generally be directed to the organization that collected the information.</p></section>
+<section><h2>Contact</h2><p>Use the CallFlow contact page for privacy questions. Do not include passwords, API keys, authentication codes, or unnecessary confidential content.</p></section>
+</PolicyPage> }

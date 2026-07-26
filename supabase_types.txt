@@ -1,0 +1,204 @@
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+ * One-shot helper to clear Supabase auth cookies at one or more explicit
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+ *   await clearAuthCookiesAtScopes({
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+ *     storageKey: 'sb-<project-ref>-auth-token',
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+ *   await clearAuthCookiesAtScopes({
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+ *     storageKey: 'sb-<project-ref>-auth-token',
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\clearAuthCookiesAtScopes.d.ts
+export declare function clearAuthCookiesAtScopes(input: {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\cookies.d.ts
+ * @param options The options passed to createBrowserClient or createServer client.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\cookies.d.ts
+ * @param isServerClient Whether it's called from createServerClient.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\cookies.d.ts
+ * When createServerClient needs to apply the created storage to cookies, it
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createBrowserClient.d.ts
+ * in difficult to debug authentication issues such as random logouts, early
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createBrowserClient.d.ts
+export declare function createBrowserClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options?: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createBrowserClient.d.ts
+export declare function createBrowserClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options?: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+export declare function createServerClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+ * cause significant and difficult to debug authentication issues**: random
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+ * significant and difficult to debug authentication issues.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+ * - You are calling `supabase.auth.updateUser()` server-side.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+ * Please consult the [Supabase SSR guides](https://supabase.com/docs/guides/auth/server-side)
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+ * `getUser()`, or `getClaims()` (which calls `getSession()` internally when
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\createServerClient.d.ts
+export declare function createServerClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\index.d.ts
+export * from "./createBrowserClient";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\index.d.ts
+export * from "./createServerClient";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\index.d.ts
+export { clearAuthCookiesAtScopes } from "./clearAuthCookiesAtScopes";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\index.d.ts
+export { warnIfUsingDeprecatedAuthHelpersPackage } from "./warnDeprecatedPackage";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+ * Responses that set auth cookies must not be cached by CDNs or
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+ * The library passes the following headers when auth cookies are set:
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * You should keep this option the same between `createBrowserClient()` and `createServerClient()`. When set to `tokens-only` accessing the `user` property on the data returned from `getSession()` will only be possible if the user has already been stored in the separate storage. It's best to use `getClaims()` instead to avoid surprizes.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * (custom or fallback) is required for auth to work.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * You should keep this option the same between `createBrowserClient()` and `createServerClient()`. When set to `tokens-only` accessing the `user` property on the data returned from `getSession()` will not be possible. Use `getUser()` or preferably `getClaims()` instead.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * token refresh or auth state change.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * **IMPORTANT:** Call `await supabase.auth.getClaims()` (or `getSession()`/
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * set `Cache-Control: private, no-store` on routes that handle authentication
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * See the [official server-side rendering guides](https://supabase.com/docs/guides/auth/server-side)
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\types.d.ts
+     * for guidance on choosing between `getSession()`, `getUser()`, and `getClaims()`.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\main\warnDeprecatedPackage.d.ts
+export declare function warnIfUsingDeprecatedAuthHelpersPackage(): void;
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+ * One-shot helper to clear Supabase auth cookies at one or more explicit
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+ *   await clearAuthCookiesAtScopes({
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+ *     storageKey: 'sb-<project-ref>-auth-token',
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+ *   await clearAuthCookiesAtScopes({
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+ *     storageKey: 'sb-<project-ref>-auth-token',
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\clearAuthCookiesAtScopes.d.ts
+export declare function clearAuthCookiesAtScopes(input: {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\cookies.d.ts
+ * @param options The options passed to createBrowserClient or createServer client.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\cookies.d.ts
+ * @param isServerClient Whether it's called from createServerClient.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\cookies.d.ts
+ * When createServerClient needs to apply the created storage to cookies, it
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createBrowserClient.d.ts
+ * in difficult to debug authentication issues such as random logouts, early
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createBrowserClient.d.ts
+export declare function createBrowserClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options?: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createBrowserClient.d.ts
+export declare function createBrowserClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options?: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+export declare function createServerClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+ * cause significant and difficult to debug authentication issues**: random
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+ * significant and difficult to debug authentication issues.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+ * - You are calling `supabase.auth.updateUser()` server-side.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+ * Please consult the [Supabase SSR guides](https://supabase.com/docs/guides/auth/server-side)
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+ * `getUser()`, or `getClaims()` (which calls `getSession()` internally when
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\createServerClient.d.ts
+export declare function createServerClient<Database = any, SchemaName extends string & keyof Omit<Database, "__InternalSupabase"> = "public" extends keyof Omit<Database, "__InternalSupabase"> ? "public" : string & keyof Omit<Database, "__InternalSupabase">>(supabaseUrl: string, supabaseKey: string, options: SupabaseClientOptions<SchemaName> & {
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\index.d.ts
+export * from "./createBrowserClient";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\index.d.ts
+export * from "./createServerClient";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\index.d.ts
+export { clearAuthCookiesAtScopes } from "./clearAuthCookiesAtScopes";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\index.d.ts
+export { warnIfUsingDeprecatedAuthHelpersPackage } from "./warnDeprecatedPackage";
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+ * Responses that set auth cookies must not be cached by CDNs or
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+ * The library passes the following headers when auth cookies are set:
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * You should keep this option the same between `createBrowserClient()` and `createServerClient()`. When set to `tokens-only` accessing the `user` property on the data returned from `getSession()` will only be possible if the user has already been stored in the separate storage. It's best to use `getClaims()` instead to avoid surprizes.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * (custom or fallback) is required for auth to work.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * You should keep this option the same between `createBrowserClient()` and `createServerClient()`. When set to `tokens-only` accessing the `user` property on the data returned from `getSession()` will not be possible. Use `getUser()` or preferably `getClaims()` instead.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * token refresh or auth state change.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * **IMPORTANT:** Call `await supabase.auth.getClaims()` (or `getSession()`/
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * set `Cache-Control: private, no-store` on routes that handle authentication
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * See the [official server-side rendering guides](https://supabase.com/docs/guides/auth/server-side)
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\types.d.ts
+     * for guidance on choosing between `getSession()`, `getUser()`, and `getClaims()`.
+
+C:\Users\tepay\CallFlow\node_modules\@supabase\ssr\dist\module\warnDeprecatedPackage.d.ts
+export declare function warnIfUsingDeprecatedAuthHelpersPackage(): void;
+
