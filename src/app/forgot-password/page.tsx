@@ -3,91 +3,34 @@
 import Link from 'next/link'
 import {
   FormEvent,
-  useEffect,
   useState,
 } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createRecoveryClient } from '@/lib/supabase/recovery-client'
 
-function getCanonicalOrigin() {
-  const {
-    protocol,
-    hostname,
-    port,
-    origin,
-  } = window.location
-
-  const isLocalhost =
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1'
-
-  if (isLocalhost) {
-    return origin
-  }
-
-  /*
-   * Netlify deploy previews use a hostname such as:
-   *
-   * abc123--callflow-crm.netlify.app
-   *
-   * Removing everything before "--" gives the production hostname:
-   *
-   * callflow-crm.netlify.app
-   */
-  const canonicalHostname = hostname.includes('--')
-    ? hostname.split('--').at(-1) ?? hostname
-    : hostname
-
-  return `${protocol}//${canonicalHostname}${
-    port ? `:${port}` : ''
-  }`
-}
+const PRODUCTION_ORIGIN =
+  'https://callflow-crm.netlify.app'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
-
-  useEffect(() => {
-    const canonicalOrigin = getCanonicalOrigin()
-
-    if (canonicalOrigin !== window.location.origin) {
-      setIsRedirecting(true)
-
-      window.location.replace(
-        `${canonicalOrigin}/forgot-password`,
-      )
-    }
-  }, [])
+  const [errorMessage, setErrorMessage] =
+    useState('')
+  const [isSubmitting, setIsSubmitting] =
+    useState(false)
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault()
 
-    const normalizedEmail = email.trim().toLowerCase()
+    const normalizedEmail =
+      email.trim().toLowerCase()
 
     if (!normalizedEmail) {
       setMessage('')
-      setErrorMessage('Please enter your email address.')
-      return
-    }
-
-    const canonicalOrigin = getCanonicalOrigin()
-
-    /*
-     * The reset request and email callback must use the
-     * same hostname so the browser can read the PKCE
-     * verifier created by Supabase.
-     */
-    if (canonicalOrigin !== window.location.origin) {
-      setIsRedirecting(true)
-
-      window.location.replace(
-        `${canonicalOrigin}/forgot-password`,
+      setErrorMessage(
+        'Please enter your email address.',
       )
-
       return
     }
 
@@ -96,10 +39,10 @@ export default function ForgotPasswordPage() {
     setErrorMessage('')
 
     try {
-      const supabase = createClient()
+      const supabase = createRecoveryClient()
 
       const redirectTo =
-        `${canonicalOrigin}/auth/callback?next=/reset-password`
+        `${PRODUCTION_ORIGIN}/reset-password`
 
       const { error } =
         await supabase.auth.resetPasswordForEmail(
@@ -110,16 +53,16 @@ export default function ForgotPasswordPage() {
         )
 
       if (error) {
-        const lowerCaseMessage =
+        const normalizedError =
           error.message.toLowerCase()
 
         const isRateLimited =
           error.status === 429 ||
-          lowerCaseMessage.includes('rate limit') ||
-          lowerCaseMessage.includes(
+          normalizedError.includes('rate limit') ||
+          normalizedError.includes(
             'too many requests',
           ) ||
-          lowerCaseMessage.includes(
+          normalizedError.includes(
             'for security purposes',
           )
 
@@ -135,7 +78,7 @@ export default function ForgotPasswordPage() {
       }
 
       setMessage(
-        'Password reset instructions have been sent. Check your email and open only the newest reset link in this same browser.',
+        'Password reset instructions were sent. Open only the newest reset email.',
       )
 
       setEmail('')
@@ -152,9 +95,6 @@ export default function ForgotPasswordPage() {
       setIsSubmitting(false)
     }
   }
-
-  const formDisabled =
-    isSubmitting || isRedirecting
 
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
@@ -188,7 +128,7 @@ export default function ForgotPasswordPage() {
                 }
                 autoComplete="email"
                 required
-                disabled={formDisabled}
+                disabled={isSubmitting}
                 className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
@@ -215,14 +155,12 @@ export default function ForgotPasswordPage() {
 
             <button
               type="submit"
-              disabled={formDisabled}
+              disabled={isSubmitting}
               className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
             >
-              {isRedirecting
-                ? 'Opening production site...'
-                : isSubmitting
-                  ? 'Sending reset email...'
-                  : 'Send reset email'}
+              {isSubmitting
+                ? 'Sending reset email...'
+                : 'Send reset email'}
             </button>
           </form>
 
