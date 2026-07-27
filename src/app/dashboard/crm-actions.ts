@@ -227,6 +227,105 @@ export async function createPipeline(formData: FormData) {
   revalidatePath('/dashboard/pipelines')
 }
 
+export async function updatePipeline(formData: FormData) {
+  const { membership, supabase } = await context()
+  const pipelineId = text(formData, 'id')
+  const name = text(formData, 'name')
+
+  if (!pipelineId) throw new Error('Pipeline ID is required.')
+  if (!name) throw new Error('Pipeline name is required.')
+
+  const { data: pipeline, error: loadError } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (loadError) {
+    throw new Error(`Failed to load pipeline: ${loadError.message}`)
+  }
+
+  if (!pipeline) {
+    throw new Error('Pipeline not found.')
+  }
+
+  const { error } = await supabase
+    .from('pipelines')
+    .update({
+      name,
+      description: optional(text(formData, 'description')),
+    })
+    .eq('id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to update pipeline: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/pipelines')
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+  revalidatePath(`/dashboard/pipelines/${pipelineId}/edit`)
+  redirect(`/dashboard/pipelines/${pipelineId}`)
+}
+
+export async function deletePipeline(formData: FormData) {
+  const { membership, supabase } = await context()
+  const pipelineId = text(formData, 'id')
+
+  if (!pipelineId) throw new Error('Pipeline ID is required.')
+
+  const { data: pipeline, error: loadError } = await supabase
+    .from('pipelines')
+    .select('id')
+    .eq('id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (loadError) {
+    throw new Error(`Failed to load pipeline: ${loadError.message}`)
+  }
+
+  if (!pipeline) {
+    throw new Error('Pipeline not found.')
+  }
+
+  const { error: opportunitiesError } = await supabase
+    .from('opportunities')
+    .delete()
+    .eq('organization_id', membership.organization_id)
+    .eq('pipeline_id', pipelineId)
+
+  if (opportunitiesError) {
+    throw new Error(
+      `Failed to delete pipeline opportunities: ${opportunitiesError.message}`,
+    )
+  }
+
+  const { error: stagesError } = await supabase
+    .from('pipeline_stages')
+    .delete()
+    .eq('organization_id', membership.organization_id)
+    .eq('pipeline_id', pipelineId)
+
+  if (stagesError) {
+    throw new Error(`Failed to delete pipeline stages: ${stagesError.message}`)
+  }
+
+  const { error } = await supabase
+    .from('pipelines')
+    .delete()
+    .eq('id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to delete pipeline: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/pipelines')
+  redirect('/dashboard/pipelines')
+}
+
 export async function createOpportunity(formData: FormData) {
   const { membership, supabase, user } = await context()
   const name = text(formData, 'name')

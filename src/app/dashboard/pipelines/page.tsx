@@ -1,19 +1,116 @@
+import Link from 'next/link'
+
 import { requireOrganization } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { createOpportunity, createPipeline } from '../crm-actions'
 
-export default async function PipelinesPage(){
-  const membership=await requireOrganization(); const supabase=await createClient()
-  const [{data:pipelines},{data:stages},{data:opportunities},{data:companies},{data:contacts}] = await Promise.all([
-    supabase.from('pipelines').select('*').eq('organization_id',membership.organization_id).order('created_at'),
-    supabase.from('pipeline_stages').select('*').eq('organization_id',membership.organization_id).order('position'),
-    supabase.from('opportunities').select('*').eq('organization_id',membership.organization_id).order('created_at',{ascending:false}),
-    supabase.from('companies').select('id,name').eq('organization_id',membership.organization_id).order('name'),
-    supabase.from('contacts').select('id,first_name,last_name,email').eq('organization_id',membership.organization_id).order('first_name'),
-  ])
-  const pipeline=pipelines?.[0]; const pipelineStages=stages?.filter(s=>s.pipeline_id===pipeline?.id)??[]; const field='min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
-  return <div className="space-y-6"><header><p className="text-sm uppercase tracking-[.24em] text-cyan-400">Revenue workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Pipelines & opportunities</h1><p className="mt-2 text-sm text-slate-400">Track deal value, probability, owner, and stage.</p></header>
-  {!pipeline&&<form action={createPipeline} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 sm:flex-row"><input required name="name" placeholder="Pipeline name" className={`${field} flex-1`}/><input name="description" placeholder="Description" className={`${field} flex-1`}/><button className="rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">Create pipeline</button></form>}
-  {pipeline&&<><form action={createOpportunity} className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-3 xl:grid-cols-6"><input type="hidden" name="pipeline_id" value={pipeline.id}/><input required name="name" placeholder="Opportunity name" className={field}/><input name="value" type="number" min="0" step="0.01" placeholder="Value" className={field}/><select name="stage_id" className={field}>{pipelineStages.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select><select name="company_id" className={field}><option value="">No company</option>{companies?.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select><select name="contact_id" className={field}><option value="">No contact</option>{contacts?.map(c=><option key={c.id} value={c.id}>{`${c.first_name} ${c.last_name}`.trim()||c.email}</option>)}</select><button className="rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">Add opportunity</button></form><div className="grid min-w-max gap-4 overflow-x-auto pb-3" style={{gridTemplateColumns:`repeat(${pipelineStages.length}, minmax(260px, 1fr))`}}>{pipelineStages.map(stage=>{const deals=opportunities?.filter(o=>o.stage_id===stage.id)??[]; const total=deals.reduce((sum,d)=>sum+Number(d.value),0); return <section key={stage.id} className="min-h-[420px] rounded-2xl border border-white/10 bg-[#0B1726]/90 p-4"><div className="flex items-center justify-between"><div><h2 className="font-semibold text-white">{stage.name}</h2><p className="text-xs text-slate-500">{deals.length} deals · ${total.toLocaleString()}</p></div><span className="rounded-full bg-white/5 px-2 py-1 text-xs text-slate-300">{stage.probability}%</span></div><div className="mt-4 space-y-3">{deals.map(deal=><article key={deal.id} className="rounded-xl border border-white/10 bg-[#07111F] p-4"><h3 className="font-medium text-white">{deal.name}</h3><p className="mt-2 text-lg font-semibold text-cyan-300">${Number(deal.value).toLocaleString()}</p><p className="mt-1 text-xs text-slate-500">{deal.probability}% close probability</p><form action={`/api/crm/opportunities/${deal.id}`} method="post" className="mt-3"><select name="stage_id" defaultValue={stage.id} className="w-full rounded-lg border border-white/10 bg-[#0B1726] px-2 py-2 text-xs text-white" onChange={undefined}>{pipelineStages.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></form></article>)}</div></section>})}</div></>}
-  </div>
+import { createPipeline } from '../crm-actions'
+
+const field =
+  'min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
+
+export default async function PipelinesPage() {
+  const membership = await requireOrganization()
+  const supabase = await createClient()
+
+  const [{ data: pipelines, error: pipelineError }, { data: opportunities }] =
+    await Promise.all([
+      supabase
+        .from('pipelines')
+        .select('id,name,description,created_at')
+        .eq('organization_id', membership.organization_id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('opportunities')
+        .select('id,pipeline_id,value')
+        .eq('organization_id', membership.organization_id),
+    ])
+
+  if (pipelineError) {
+    throw new Error(`Failed to load pipelines: ${pipelineError.message}`)
+  }
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <p className="text-sm uppercase tracking-[.24em] text-cyan-400">
+          Revenue workspace
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold text-white">Pipelines</h1>
+        <p className="mt-2 text-sm text-slate-400">
+          Create sales pipelines and track opportunities through each stage.
+        </p>
+      </header>
+
+      <form
+        action={createPipeline}
+        className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 lg:flex-row"
+      >
+        <input
+          required
+          name="name"
+          placeholder="Pipeline name"
+          className={`${field} flex-1`}
+        />
+        <input
+          name="description"
+          placeholder="Description"
+          className={`${field} flex-1`}
+        />
+        <button className="rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-500">
+          Create pipeline
+        </button>
+      </form>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {pipelines?.map((pipeline) => {
+          const deals =
+            opportunities?.filter(
+              (opportunity) => opportunity.pipeline_id === pipeline.id,
+            ) ?? []
+          const total = deals.reduce(
+            (sum, opportunity) => sum + Number(opportunity.value || 0),
+            0,
+          )
+
+          return (
+            <Link
+              key={pipeline.id}
+              href={`/dashboard/pipelines/${pipeline.id}`}
+              className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 transition hover:border-cyan-400/30 hover:bg-[#0D1B2D]"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-white">
+                    {pipeline.name}
+                  </h2>
+                  <p className="mt-2 line-clamp-2 text-sm text-slate-400">
+                    {pipeline.description || 'No pipeline description yet.'}
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
+                  {deals.length} {deals.length === 1 ? 'deal' : 'deals'}
+                </span>
+              </div>
+
+              <div className="mt-5 border-t border-white/10 pt-4">
+                <p className="text-xs uppercase tracking-[.18em] text-slate-500">
+                  Pipeline value
+                </p>
+                <p className="mt-1 text-xl font-semibold text-cyan-300">
+                  ${total.toLocaleString('en-US')}
+                </p>
+              </div>
+            </Link>
+          )
+        })}
+
+        {!pipelines?.length && (
+          <div className="rounded-2xl border border-dashed border-white/10 p-10 text-center text-sm text-slate-500 md:col-span-2 xl:col-span-3">
+            No pipelines found. Create your first pipeline above.
+          </div>
+        )}
+      </section>
+    </div>
+  )
 }
