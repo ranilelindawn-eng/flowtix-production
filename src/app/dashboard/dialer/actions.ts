@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { requirePermission } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
+
 import {
   createDialerCall,
   type CallDirection,
@@ -149,4 +152,172 @@ export async function saveDialerCall(input: {
 
   revalidatePath('/dashboard/calls')
   revalidatePath('/dashboard/dialer')
+}
+
+const callOutcomes = [
+  'connected',
+  'no_answer',
+  'busy',
+  'voicemail',
+  'wrong_number',
+  'callback',
+  'sale_closed',
+  'not_interested',
+] as const
+
+const leadStatuses = [
+  'new',
+  'contacted',
+  'qualified',
+  'proposal_sent',
+  'negotiation',
+  'won',
+  'lost',
+] as const
+
+export type DialerCallOutcome = (typeof callOutcomes)[number]
+export type DialerLeadStatus = (typeof leadStatuses)[number]
+
+function isCallOutcome(value: string): value is DialerCallOutcome {
+  return callOutcomes.includes(value as DialerCallOutcome)
+}
+
+function isLeadStatus(value: string): value is DialerLeadStatus {
+  return leadStatuses.includes(value as DialerLeadStatus)
+}
+
+export async function saveDialerContactUpdate(input: {
+  contactId: string
+  outcome: string
+  leadStatus: string
+  notes?: string
+  followUpAt?: string
+  createFollowUpTask?: boolean
+}) {
+  const organization = await requirePermission('contacts.update')
+  const contactId = input.contactId.trim()
+  const outcome = input.outcome.trim()
+  const leadStatus = input.leadStatus.trim()
+  const notes = input.notes?.trim() ?? ''
+  const followUpAt = input.followUpAt?.trim() ?? ''
+
+  if (!contactId) {
+    throw new Error('Choose a CRM contact before saving a call update.')
+  }
+
+  if (!isCallOutcome(outcome)) {
+    throw new Error('Choose a valid call outcome.')
+  }
+
+  if (!isLeadStatus(leadStatus)) {
+    throw new Error('Choose a valid lead status.')
+  }
+
+  if (notes.length > 5000) {
+    throw new Error('Call notes cannot exceed 5,000 characters.')
+  }
+
+  if (input.createFollowUpTask && !followUpAt) {
+    throw new Error('Choose a follow-up date and time.')
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    throw new Error('Authentication required.')
+  }
+
+  const { data: contact, error: contactError } = await supabase
+    .from('contacts')
+    .select('id,organization_id,first_name,last_name,email')
+    .eq('id', contactId)
+    .eq('organization_id', organization.organization_id)
+    .maybeSingle()
+
+  if (contactError) {
+    throw new Error(`Failed to load contact: ${contactError.message}`)
+  }
+
+  if (!contact) {
+    throw new Error('The selected contact was not found or is not accessible.')
+  }
+
+  const now = new Date().toISOString()
+
+  const { error: updateError } = await supabase
+    .from('contacts')
+    .update({
+      lead_status: leadStatus,
+      last_call_outcome: outcome,
+      last_contacted_at: now,
+      updated_at: now,
+    })
+    .eq('id', contact.id)
+    .eq('organization_id', organization.organization_id)
+
+  if (updateError) {
+    throw new Error(`Failed to update contact: ${updateError.message}`)
+  }
+
+  const outcomeLabel = outcome.replaceAll('_', ' ')
+  const statusLabel = leadStatus.replaceAll('_', ' ')
+  const timelineBody = [
+    `Call outcome: ${outcomeLabel}`,
+    `Lead status: ${statusLabel}`,
+    notes ? `Notes: ${notes}` : '',
+    followUpAt ? `Follow-up: ${new Date(followUpAt).toLocaleString('en-US')}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
+
+  const { error: noteError } = await supabase.from('contact_notes').insert({
+    organization_id: organization.organization_id,
+    contact_id: contact.id,
+    body: timelineBody,
+    created_by: user.id,
+  })
+
+  if (noteError) {
+    throw new Error(`Contact updated, but the timeline note failed: ${noteError.message}`)
+  }
+
+  if (input.createFollowUpTask && followUpAt) {
+    const contactName =
+      [contact.first_name, contact.last_name].filter(Boolean).join(' ') ||
+      contact.email ||
+      'contact'
+
+    const { error: taskError } = await supabase.from('contact_tasks').insert({
+      organization_id: organization.organization_id,
+      contact_id: contact.id,
+      title: `Follow up with ${contactName}`,
+      description: notes || `Follow up after call outcome: ${outcomeLabel}.`,
+      due_at: followUpAt,
+      status: 'pending',
+      priority: leadStatus === 'qualified' || leadStatus === 'negotiation'
+        ? 'high'
+        : 'medium',
+      created_by: user.id,
+      completed_at: null,
+    })
+
+    if (taskError) {
+      throw new Error(`Contact updated, but the follow-up task failed: ${taskError.message}`)
+    }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/dashboard/contacts')
+  revalidatePath(`/dashboard/contacts/${contact.id}`)
+  revalidatePath('/dashboard/dialer')
+  revalidatePath('/dashboard/tasks')
+
+  return {
+    success: true,
+    savedAt: now,
+  }
 }
