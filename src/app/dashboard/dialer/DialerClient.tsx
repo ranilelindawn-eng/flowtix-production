@@ -620,14 +620,14 @@ export default function DialerClient({
                   disabled={!initialContact || saveState === 'saving'}
                   className={`${fieldClass} mt-2`}
                 >
-                  <option value="connected">Connected</option>
-                  <option value="no_answer">No answer</option>
-                  <option value="busy">Busy</option>
-                  <option value="voicemail">Voicemail</option>
-                  <option value="wrong_number">Wrong number</option>
-                  <option value="callback">Call back</option>
-                  <option value="sale_closed">Sale closed</option>
-                  <option value="not_interested">Not interested</option>
+                  <option value="connected" className="bg-white text-slate-950">Connected</option>
+                  <option value="no_answer" className="bg-white text-slate-950">No answer</option>
+                  <option value="busy" className="bg-white text-slate-950">Busy</option>
+                  <option value="voicemail" className="bg-white text-slate-950">Voicemail</option>
+                  <option value="wrong_number" className="bg-white text-slate-950">Wrong number</option>
+                  <option value="callback" className="bg-white text-slate-950">Call back</option>
+                  <option value="sale_closed" className="bg-white text-slate-950">Sale closed</option>
+                  <option value="not_interested" className="bg-white text-slate-950">Not interested</option>
                 </select>
               </label>
 
@@ -639,13 +639,13 @@ export default function DialerClient({
                   disabled={!initialContact || saveState === 'saving'}
                   className={`${fieldClass} mt-2`}
                 >
-                  <option value="new">New</option>
-                  <option value="contacted">Contacted</option>
-                  <option value="qualified">Qualified</option>
-                  <option value="proposal_sent">Proposal sent</option>
-                  <option value="negotiation">Negotiation</option>
-                  <option value="won">Won</option>
-                  <option value="lost">Lost</option>
+                  <option value="new" className="bg-white text-slate-950">New</option>
+                  <option value="contacted" className="bg-white text-slate-950">Contacted</option>
+                  <option value="qualified" className="bg-white text-slate-950">Qualified</option>
+                  <option value="proposal_sent" className="bg-white text-slate-950">Proposal sent</option>
+                  <option value="negotiation" className="bg-white text-slate-950">Negotiation</option>
+                  <option value="won" className="bg-white text-slate-950">Won</option>
+                  <option value="lost" className="bg-white text-slate-950">Lost</option>
                 </select>
               </label>
             </div>
