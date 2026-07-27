@@ -1,9 +1,20 @@
-'use client'
-
 import Link from 'next/link'
 import { signUp } from '../auth/actions'
 
-export default function SignupPage() {
+type SignupPageProps = {
+  searchParams: Promise<{ next?: string }>
+}
+
+export default async function SignupPage({
+  searchParams,
+}: SignupPageProps) {
+  const params = await searchParams
+  const next =
+    params.next &&
+    params.next.startsWith('/') &&
+    !params.next.startsWith('//')
+      ? params.next
+      : '/dashboard'
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
@@ -13,6 +24,7 @@ export default function SignupPage() {
             <h1 className="mt-4 text-3xl font-semibold text-white">Join CallFlow</h1>
           </div>
           <form action={signUp} className="space-y-6">
+            <input type="hidden" name="next" value={next} />
             <label className="block">
               <span className="text-sm text-slate-300">Email</span>
               <input
@@ -40,7 +52,10 @@ export default function SignupPage() {
           </form>
           <p className="mt-6 text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-white underline">
+            <Link
+              href={`/login?next=${encodeURIComponent(next)}`}
+              className="text-white underline"
+            >
               Sign in
             </Link>
           </p>

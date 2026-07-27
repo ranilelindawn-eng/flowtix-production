@@ -6,6 +6,8 @@ type LoginPageProps = {
     reset?: string
     password?: string
     error?: string
+    next?: string
+    invite?: string
   }>
 }
 
@@ -16,6 +18,14 @@ export default async function LoginPage({
 
   const resetEmailSent = params.reset === 'sent'
   const passwordUpdated = params.password === 'updated'
+  const invitationConfirmationRequired =
+    params.invite === 'confirmation-required'
+  const next =
+    params.next &&
+    params.next.startsWith('/') &&
+    !params.next.startsWith('//')
+      ? params.next
+      : '/dashboard'
 
   const callbackError =
     params.error === 'missing-auth-code'
@@ -89,7 +99,22 @@ export default async function LoginPage({
             </div>
           )}
 
+          {invitationConfirmationRequired && (
+            <div
+              role="status"
+              className="mb-6 rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-4 text-sm leading-6 text-cyan-100"
+            >
+              <p className="font-semibold text-cyan-300">
+                Confirm your email to continue
+              </p>
+              <p className="mt-1 text-cyan-100/90">
+                Check your inbox, confirm your CallFlow account, then sign in to accept the invitation.
+              </p>
+            </div>
+          )}
+
           <form action={signIn} className="space-y-6">
+            <input type="hidden" name="next" value={next} />
             <label className="block">
               <span className="text-sm text-slate-300">Email</span>
 
@@ -124,7 +149,10 @@ export default async function LoginPage({
 
           <p className="mt-6 text-center text-sm text-slate-400">
             Don’t have an account?{' '}
-            <Link href="/signup" className="text-white underline">
+            <Link
+              href={`/signup?next=${encodeURIComponent(next)}`}
+              className="text-white underline"
+            >
               Create one
             </Link>
           </p>

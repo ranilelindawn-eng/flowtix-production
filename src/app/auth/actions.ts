@@ -25,6 +25,17 @@ const createAuthClient = async () => {
 const getString = (formData: FormData, key: string) =>
   formData.get(key)?.toString().trim() ?? ''
 
+const getSafeRedirectPath = (value: string) => {
+  if (!value || !value.startsWith('/') || value.startsWith('//')) {
+    return '/dashboard'
+  }
+
+  return value
+}
+
+const isInvitationPath = (value: string) =>
+  /^\/invite\/[0-9a-f-]{36}$/i.test(value)
+
 const getPlan = (formData: FormData): Plan => {
   const requestedPlan = getString(formData, 'plan').toLowerCase()
 
@@ -64,6 +75,7 @@ const getSiteUrl = () => {
 export async function signIn(formData: FormData) {
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
+  const next = getSafeRedirectPath(getString(formData, 'next'))
 
   if (!email || !password) {
     throw new Error('Email and password are required.')
@@ -84,13 +96,15 @@ export async function signIn(formData: FormData) {
 
   await writeAuditLog('auth.sign_in', 'user')
 
-  redirect('/dashboard')
+  redirect(next)
 }
 
 export async function signUp(formData: FormData) {
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
   const plan = getPlan(formData)
+  const next = getSafeRedirectPath(getString(formData, 'next'))
+  const invitationSignup = isInvitationPath(next)
 
   if (!email || !password) {
     throw new Error('Email and password are required.')
@@ -105,10 +119,12 @@ export async function signUp(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${siteUrl}/auth/callback?next=/login`,
-      data: {
-        selected_plan: plan,
-      },
+      emailRedirectTo: `${siteUrl}/auth/callback?next=${encodeURIComponent(
+        invitationSignup ? next : '/login',
+      )}`,
+      data: invitationSignup
+        ? { invited_user: true }
+        : { selected_plan: plan },
     },
   })
 
@@ -118,6 +134,20 @@ export async function signUp(formData: FormData) {
 
   if (!data.user) {
     throw new Error('Supabase did not return a user after signup.')
+  }
+
+  // Invited team members join an existing subscription and must not be sent
+  // through a separate Stripe Checkout flow.
+  if (invitationSignup) {
+    await writeAuditLog('auth.invited_user_sign_up', 'user')
+
+    if (data.session) {
+      redirect(next)
+    }
+
+    redirect(
+      `/login?invite=confirmation-required&next=${encodeURIComponent(next)}`,
+    )
   }
 
   const stripe = getStripe()
