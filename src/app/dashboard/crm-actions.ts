@@ -42,6 +42,168 @@ export async function createCompany(formData: FormData) {
   redirect(`/dashboard/companies/${data.id}`)
 }
 
+export async function updateCompany(formData: FormData) {
+  const { membership, supabase } = await context()
+  const companyId = text(formData, 'id')
+  const name = text(formData, 'name')
+
+  if (!companyId) throw new Error('Company ID is required.')
+  if (!name) throw new Error('Company name is required.')
+
+  const { data: existingCompany, error: loadError } = await supabase
+    .from('companies')
+    .select('id')
+    .eq('id', companyId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (loadError) {
+    throw new Error(`Failed to load company: ${loadError.message}`)
+  }
+
+  if (!existingCompany) {
+    throw new Error('Company not found.')
+  }
+
+  const { error } = await supabase
+    .from('companies')
+    .update({
+      name,
+      domain: optional(text(formData, 'domain')),
+      industry: optional(text(formData, 'industry')),
+      phone: optional(text(formData, 'phone')),
+      email: optional(text(formData, 'email')),
+      website: optional(text(formData, 'website')),
+      address: optional(text(formData, 'address')),
+      city: optional(text(formData, 'city')),
+      country: optional(text(formData, 'country')),
+      status: text(formData, 'status') || 'active',
+      description: optional(text(formData, 'description')),
+    })
+    .eq('id', companyId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to update company: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/companies')
+  revalidatePath(`/dashboard/companies/${companyId}`)
+  revalidatePath(`/dashboard/companies/${companyId}/edit`)
+  redirect(`/dashboard/companies/${companyId}`)
+}
+
+export async function deleteCompany(formData: FormData) {
+  const { membership, supabase } = await context()
+  const companyId = text(formData, 'id')
+
+  if (!companyId) throw new Error('Company ID is required.')
+
+  const { data: existingCompany, error: loadError } = await supabase
+    .from('companies')
+    .select('id')
+    .eq('id', companyId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (loadError) {
+    throw new Error(`Failed to load company: ${loadError.message}`)
+  }
+
+  if (!existingCompany) {
+    throw new Error('Company not found.')
+  }
+
+  const { data: attachments, error: attachmentLoadError } = await supabase
+    .from('attachments')
+    .select('storage_path')
+    .eq('organization_id', membership.organization_id)
+    .eq('entity_type', 'company')
+    .eq('entity_id', companyId)
+
+  if (attachmentLoadError) {
+    throw new Error(
+      `Failed to load company attachments: ${attachmentLoadError.message}`,
+    )
+  }
+
+  const { error: contactsError } = await supabase
+    .from('contacts')
+    .update({ company_id: null })
+    .eq('organization_id', membership.organization_id)
+    .eq('company_id', companyId)
+
+  if (contactsError) {
+    throw new Error(`Failed to unlink company contacts: ${contactsError.message}`)
+  }
+
+  const { error: opportunitiesError } = await supabase
+    .from('opportunities')
+    .update({ company_id: null })
+    .eq('organization_id', membership.organization_id)
+    .eq('company_id', companyId)
+
+  if (opportunitiesError) {
+    throw new Error(
+      `Failed to unlink company opportunities: ${opportunitiesError.message}`,
+    )
+  }
+
+  const { error: commentsError } = await supabase
+    .from('internal_comments')
+    .delete()
+    .eq('organization_id', membership.organization_id)
+    .eq('entity_type', 'company')
+    .eq('entity_id', companyId)
+
+  if (commentsError) {
+    throw new Error(`Failed to delete company comments: ${commentsError.message}`)
+  }
+
+  const { error: attachmentsError } = await supabase
+    .from('attachments')
+    .delete()
+    .eq('organization_id', membership.organization_id)
+    .eq('entity_type', 'company')
+    .eq('entity_id', companyId)
+
+  if (attachmentsError) {
+    throw new Error(
+      `Failed to delete company attachment records: ${attachmentsError.message}`,
+    )
+  }
+
+  const storagePaths =
+    attachments
+      ?.map((attachment) => attachment.storage_path)
+      .filter((path): path is string => Boolean(path)) ?? []
+
+  if (storagePaths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from('crm-attachments')
+      .remove(storagePaths)
+
+    if (storageError) {
+      throw new Error(
+        `Failed to delete company attachment files: ${storageError.message}`,
+      )
+    }
+  }
+
+  const { error } = await supabase
+    .from('companies')
+    .delete()
+    .eq('id', companyId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to delete company: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/companies')
+  redirect('/dashboard/companies')
+}
+
 export async function createPipeline(formData: FormData) {
   const { membership, supabase, user } = await context()
   const name = text(formData, 'name')
