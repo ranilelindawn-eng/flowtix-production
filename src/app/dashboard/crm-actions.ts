@@ -356,6 +356,160 @@ export async function createOpportunity(formData: FormData) {
   revalidatePath('/dashboard/pipelines')
 }
 
+export async function updateOpportunity(formData: FormData) {
+  const { membership, supabase } = await context()
+  const opportunityId = text(formData, 'id')
+  const pipelineId = text(formData, 'pipeline_id')
+  const stageId = text(formData, 'stage_id')
+  const name = text(formData, 'name')
+
+  if (!opportunityId) throw new Error('Opportunity ID is required.')
+  if (!pipelineId) throw new Error('Pipeline ID is required.')
+  if (!stageId) throw new Error('Stage is required.')
+  if (!name) throw new Error('Opportunity name is required.')
+
+  const { data: opportunity, error: opportunityError } = await supabase
+    .from('opportunities')
+    .select('id')
+    .eq('id', opportunityId)
+    .eq('organization_id', membership.organization_id)
+    .eq('pipeline_id', pipelineId)
+    .maybeSingle()
+
+  if (opportunityError) {
+    throw new Error(`Failed to load opportunity: ${opportunityError.message}`)
+  }
+
+  if (!opportunity) {
+    throw new Error('Opportunity not found.')
+  }
+
+  const { data: stage, error: stageError } = await supabase
+    .from('pipeline_stages')
+    .select('id')
+    .eq('id', stageId)
+    .eq('pipeline_id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (stageError) {
+    throw new Error(`Failed to load pipeline stage: ${stageError.message}`)
+  }
+
+  if (!stage) {
+    throw new Error('The selected stage does not belong to this pipeline.')
+  }
+
+  const value = Number(text(formData, 'value') || '0')
+  const probability = Number(text(formData, 'probability') || '0')
+
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error('Opportunity value must be zero or greater.')
+  }
+
+  if (!Number.isFinite(probability) || probability < 0 || probability > 100) {
+    throw new Error('Probability must be between 0 and 100.')
+  }
+
+  const { error } = await supabase
+    .from('opportunities')
+    .update({
+      name,
+      stage_id: stageId,
+      company_id: optional(text(formData, 'company_id')),
+      contact_id: optional(text(formData, 'contact_id')),
+      value,
+      currency: text(formData, 'currency') || 'USD',
+      probability,
+      expected_close_date: optional(text(formData, 'expected_close_date')),
+      description: optional(text(formData, 'description')),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', opportunityId)
+    .eq('organization_id', membership.organization_id)
+    .eq('pipeline_id', pipelineId)
+
+  if (error) {
+    throw new Error(`Failed to update opportunity: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/pipelines')
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+  revalidatePath(
+    `/dashboard/pipelines/${pipelineId}/opportunities/${opportunityId}/edit`,
+  )
+  redirect(`/dashboard/pipelines/${pipelineId}`)
+}
+
+export async function moveOpportunityStage(formData: FormData) {
+  const { membership, supabase } = await context()
+  const opportunityId = text(formData, 'id')
+  const pipelineId = text(formData, 'pipeline_id')
+  const stageId = text(formData, 'stage_id')
+
+  if (!opportunityId || !pipelineId || !stageId) {
+    throw new Error('Opportunity, pipeline, and stage are required.')
+  }
+
+  const { data: stage, error: stageError } = await supabase
+    .from('pipeline_stages')
+    .select('id,probability')
+    .eq('id', stageId)
+    .eq('pipeline_id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+    .maybeSingle()
+
+  if (stageError) {
+    throw new Error(`Failed to load pipeline stage: ${stageError.message}`)
+  }
+
+  if (!stage) {
+    throw new Error('The selected stage does not belong to this pipeline.')
+  }
+
+  const { error } = await supabase
+    .from('opportunities')
+    .update({
+      stage_id: stageId,
+      probability: Number(stage.probability || 0),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', opportunityId)
+    .eq('pipeline_id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to move opportunity: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/pipelines')
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+}
+
+export async function deleteOpportunity(formData: FormData) {
+  const { membership, supabase } = await context()
+  const opportunityId = text(formData, 'id')
+  const pipelineId = text(formData, 'pipeline_id')
+
+  if (!opportunityId) throw new Error('Opportunity ID is required.')
+  if (!pipelineId) throw new Error('Pipeline ID is required.')
+
+  const { error } = await supabase
+    .from('opportunities')
+    .delete()
+    .eq('id', opportunityId)
+    .eq('pipeline_id', pipelineId)
+    .eq('organization_id', membership.organization_id)
+
+  if (error) {
+    throw new Error(`Failed to delete opportunity: ${error.message}`)
+  }
+
+  revalidatePath('/dashboard/pipelines')
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+  redirect(`/dashboard/pipelines/${pipelineId}`)
+}
+
 export async function createTag(formData: FormData) {
   const { membership, supabase } = await context()
   const name = text(formData, 'name')
