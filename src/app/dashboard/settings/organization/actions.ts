@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { requirePermission } from '@/lib/auth'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 function getString(formData: FormData, key: string): string {
@@ -17,13 +18,30 @@ function createSlug(value: string): string {
 }
 
 export async function saveOrganizationSettings(formData: FormData) {
-  const organizationId = getString(formData, 'organization_id')
-  const organizationName = getString(formData, 'organization_name')
-  const requestedSlug = getString(formData, 'organization_slug')
+  const organization = await requirePermission(
+    'organization.update',
+  )
+  const submittedOrganizationId = getString(
+    formData,
+    'organization_id',
+  )
+  const organizationName = getString(
+    formData,
+    'organization_name',
+  )
+  const requestedSlug = getString(
+    formData,
+    'organization_slug',
+  )
   const logoUrl = getString(formData, 'logo_url')
 
-  if (!organizationId) {
-    throw new Error('Organization ID is required.')
+  if (
+    submittedOrganizationId &&
+    submittedOrganizationId !== organization.organization_id
+  ) {
+    throw new Error(
+      'The submitted organization does not match the active workspace.',
+    )
   }
 
   if (!organizationName) {
@@ -44,17 +62,6 @@ export async function saveOrganizationSettings(formData: FormData) {
     throw new Error('Unable to connect to Supabase.')
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
-    throw new Error(
-      'You must be signed in to update your organization.',
-    )
-  }
-
   const { error } = await supabase
     .from('organizations')
     .update({
@@ -63,7 +70,7 @@ export async function saveOrganizationSettings(formData: FormData) {
       logo_url: logoUrl || null,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', organizationId)
+    .eq('id', organization.organization_id)
 
   if (error) {
     throw new Error(

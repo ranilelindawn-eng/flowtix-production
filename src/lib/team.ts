@@ -37,6 +37,10 @@ export type CurrentOrganizationMembership = {
   role: TeamRole
 }
 
+type OrganizationMembershipRow = CurrentOrganizationMembership & {
+  created_at: string
+}
+
 function isTeamRole(value: unknown): value is TeamRole {
   return (
     value === 'owner' ||
@@ -44,6 +48,16 @@ function isTeamRole(value: unknown): value is TeamRole {
     value === 'manager' ||
     value === 'supervisor' ||
     value === 'agent'
+  )
+}
+
+function isMembershipRow(
+  value: OrganizationMembershipRow,
+): value is OrganizationMembershipRow {
+  return (
+    typeof value.organization_id === 'string' &&
+    value.organization_id.length > 0 &&
+    isTeamRole(value.role)
   )
 }
 
@@ -64,28 +78,127 @@ export const getCurrentOrganization = cache(
       return null
     }
 
-    const { data, error } = await supabase
-      .from('organization_members')
-      .select('organization_id, role')
-      .eq('user_id', userId)
-      .maybeSingle()
+    const [profileResult, membershipResult] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', userId)
+        .maybeSingle(),
+      supabase
+        .from('organization_members')
+        .select('organization_id, role, created_at')
+        .eq('user_id', userId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: true }),
+    ])
 
-    if (error) {
+    if (profileResult.error) {
       throw new Error(
-        `Failed to load the current organization: ${error.message}`,
+        `Failed to load the active organization: ${profileResult.error.message}`,
       )
     }
 
-    if (!data || !isTeamRole(data.role)) {
+    if (membershipResult.error) {
+      throw new Error(
+        `Failed to load organization memberships: ${membershipResult.error.message}`,
+      )
+    }
+
+    const memberships = (membershipResult.data ?? []).filter(
+      isMembershipRow,
+    )
+
+    if (memberships.length === 0) {
       return null
     }
 
+    const activeOrganizationId =
+      typeof profileResult.data?.organization_id === 'string'
+        ? profileResult.data.organization_id
+        : null
+
+    const selectedMembership =
+      memberships.find(
+        (membership) =>
+          membership.organization_id === activeOrganizationId,
+      ) ?? memberships[0]
+
+    if (!selectedMembership) {
+      return null
+    }
+
+    if (
+      selectedMembership.organization_id !== activeOrganizationId
+    ) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          organization_id: selectedMembership.organization_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId)
+
+      if (updateError) {
+        throw new Error(
+          `Failed to repair the active organization: ${updateError.message}`,
+        )
+      }
+    }
+
     return {
-      organization_id: data.organization_id,
-      role: data.role,
+      organization_id: selectedMembership.organization_id,
+      role: selectedMembership.role,
     }
   },
 )
+
+export async function setActiveOrganization(
+  organizationId: string,
+): Promise<CurrentOrganizationMembership> {
+  const normalizedOrganizationId = organizationId.trim()
+
+  if (!normalizedOrganizationId) {
+    throw new Error('Organization ID is required.')
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc(
+    'set_active_organization',
+    {
+      target_organization_id: normalizedOrganizationId,
+    },
+  )
+
+  if (error || !data) {
+    throw new Error(
+      error?.message ?? 'Unable to select the organization.',
+    )
+  }
+
+  const { data: membership, error: membershipError } =
+    await supabase
+      .from('organization_members')
+      .select('organization_id, role')
+      .eq('organization_id', normalizedOrganizationId)
+      .eq('status', 'active')
+      .maybeSingle()
+
+  if (
+    membershipError ||
+    !membership ||
+    !isTeamRole(membership.role)
+  ) {
+    throw new Error(
+      membershipError?.message ??
+        'Unable to load the selected organization membership.',
+    )
+  }
+
+  return {
+    organization_id: membership.organization_id,
+    role: membership.role,
+  }
+}
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
   const organization = await getCurrentOrganization()

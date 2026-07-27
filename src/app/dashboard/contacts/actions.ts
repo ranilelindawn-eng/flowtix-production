@@ -76,35 +76,6 @@ async function getAuthenticatedSupabaseClient() {
   }
 }
 
-async function getAccessibleContact(contactId: string) {
-  const { supabase } = await getAuthenticatedSupabaseClient()
-
-  const { data: contact, error: contactError } = await supabase
-    .from('contacts')
-    .select('id, organization_id')
-    .eq('id', contactId)
-    .maybeSingle()
-
-  if (contactError) {
-    throw new Error(contactError.message)
-  }
-
-  if (!contact) {
-    throw new Error(
-      'The selected contact was not found or is not accessible.',
-    )
-  }
-
-  if (!contact.organization_id) {
-    throw new Error('The contact does not have an organization.')
-  }
-
-  return {
-    supabase,
-    contact,
-  }
-}
-
 async function getAccessibleContactTask(taskId: string) {
   const { supabase } = await getAuthenticatedSupabaseClient()
 

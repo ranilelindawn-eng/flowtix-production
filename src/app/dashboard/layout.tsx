@@ -7,6 +7,7 @@ import Sidebar from '@/components/dashboard/Sidebar'
 import TopNav from '@/components/dashboard/TopNav'
 import SessionTracker from '@/components/security/SessionTracker'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentOrganization } from '@/lib/team'
 
 type DashboardLayoutProps = {
   children: ReactNode
@@ -30,18 +31,20 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
- const claims = claimsData?.claims
-
+  const claims = claimsData?.claims
   const claimEmail =
-  typeof claims?.email === 'string'
-    ? claims.email
-    : ''
+    typeof claims?.email === 'string' ? claims.email : ''
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('full_name, avatar_url, organization_id')
-    .eq('id', userId)
-    .maybeSingle()
+  const [profileResult, currentOrganization] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('id', userId)
+      .maybeSingle(),
+    getCurrentOrganization(),
+  ])
+
+  const { data: profile, error: profileError } = profileResult
 
   if (profileError) {
     console.error(
@@ -52,12 +55,12 @@ export default async function DashboardLayout({
 
   let organizationName = 'Workspace'
 
-  if (profile?.organization_id) {
+  if (currentOrganization) {
     const { data: organization, error: organizationError } =
       await supabase
         .from('organizations')
         .select('name')
-        .eq('id', profile.organization_id)
+        .eq('id', currentOrganization.organization_id)
         .maybeSingle()
 
     if (organizationError) {
@@ -73,7 +76,6 @@ export default async function DashboardLayout({
   }
 
   const userEmail = claimEmail || 'user@example.com'
-
   const userName =
     profile?.full_name?.trim() ||
     userEmail.split('@')[0] ||

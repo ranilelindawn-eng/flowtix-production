@@ -50,7 +50,7 @@ export default async function EditPipelinePage({
         </h1>
 
         <p className="mt-2 text-sm text-slate-400">
-          Update this pipeline's name and description.
+          Update this pipeline’s name and description.
         </p>
       </div>
 

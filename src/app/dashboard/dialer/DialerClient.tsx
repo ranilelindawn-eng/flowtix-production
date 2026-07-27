@@ -219,9 +219,12 @@ export default function DialerClient({
   }, [attachCallEvents, fetchToken])
 
   useEffect(() => {
-    void connectDevice()
+    const connectTimer = window.setTimeout(() => {
+      void connectDevice()
+    }, 0)
 
     return () => {
+      window.clearTimeout(connectTimer)
       void deviceRef.current?.destroy()
     }
   }, [connectDevice])
