@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { createClient } from '@/lib/supabase/server'
+import { assertMemberCapacity } from '@/lib/usage-limits'
 import {
   getCurrentOrganization,
   type TeamRole,
@@ -98,6 +99,8 @@ export async function inviteTeamMember(
       'Only the organization owner can invite another owner.',
     )
   }
+
+  await assertMemberCapacity(organization.organization_id)
 
   const { data: existingInvitation, error: invitationError } =
     await supabase

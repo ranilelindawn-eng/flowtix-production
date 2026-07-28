@@ -8,6 +8,7 @@ type LoginPageProps = {
     error?: string
     next?: string
     invite?: string
+    email?: string
   }>
 }
 
@@ -16,6 +17,7 @@ export default async function LoginPage({
 }: LoginPageProps) {
   const params = await searchParams
 
+  const prefilledEmail = params.email?.trim().toLowerCase() ?? ''
   const resetEmailSent = params.reset === 'sent'
   const passwordUpdated = params.password === 'updated'
   const invitationConfirmationRequired =
@@ -123,6 +125,7 @@ export default async function LoginPage({
                 type="email"
                 autoComplete="email"
                 required
+                defaultValue={prefilledEmail}
                 className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70"
               />
             </label>
@@ -150,7 +153,7 @@ export default async function LoginPage({
           <p className="mt-6 text-center text-sm text-slate-400">
             Don’t have an account?{' '}
             <Link
-              href={`/signup?next=${encodeURIComponent(next)}`}
+              href={`/signup?${new URLSearchParams({ next, ...(prefilledEmail ? { email: prefilledEmail } : {}) }).toString()}`}
               className="text-white underline"
             >
               Create one

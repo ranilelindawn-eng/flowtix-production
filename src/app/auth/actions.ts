@@ -105,9 +105,18 @@ export async function signUp(formData: FormData) {
   const plan = getPlan(formData)
   const next = getSafeRedirectPath(getString(formData, 'next'))
   const invitationSignup = isInvitationPath(next)
+  const invitedEmail = getString(formData, 'invited_email').toLowerCase()
 
   if (!email || !password) {
     throw new Error('Email and password are required.')
+  }
+
+  if (password.length < 8) {
+    throw new Error('Your password must contain at least 8 characters.')
+  }
+
+  if (invitationSignup && (!invitedEmail || email.toLowerCase() !== invitedEmail)) {
+    throw new Error('Use the email address that received the invitation.')
   }
 
   await enforceRateLimit(`signup:${email.toLowerCase()}`, 3, 300)
