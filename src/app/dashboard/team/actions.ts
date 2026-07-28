@@ -13,7 +13,6 @@ const VALID_ROLES: TeamRole[] = [
   'owner',
   'admin',
   'manager',
-  'supervisor',
   'agent',
 ]
 

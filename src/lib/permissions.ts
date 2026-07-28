@@ -187,26 +187,6 @@ const managerPermissions: readonly Permission[] = [
 ]
 
 
-const supervisorPermissions: readonly Permission[] = [
-  'organization.view',
-  'team.view',
-  'contacts.view',
-  'contacts.create',
-  'contacts.update',
-  'campaigns.view',
-  'calls.view',
-  'calls.create',
-  'calls.update',
-  'recordings.view',
-  'transcripts.view',
-  'transcripts.update',
-  'summaries.view',
-  'summaries.create',
-  'insights.view',
-  'reports.view',
-  'reports.export',
-  'settings.view',
-]
 
 const agentPermissions: readonly Permission[] = [
   'organization.view',
@@ -243,7 +223,6 @@ export const rolePermissions: Record<
   owner: ownerPermissions,
   admin: adminPermissions,
   manager: managerPermissions,
-  supervisor: supervisorPermissions,
   agent: agentPermissions,
 }
 

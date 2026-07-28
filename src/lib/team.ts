@@ -2,7 +2,7 @@ import { cache } from 'react'
 
 import { createClient } from '@/lib/supabase/server'
 
-export type TeamRole = 'owner' | 'admin' | 'manager' | 'supervisor' | 'agent'
+export type TeamRole = 'owner' | 'admin' | 'manager' | 'agent'
 
 export type TeamMember = {
   id: string
@@ -46,7 +46,6 @@ function isTeamRole(value: unknown): value is TeamRole {
     value === 'owner' ||
     value === 'admin' ||
     value === 'manager' ||
-    value === 'supervisor' ||
     value === 'agent'
   )
 }

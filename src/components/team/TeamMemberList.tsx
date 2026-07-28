@@ -20,7 +20,6 @@ type TeamMemberListProps = {
 const editableRoles: TeamRole[] = [
   'admin',
   'manager',
-  'supervisor',
   'agent',
 ]
 
@@ -95,8 +94,6 @@ function roleBadgeClass(role: TeamRole): string {
       return 'border-blue-500/20 bg-blue-500/10 text-blue-300'
     case 'manager':
       return 'border-amber-500/20 bg-amber-500/10 text-amber-300'
-    case 'supervisor':
-      return 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
     case 'agent':
       return 'border-slate-600 bg-slate-800 text-slate-300'
   }

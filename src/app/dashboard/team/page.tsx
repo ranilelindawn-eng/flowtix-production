@@ -44,7 +44,7 @@ export default async function TeamPage() {
           </h1>
 
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-            The workspace owner pays for the subscription. Invited admins, managers, supervisors, and agents join this workspace without purchasing a separate plan.
+            The workspace owner pays for the subscription. Invited admins, managers, and agents join this workspace without purchasing a separate plan.
           </p>
         </div>
 

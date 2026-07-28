@@ -8,7 +8,6 @@ import type { TeamRole } from '@/lib/team'
 const roles: TeamRole[] = [
   'admin',
   'manager',
-  'supervisor',
   'agent',
 ]
 
@@ -110,7 +109,6 @@ export default function InviteMemberForm() {
               Manage calls, campaigns, reports, and agents.
             </li>
 
-            <li><strong className="text-slate-200">Supervisor:</strong>{' '}Review calls, coach agents, and monitor team quality.</li>
             <li><strong className="text-slate-200">Agent:</strong>{' '}Make calls and access assigned work only.</li>
           </ul>
         </div>
