@@ -41,7 +41,14 @@ export async function POST(request: Request) {
       client_reference_id: organization.organization_id,
       ...(subscription?.stripe_customer_id ? { customer: subscription.stripe_customer_id } : email ? { customer_email: email } : {}),
       metadata: { organization_id: organization.organization_id, plan_id: plan.id, plan_code: plan.code },
-      subscription_data: { metadata: { organization_id: organization.organization_id, plan_id: plan.id, plan_code: plan.code } },
+      subscription_data: {
+        trial_period_days: 7,
+        metadata: {
+          organization_id: organization.organization_id,
+          plan_id: plan.id,
+          plan_code: plan.code,
+        },
+      },
     })
 
     if (!session.url) throw new Error('Stripe did not return a Checkout URL.')

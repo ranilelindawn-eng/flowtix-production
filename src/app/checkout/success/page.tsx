@@ -13,7 +13,7 @@ export default function CheckoutSuccessPage() {
         </p>
 
         <h1 className="mt-4 text-3xl font-semibold">
-          Your 3-day CallFlow trial is ready.
+          Your 7-day CallFlow trial is ready.
         </h1>
 
         <p className="mt-4 leading-7 text-slate-400">

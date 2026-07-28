@@ -20,6 +20,7 @@ import {
   Tags,
   TextQuote,
   Activity,
+  Clock3,
   ListOrdered,
   UsersRound,
   FileText,
@@ -201,6 +202,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/team',
     permission: 'team.view',
     icon: Users,
+  },
+  {
+    id: 'attendance',
+    label: 'Time & Attendance',
+    href: '/dashboard/attendance',
+    permission: 'attendance.view_own',
+    icon: Clock3,
   },
   {
     id: 'roles',

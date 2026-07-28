@@ -8,6 +8,9 @@ export type Permission =
   | 'team.invite'
   | 'team.update_roles'
   | 'team.remove_members'
+  | 'attendance.view_own'
+  | 'attendance.view_all'
+  | 'attendance.clock'
   | 'billing.view'
   | 'billing.manage'
   | 'contacts.view'
@@ -49,6 +52,10 @@ const ownerPermissions: readonly Permission[] = [
   'team.invite',
   'team.update_roles',
   'team.remove_members',
+
+  'attendance.view_own',
+  'attendance.view_all',
+  'attendance.clock',
 
   'billing.view',
   'billing.manage',
@@ -104,6 +111,10 @@ const adminPermissions: readonly Permission[] = [
   'team.update_roles',
   'team.remove_members',
 
+  'attendance.view_own',
+  'attendance.view_all',
+  'attendance.clock',
+
   'billing.view',
 
   'contacts.view',
@@ -153,6 +164,9 @@ const managerPermissions: readonly Permission[] = [
 
   'team.view',
 
+  'attendance.view_own',
+  'attendance.clock',
+
   'contacts.view',
   'contacts.create',
   'contacts.update',
@@ -192,6 +206,9 @@ const agentPermissions: readonly Permission[] = [
   'organization.view',
 
   'team.view',
+
+  'attendance.view_own',
+  'attendance.clock',
 
   'contacts.view',
   'contacts.create',

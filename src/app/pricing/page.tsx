@@ -9,21 +9,34 @@ import {
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Choose a CallFlow plan and start a 3-day free trial with secure Stripe billing.',
+    'Choose a CallFlow plan and start a 7-day free trial with secure Stripe billing.',
 }
 
-const plans = [
+type PricingPlan = {
+  name: string
+  price: string
+  suffix: string
+  trial: string
+  description: string
+  href: string
+  featured: boolean
+  cta: string
+  features: string[]
+}
+
+const plans: PricingPlan[] = [
   {
     name: 'Starter',
     price: '$29',
     suffix: '/month',
-    trial: '3-day free trial',
+    trial: '7-day free trial',
     description:
       'For freelancers, virtual assistants, and small teams building a reliable calling workflow.',
     href: '/signup?plan=starter',
     featured: false,
+    cta: 'Start 7-Day Free Trial',
     features: [
-      'Up to 3 team members',
+      'Up to 5 team members including the owner',
       '1,000 contacts',
       'Core CRM workspace',
       'Contacts, tasks, and notes',
@@ -36,14 +49,15 @@ const plans = [
     name: 'Professional',
     price: '$79',
     suffix: '/month',
-    trial: '3-day free trial',
+    trial: '7-day free trial',
     description:
       'For active sales teams that need collaboration, recordings, AI, and advanced workflow tools.',
     href: '/signup?plan=professional',
     featured: true,
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Starter',
-      'Up to 10 team members',
+      'Up to 10 team members including the owner',
       '10,000 contacts',
       'Team collaboration',
       'Call recordings and transcripts',
@@ -57,20 +71,42 @@ const plans = [
     name: 'Business',
     price: '$199',
     suffix: '/month',
-    trial: '3-day free trial',
+    trial: '7-day free trial',
     description:
       'For larger organizations that require advanced permissions, onboarding, and support.',
     href: '/signup?plan=business',
     featured: false,
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Professional',
-      'Up to 30 team members',
+      'Up to 30 team members including the owner',
       'Unlimited contact lists',
       'Advanced permissions',
       'Custom onboarding',
       'Security review support',
       'Integration planning',
       'Priority implementation support',
+    ],
+  },
+  {
+    name: 'Enterprise',
+    price: '$499',
+    suffix: '/month',
+    trial: 'Sales-assisted onboarding',
+    description:
+      'For high-volume organizations that need unlimited team capacity, dedicated onboarding, and tailored commercial terms.',
+    href: '/contact',
+    featured: false,
+    cta: 'Contact Sales',
+    features: [
+      'Everything in Business',
+      'Unlimited team members',
+      'Unlimited contacts',
+      'Dedicated onboarding',
+      'Priority implementation',
+      'Security and architecture review',
+      'Integration planning',
+      'Commercial support options',
     ],
   },
 ]
@@ -80,8 +116,8 @@ export default function Page() {
     <MarketingShell>
       <MarketingHero
         eyebrow="Simple pricing"
-        title="Start free for 3 days. Pay only when your trial ends."
-        description="Create your CallFlow account, securely add your payment details through Stripe, and begin your 3-day free trial. Cancel before the trial ends to avoid being charged."
+        title="Start free for 7 days. Pay only when your trial ends."
+        description="Create your CallFlow account, securely add your payment details through Stripe, and begin your 7-day free trial. Cancel before the trial ends to avoid being charged."
       />
 
       <ContentSection title="Plans">
@@ -91,8 +127,9 @@ export default function Page() {
               Payment method required to begin the trial
             </p>
             <p className="mt-1 leading-6 text-slate-400">
-              Your selected monthly subscription starts automatically after
-              the 3-day trial unless you cancel beforehand.
+              Starter, Professional, and Business subscriptions start
+              automatically after the 7-day trial unless you cancel
+              beforehand. Enterprise onboarding is handled by our sales team.
             </p>
           </div>
 
@@ -101,7 +138,7 @@ export default function Page() {
           </span>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <article
               key={plan.name}
@@ -160,12 +197,13 @@ export default function Page() {
                     : 'border border-white/15 bg-white/[0.06] text-white hover:bg-white/[0.10]'
                 }`}
               >
-                Start 3-Day Free Trial
+                {plan.cta}
               </Link>
 
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-                Card required. Cancel before the trial ends to avoid the first
-                monthly charge.
+                {plan.name === 'Enterprise'
+                  ? 'Contact sales to confirm onboarding, billing, and implementation requirements.'
+                  : 'Card required. Cancel during the 7-day trial to avoid the first monthly charge.'}
               </p>
             </article>
           ))}

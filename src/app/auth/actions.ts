@@ -174,7 +174,7 @@ export async function signUp(formData: FormData) {
     ],
     payment_method_collection: 'always',
     subscription_data: {
-      trial_period_days: 3,
+      trial_period_days: 7,
       metadata: {
         supabase_user_id: data.user.id,
         plan,

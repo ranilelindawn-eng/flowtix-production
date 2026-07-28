@@ -3,7 +3,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
-export type PlanCode = 'free' | 'starter' | 'pro' | 'business' | 'enterprise'
+export type PlanCode = 'starter' | 'pro' | 'business' | 'enterprise'
 
 export type SubscriptionPlan = {
   id: string
