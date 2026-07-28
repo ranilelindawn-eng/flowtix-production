@@ -73,10 +73,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
 
       <section>
         <h2 className="text-xl font-bold text-white">Available plans</h2>
-        <div className="mt-4 grid gap-5 lg:grid-cols-3">
+        <div className="mt-4 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => {
             const current = subscription?.plan?.id === plan.id || usage?.planCode === plan.code
-            const isEnterprise = plan.code === 'enterprise'
             return (
               <article key={plan.id} className={`rounded-2xl border p-6 ${current ? 'border-cyan-500/60 bg-cyan-500/5' : 'border-slate-800 bg-slate-900'}`}>
                 <div className="flex items-start justify-between gap-3">
@@ -87,7 +86,6 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 <ul className="mt-6 space-y-3 text-sm text-slate-300">{plan.features.map((feature) => <li key={feature} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 text-cyan-400" />{feature}</li>)}</ul>
                 <div className="mt-6">
                   {current ? <button disabled className="w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-500">Current plan</button>
-                    : isEnterprise ? <a href="/contact" className="block w-full rounded-xl border border-slate-700 px-4 py-3 text-center font-semibold text-white hover:bg-slate-800">Contact sales</a>
                     : plan.stripe_price_id && canManage ? <form action="/api/stripe/checkout" method="post"><input type="hidden" name="priceId" value={plan.stripe_price_id} /><button className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-500">Choose {plan.name}</button></form>
                     : <button disabled className="w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-500">{canManage ? 'Stripe price not configured' : 'Owner access required'}</button>}
                 </div>

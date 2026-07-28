@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (planError) throw new Error(planError.message)
-    if (!plan || plan.code === 'enterprise') return NextResponse.json({ error: 'Invalid subscription price.' }, { status: 400 })
+    if (!plan) return NextResponse.json({ error: 'Invalid subscription price.' }, { status: 400 })
 
     const { data: claims } = await supabase.auth.getClaims()
     const email = typeof claims?.claims?.email === 'string' ? claims.claims.email : undefined
