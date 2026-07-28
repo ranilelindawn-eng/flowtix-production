@@ -7,9 +7,6 @@ import {
 } from 'react'
 import { createRecoveryClient } from '@/lib/supabase/recovery-client'
 
-const PRODUCTION_ORIGIN =
-  'https://callflow-crm.netlify.app'
-
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
@@ -41,8 +38,12 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createRecoveryClient()
 
-      const redirectTo =
-        `${PRODUCTION_ORIGIN}/reset-password`
+      const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  window.location.origin
+
+const redirectTo =
+  `${siteUrl.replace(/\/$/, '')}/reset-password`
 
       const { error } =
         await supabase.auth.resetPasswordForEmail(
