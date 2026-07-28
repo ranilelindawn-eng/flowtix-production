@@ -2,6 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+
+import type { Permission } from '@/lib/permissions'
+import { hasPermission } from '@/lib/permissions'
+import type { TeamRole } from '@/lib/team'
 import {
   Briefcase,
   BadgeDollarSign,
@@ -33,6 +37,7 @@ type NavItem = {
   href: string
   icon: typeof Home
   exact?: boolean
+  permission?: Permission
 }
 
 const navItems: NavItem[] = [
@@ -47,162 +52,196 @@ const navItems: NavItem[] = [
     id: 'contacts',
     label: 'Contacts',
     href: '/dashboard/contacts',
+    permission: 'contacts.view',
     icon: Users,
   },
   {
     id: 'companies',
     label: 'Companies',
     href: '/dashboard/companies',
+    permission: 'contacts.view',
     icon: Building2,
   },
   {
     id: 'pipelines',
     label: 'Pipelines',
     href: '/dashboard/pipelines',
+    permission: 'contacts.view',
     icon: GitBranch,
   },
   {
     id: 'campaigns',
     label: 'Campaigns',
     href: '/dashboard/campaigns',
+    permission: 'campaigns.view',
     icon: Sparkles,
   },
   {
     id: 'sequences',
     label: 'Sequences',
     href: '/dashboard/sequences',
+    permission: 'campaigns.view',
     icon: ListOrdered,
   },
   {
     id: 'communications',
     label: 'Email & SMS',
     href: '/dashboard/communications',
+    permission: 'campaigns.view',
     icon: Mail,
   },
   {
     id: 'templates',
     label: 'Templates',
     href: '/dashboard/templates',
+    permission: 'campaigns.view',
     icon: MessageSquareText,
   },
   {
     id: 'snippets',
     label: 'Snippets',
     href: '/dashboard/snippets',
+    permission: 'campaigns.view',
     icon: TextQuote,
   },
   {
     id: 'tags',
     label: 'Tags',
     href: '/dashboard/tags',
+    permission: 'campaigns.view',
     icon: Tags,
   },
   {
     id: 'files',
     label: 'Files',
     href: '/dashboard/files',
+    permission: 'recordings.view',
     icon: FolderOpen,
   },
   {
     id: 'calls',
     label: 'Calls',
     href: '/dashboard/calls',
+    permission: 'calls.view',
     icon: Phone,
   },
   {
     id: 'dialer',
     label: 'Dialer',
     href: '/dashboard/dialer',
+    permission: 'calls.view',
     icon: Zap,
   },
   {
     id: 'live-calls',
     label: 'Live Calls',
     href: '/dashboard/live-calls',
+    permission: 'calls.view',
     icon: Activity,
   },
   {
     id: 'ring-groups',
     label: 'Ring Groups',
     href: '/dashboard/ring-groups',
+    permission: 'calls.view',
     icon: UsersRound,
   },
   {
     id: 'queues',
     label: 'Queues',
     href: '/dashboard/queues',
+    permission: 'calls.view',
     icon: ListOrdered,
   },
   {
     id: 'recordings',
     label: 'Recordings',
     href: '/dashboard/recordings',
+    permission: 'recordings.view',
     icon: FileText,
   },
   {
     id: 'transcripts',
     label: 'Transcripts',
     href: '/dashboard/transcripts',
+    permission: 'transcripts.view',
     icon: Briefcase,
   },
   {
     id: 'reports',
     label: 'Reports',
     href: '/dashboard/reports',
+    permission: 'reports.view',
     icon: BarChart3,
   },
   {
     id: 'ai-workspace',
     label: 'AI Workspace',
     href: '/dashboard/ai',
+    permission: 'summaries.view',
     icon: Sparkles,
   },
   {
     id: 'insights',
     label: 'AI Insights',
     href: '/dashboard/insights',
+    permission: 'insights.view',
     icon: Sparkles,
   },
   {
     id: 'organization',
     label: 'Organization',
     href: '/dashboard/organization',
+    permission: 'organization.view',
     icon: Building2,
   },
   {
     id: 'team',
     label: 'Team',
     href: '/dashboard/team',
+    permission: 'team.view',
     icon: Users,
   },
   {
     id: 'roles',
     label: 'Roles & Permissions',
     href: '/dashboard/roles',
+    permission: 'team.update_roles',
     icon: ShieldCheck,
   },
   {
     id: 'billing',
     label: 'Billing',
     href: '/dashboard/billing',
+    permission: 'billing.view',
     icon: BadgeDollarSign,
   },
   {
     id: 'security-center',
     label: 'Security Center',
     href: '/dashboard/security',
+    permission: 'settings.view',
     icon: LockKeyhole,
   },
   {
     id: 'settings',
     label: 'Settings',
     href: '/dashboard/settings',
+    permission: 'settings.view',
     icon: Settings,
   },
 ]
 
-export default function Sidebar() {
+type SidebarProps = {
+  role: TeamRole
+}
+
+export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname() ?? '/dashboard'
+
+  const visibleNavItems = navItems.filter(
+    (item) => !item.permission || hasPermission(role, item.permission),
+  )
 
   function isItemActive(item: NavItem): boolean {
     if (item.exact) {
@@ -236,7 +275,7 @@ export default function Sidebar() {
 
         <div className="hidden lg:block">
           <nav className="space-y-1" aria-label="Dashboard navigation">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const isActive = isItemActive(item)
 
               return (
@@ -271,7 +310,7 @@ export default function Sidebar() {
               className="mt-4 space-y-2"
               aria-label="Mobile dashboard navigation"
             >
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const isActive = isItemActive(item)
 
                 return (

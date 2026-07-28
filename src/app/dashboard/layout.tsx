@@ -85,7 +85,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-[#07111F] text-white">
       <SessionTracker />
       <div className="lg:fixed lg:inset-y-0 lg:left-0 lg:w-[280px]">
-        <Sidebar />
+        <Sidebar role={currentOrganization?.role ?? 'agent'} />
       </div>
 
       <div className="lg:pl-[280px]">
