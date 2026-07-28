@@ -216,7 +216,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="h-full border-r border-white/10 bg-[#0B1726] text-white">
+    <aside className="h-full overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0B1726] text-white [scrollbar-gutter:stable]">
       <div className="mx-auto flex max-w-7xl flex-col px-6 py-6 lg:px-8 lg:py-8">
         <div className="mb-8 flex items-center gap-3">
           <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#22D3EE]/20 to-[#2563EB]/15 text-white ring-1 ring-white/10">
@@ -297,6 +297,6 @@ export default function Sidebar() {
           </details>
         </div>
       </div>
-    </div>
+    </aside>
   )
 }
