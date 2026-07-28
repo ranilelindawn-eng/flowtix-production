@@ -4,10 +4,15 @@ import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 
 import {
-  initialTeamActionState,
   inviteTeamMember,
+  type TeamActionState,
 } from '@/app/dashboard/team/actions'
 import type { TeamRole } from '@/lib/team'
+
+const initialTeamActionState: TeamActionState = {
+  status: 'idle',
+  message: '',
+}
 
 const roles: TeamRole[] = [
   'admin',

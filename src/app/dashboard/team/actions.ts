@@ -15,10 +15,6 @@ export type TeamActionState = {
   message: string
 }
 
-export const initialTeamActionState: TeamActionState = {
-  status: 'idle',
-  message: '',
-}
 
 function getPublicActionMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
