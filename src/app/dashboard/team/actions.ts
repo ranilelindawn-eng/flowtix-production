@@ -9,6 +9,25 @@ import {
   type TeamRole,
 } from '@/lib/team'
 
+
+export type TeamActionState = {
+  status: 'idle' | 'success' | 'error'
+  message: string
+}
+
+export const initialTeamActionState: TeamActionState = {
+  status: 'idle',
+  message: '',
+}
+
+function getPublicActionMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  return 'The request could not be completed. Please try again.'
+}
+
 const VALID_ROLES: TeamRole[] = [
   'owner',
   'admin',
@@ -81,97 +100,123 @@ function revalidateTeamPages() {
 }
 
 export async function inviteTeamMember(
+  _previousState: TeamActionState,
   formData: FormData,
-) {
-  const { supabase, user, organization } =
-    await requireTeamManager()
+): Promise<TeamActionState> {
+  try {
+    const { supabase, user, organization } =
+      await requireTeamManager()
 
-  const email = normalizeEmail(formData.get('email'))
-  const role = normalizeRole(formData.get('role'))
+    const email = normalizeEmail(formData.get('email'))
+    const role = normalizeRole(formData.get('role'))
 
-  if (!email) {
-    throw new Error('Email is required.')
-  }
+    if (!email) {
+      return {
+        status: 'error',
+        message: 'Email is required.',
+      }
+    }
 
-  if (role === 'owner' && organization.role !== 'owner') {
-    throw new Error(
-      'Only the organization owner can invite another owner.',
-    )
-  }
+    if (role === 'owner' && organization.role !== 'owner') {
+      return {
+        status: 'error',
+        message: 'Only the organization owner can invite another owner.',
+      }
+    }
 
-  await assertMemberCapacity(organization.organization_id)
+    await assertMemberCapacity(organization.organization_id)
 
-  const { data: existingInvitation, error: invitationError } =
-    await supabase
+    const { data: existingInvitation, error: invitationError } =
+      await supabase
+        .from('organization_invitations')
+        .select('id')
+        .eq('organization_id', organization.organization_id)
+        .eq('email', email)
+        .is('accepted_at', null)
+        .is('revoked_at', null)
+        .gt('expires_at', new Date().toISOString())
+        .limit(1)
+        .maybeSingle()
+
+    if (invitationError) {
+      throw new Error(
+        `Failed to check pending invitations: ${invitationError.message}`,
+      )
+    }
+
+    if (existingInvitation) {
+      return {
+        status: 'error',
+        message: 'This email already has an active invitation.',
+      }
+    }
+
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
+
+    const { data: invitation, error } = await supabase
       .from('organization_invitations')
-      .select('id')
-      .eq('organization_id', organization.organization_id)
-      .eq('email', email)
-      .is('accepted_at', null)
-      .is('revoked_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .limit(1)
-      .maybeSingle()
+      .insert({
+        organization_id: organization.organization_id,
+        email,
+        role,
+        invited_by: user.id,
+        expires_at: expiresAt.toISOString(),
+      })
+      .select('token')
+      .single()
 
-  if (invitationError) {
-    throw new Error(
-      `Failed to check pending invitations: ${invitationError.message}`,
-    )
-  }
+    if (error) {
+      throw new Error(
+        `Failed to create invitation: ${error.message}`,
+      )
+    }
 
-  if (existingInvitation) {
-    throw new Error(
-      'This email already has an active invitation.',
-    )
-  }
+    const resendKey = process.env.RESEND_API_KEY?.trim()
+    const fromEmail = process.env.RESEND_FROM_EMAIL?.trim()
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '')
 
-  const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7)
+    let emailSent = false
 
-  const { data: invitation, error } = await supabase
-    .from('organization_invitations')
-    .insert({
-      organization_id: organization.organization_id,
-      email,
-      role,
-      invited_by: user.id,
-      expires_at: expiresAt.toISOString(),
-    })
-    .select('token')
-    .single()
+    if (resendKey && fromEmail && siteUrl && invitation?.token) {
+      const invitationUrl = `${siteUrl}/invite/${invitation.token}`
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [email],
+          subject: 'You are invited to join CallFlow',
+          html: `<p>You were invited to join a CallFlow organization as <strong>${role}</strong>.</p><p><a href="${invitationUrl}">Accept invitation</a></p><p>This invitation expires in 7 days.</p>`,
+        }),
+      })
 
-  if (error) {
-    throw new Error(
-      `Failed to create invitation: ${error.message}`,
-    )
-  }
+      if (response.ok) {
+        emailSent = true
+      } else {
+        console.error('Invitation email failed:', await response.text())
+      }
+    }
 
-  const resendKey = process.env.RESEND_API_KEY?.trim()
-  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '')
+    revalidateTeamPages()
 
-  if (resendKey && fromEmail && siteUrl && invitation?.token) {
-    const invitationUrl = `${siteUrl}/invite/${invitation.token}`
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [email],
-        subject: 'You are invited to join CallFlow',
-        html: `<p>You were invited to join a CallFlow organization as <strong>${role}</strong>.</p><p><a href="${invitationUrl}">Accept invitation</a></p><p>This invitation expires in 7 days.</p>`,
-      }),
-    })
+    return {
+      status: 'success',
+      message: emailSent
+        ? `Invitation sent to ${email}.`
+        : `Invitation created for ${email}, but the email could not be sent. The invitation remains available under Pending Invitations.`,
+    }
+  } catch (error) {
+    console.error('Invite team member failed:', error)
 
-    if (!response.ok) {
-      console.error('Invitation email failed:', await response.text())
+    return {
+      status: 'error',
+      message: getPublicActionMessage(error),
     }
   }
-
-  revalidateTeamPages()
 }
 
 export async function revokeInvitation(

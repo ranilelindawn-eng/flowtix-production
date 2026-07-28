@@ -1,8 +1,12 @@
 'use client'
 
+import { useActionState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 
-import { inviteTeamMember } from '@/app/dashboard/team/actions'
+import {
+  initialTeamActionState,
+  inviteTeamMember,
+} from '@/app/dashboard/team/actions'
 import type { TeamRole } from '@/lib/team'
 
 const roles: TeamRole[] = [
@@ -26,6 +30,18 @@ function SubmitButton() {
 }
 
 export default function InviteMemberForm() {
+  const formRef = useRef<HTMLFormElement>(null)
+  const [state, formAction] = useActionState(
+    inviteTeamMember,
+    initialTeamActionState,
+  )
+
+  useEffect(() => {
+    if (state.status === 'success') {
+      formRef.current?.reset()
+    }
+  }, [state])
+
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900">
       <div className="border-b border-slate-800 px-6 py-5">
@@ -39,9 +55,29 @@ export default function InviteMemberForm() {
       </div>
 
       <form
-        action={inviteTeamMember}
+        ref={formRef}
+        action={formAction}
         className="space-y-6 p-6"
       >
+        {state.status !== 'idle' && state.message ? (
+          <div
+            role={state.status === 'error' ? 'alert' : 'status'}
+            aria-live="polite"
+            className={
+              state.status === 'error'
+                ? 'rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm leading-6 text-red-200'
+                : 'rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm leading-6 text-emerald-200'
+            }
+          >
+            <p className="font-semibold">
+              {state.status === 'error'
+                ? 'Invitation could not be sent'
+                : 'Invitation created'}
+            </p>
+            <p className="mt-1">{state.message}</p>
+          </div>
+        ) : null}
+
         <div className="grid gap-5 md:grid-cols-2">
           <div>
             <label
@@ -77,12 +113,8 @@ export default function InviteMemberForm() {
               className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white focus:border-blue-500 focus:outline-none"
             >
               {roles.map((role) => (
-                <option
-                  key={role}
-                  value={role}
-                >
-                  {role.charAt(0).toUpperCase() +
-                    role.slice(1)}
+                <option key={role} value={role}>
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
                 </option>
               ))}
             </select>
@@ -96,20 +128,17 @@ export default function InviteMemberForm() {
 
           <ul className="mt-3 space-y-2 text-sm text-slate-400">
             <li>
-              <strong className="text-slate-200">
-                Admin:
-              </strong>{' '}
+              <strong className="text-slate-200">Admin:</strong>{' '}
               Full access except ownership.
             </li>
-
             <li>
-              <strong className="text-slate-200">
-                Manager:
-              </strong>{' '}
+              <strong className="text-slate-200">Manager:</strong>{' '}
               Manage calls, campaigns, reports, and agents.
             </li>
-
-            <li><strong className="text-slate-200">Agent:</strong>{' '}Make calls and access assigned work only.</li>
+            <li>
+              <strong className="text-slate-200">Agent:</strong>{' '}
+              Make calls and access assigned work only.
+            </li>
           </ul>
         </div>
 
