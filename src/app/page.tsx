@@ -1,23 +1,12 @@
-import Header from '@/components/Header'
-import Hero from '@/components/Hero'
-import TrustedBy from '@/components/TrustedBy'
-import Features from '@/components/Features'
-import Workflow from '@/components/Workflow'
-import CTA from '@/components/CTA'
-import Footer from '@/components/Footer'
+import type { Metadata } from 'next'
+import CallFlowLandingPage from '@/components/landing/CallFlowLandingPage'
+
+export const metadata: Metadata = {
+  title: 'CallFlow | AI Cloud Dialer and CRM',
+  description:
+    'Power every conversation with CallFlow—cloud calling, CRM, AI summaries, transcripts, campaigns, analytics, and team collaboration in one workspace.',
+}
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-[#07111F] text-white">
-      <Header />
-      <main>
-        <Hero />
-        <TrustedBy />
-        <Features />
-        <Workflow />
-        <CTA />
-      </main>
-      <Footer />
-    </div>
-  )
+  return <CallFlowLandingPage />
 }
