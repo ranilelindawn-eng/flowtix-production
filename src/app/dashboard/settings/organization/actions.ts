@@ -17,34 +17,46 @@ function createSlug(value: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
+function isValidTimeZone(value: string): boolean {
+  if (!value || value.length > 100) {
+    return false
+  }
+
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function saveOrganizationSettings(formData: FormData) {
   const organization = await requireOwner()
   const submittedOrganizationId = getString(formData, 'organization_id')
   const organizationName = getString(formData, 'organization_name')
   const requestedSlug = getString(formData, 'organization_slug')
   const logoUrl = getString(formData, 'logo_url')
+  const timezone = getString(formData, 'timezone')
 
   if (
     submittedOrganizationId &&
     submittedOrganizationId !== organization.organization_id
   ) {
-    throw new Error(
-      'The submitted organization does not match the active workspace.',
-    )
+    throw new Error('The submitted organization does not match the active workspace.')
   }
 
   if (organizationName.length < 2 || organizationName.length > 120) {
-    throw new Error(
-      'Company name must contain between 2 and 120 characters.',
-    )
+    throw new Error('Company name must contain between 2 and 120 characters.')
   }
 
   const organizationSlug = createSlug(requestedSlug || organizationName)
 
   if (organizationSlug.length < 2 || organizationSlug.length > 80) {
-    throw new Error(
-      'Workspace slug must contain between 2 and 80 valid characters.',
-    )
+    throw new Error('Workspace slug must contain between 2 and 80 valid characters.')
+  }
+
+  if (!isValidTimeZone(timezone)) {
+    throw new Error('Select a valid IANA time zone.')
   }
 
   const supabase = await createServerSupabaseClient()
@@ -59,6 +71,7 @@ export async function saveOrganizationSettings(formData: FormData) {
       name: organizationName,
       slug: organizationSlug,
       logo_url: logoUrl || null,
+      timezone,
       updated_at: new Date().toISOString(),
     })
     .eq('id', organization.organization_id)
@@ -74,9 +87,7 @@ export async function saveOrganizationSettings(formData: FormData) {
   }
 
   if (!data) {
-    throw new Error(
-      'Organization update was rejected. Only the owner can make this change.',
-    )
+    throw new Error('Organization update was rejected. Only the owner can make this change.')
   }
 
   revalidatePath('/dashboard', 'layout')
@@ -84,4 +95,6 @@ export async function saveOrganizationSettings(formData: FormData) {
   revalidatePath('/dashboard/organization')
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard/settings/organization')
+  revalidatePath('/dashboard/time-attendance')
+  revalidatePath('/dashboard/reports')
 }
