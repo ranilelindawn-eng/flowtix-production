@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { redirect } from 'next/navigation'
 
 import { requireOrganization } from '@/lib/auth'
@@ -582,18 +583,28 @@ export async function sendCommunication(formData: FormData) {
   let errorMessage: string | null = null
   try {
     if (channel === 'email') {
-      provider = 'resend'
-      const apiKey = process.env.RESEND_API_KEY
-      const from = process.env.RESEND_FROM_EMAIL
-      if (!apiKey || !from) throw new Error('RESEND_API_KEY and RESEND_FROM_EMAIL are required.')
-      const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from, to: [recipient], subject: subject || 'Message from CallFlow', html: body.replace(/\n/g, '<br>') }),
-      })
-      const payload = await response.json() as { id?: string; message?: string }
-      if (!response.ok) throw new Error(payload.message || 'Email provider rejected the message.')
-      providerMessageId = payload.id ?? null
+      try {
+        const gmail = await sendGmailMessage(membership.organization_id, {
+          to: recipient,
+          subject: subject || 'Message from CallFlow',
+          body,
+        })
+        provider = 'gmail'
+        providerMessageId = gmail.id
+      } catch (gmailError) {
+        const apiKey = process.env.RESEND_API_KEY
+        const from = process.env.RESEND_FROM_EMAIL
+        if (!apiKey || !from) throw gmailError
+        provider = 'resend'
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from, to: [recipient], subject: subject || 'Message from CallFlow', html: body.replace(/\n/g, '<br>') }),
+        })
+        const payload = await response.json() as { id?: string; message?: string }
+        if (!response.ok) throw new Error(payload.message || 'Email provider rejected the message.')
+        providerMessageId = payload.id ?? null
+      }
     } else {
       provider = 'twilio'
       const sid = process.env.TWILIO_ACCOUNT_SID
@@ -618,7 +629,7 @@ export async function sendCommunication(formData: FormData) {
     organization_id: membership.organization_id,
     channel,
     recipient,
-    sender: channel === 'email' ? process.env.RESEND_FROM_EMAIL : process.env.TWILIO_PHONE_NUMBER,
+    sender: channel === 'email' ? (provider === 'gmail' ? 'connected-gmail-account' : process.env.RESEND_FROM_EMAIL) : process.env.TWILIO_PHONE_NUMBER,
     subject: optional(subject),
     body,
     provider,

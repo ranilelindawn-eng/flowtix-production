@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
 import { encryptIntegrationSecret } from '@/lib/integrations/crypto'
+import { createGoogleCalendarEvent, sendGmailMessage, updateIntegrationHealth } from '@/lib/integrations/google-client'
 
 const supportedProviders = new Set([
   'twilio', 'telnyx', 'signalwire', 'plivo', 'openai', 'google-calendar',
@@ -83,5 +84,49 @@ export async function disconnectIntegration(formData: FormData) {
     updated_at: new Date().toISOString(),
   }, { onConflict: 'organization_id,provider' })
   if (error) throw new Error(`Unable to disconnect integration: ${error.message}`)
+  revalidatePath('/dashboard/settings/integrations')
+}
+
+
+export async function testGmailIntegration() {
+  const { organizationId, role } = await requireSettingsContext()
+  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  try {
+    const { supabase } = await requireSettingsContext()
+    const { data } = await supabase.from('organization_integrations').select('config').eq('organization_id', organizationId).eq('provider', 'gmail').single()
+    const email = typeof data?.config?.connected_email === 'string' ? data.config.connected_email : null
+    if (!email) throw new Error('Connected Gmail address is unavailable.')
+    await sendGmailMessage(organizationId, {
+      to: email,
+      subject: 'CallFlow Gmail connection test',
+      body: 'Your subscriber-owned Gmail integration is working correctly. This message was sent by CallFlow.',
+    })
+    await updateIntegrationHealth(organizationId, 'gmail', { ok: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Gmail connection test failed.'
+    await updateIntegrationHealth(organizationId, 'gmail', { ok: false, message })
+    throw new Error(message)
+  }
+  revalidatePath('/dashboard/settings/integrations')
+}
+
+export async function testGoogleCalendarIntegration() {
+  const { organizationId, role } = await requireSettingsContext()
+  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  try {
+    const start = new Date(Date.now() + 10 * 60 * 1000)
+    const end = new Date(start.getTime() + 15 * 60 * 1000)
+    await createGoogleCalendarEvent(organizationId, {
+      summary: 'CallFlow calendar connection test',
+      description: 'This event confirms that the subscriber-owned Google Calendar integration is working.',
+      start,
+      end,
+    })
+    await updateIntegrationHealth(organizationId, 'google-calendar', { ok: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Google Calendar connection test failed.'
+    await updateIntegrationHealth(organizationId, 'google-calendar', { ok: false, message })
+    throw new Error(message)
+  }
   revalidatePath('/dashboard/settings/integrations')
 }

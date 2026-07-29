@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { CalendarDays, CheckCircle2, CircleOff, Mail, MessageSquare, Phone, Plug, Sparkles, Video, Workflow } from 'lucide-react'
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
-import { disconnectIntegration, saveCredentialIntegration } from './actions'
+import { disconnectIntegration, saveCredentialIntegration, testGmailIntegration, testGoogleCalendarIntegration } from './actions'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
-type IntegrationRow = { provider: string; enabled: boolean; status: string; config: Record<string, unknown> | null; connected_at: string | null; last_error: string | null }
+type IntegrationRow = { provider: string; enabled: boolean; status: string; config: Record<string, unknown> | null; connected_at: string | null; last_error: string | null; last_tested_at: string | null; last_test_status: string | null }
 
 type Field = { name: string; label: string; type?: string; placeholder?: string }
 type Card = { provider: string; name: string; description: string; icon: typeof Mail; method: 'oauth' | 'credentials' | 'webhook'; href?: string; fields?: Field[] }
@@ -29,7 +29,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const params = await searchParams
   const { supabase, organizationId, role } = await requireSettingsContext()
   const manageable = canManageSettings(role)
-  const { data } = await supabase.from('organization_integrations').select('provider,enabled,status,config,connected_at,last_error').eq('organization_id', organizationId)
+  const { data } = await supabase.from('organization_integrations').select('provider,enabled,status,config,connected_at,last_error,last_tested_at,last_test_status').eq('organization_id', organizationId)
   const byProvider = new Map(((data ?? []) as IntegrationRow[]).map((item) => [item.provider, item]))
   const connected = typeof params.connected === 'string' ? params.connected : null
   const error = typeof params.error === 'string' ? params.error : null
@@ -47,9 +47,9 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
         <div className="mt-4">
           {!isConnected && manageable && card.href ? <Link href={card.href} className="inline-flex rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90">Connect {card.name}</Link> : null}
           {!isConnected && manageable && card.fields ? <form action={saveCredentialIntegration} className="grid gap-3"><input type="hidden" name="provider" value={card.provider} />{card.fields.map((field) => <label key={field.name} className="grid gap-1 text-sm"><span className="font-medium">{field.label}</span><input required name={field.name} type={field.type ?? 'text'} placeholder={field.placeholder} className="rounded-lg border border-border bg-background px-3 py-2" /></label>)}<button className="w-fit rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Save and connect</button></form> : null}
-          {isConnected && manageable ? <form action={disconnectIntegration}><input type="hidden" name="provider" value={card.provider} /><button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Disconnect</button></form> : null}
+          {isConnected && manageable ? <div className="flex flex-wrap gap-2">{card.provider === 'gmail' ? <form action={testGmailIntegration}><button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Send test email</button></form> : null}{card.provider === 'google-calendar' ? <form action={testGoogleCalendarIntegration}><button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Create test event</button></form> : null}<form action={disconnectIntegration}><input type="hidden" name="provider" value={card.provider} /><button className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted">Disconnect</button></form></div> : null}
         </div>
-        {!manageable ? <p className="mt-3 text-xs text-muted-foreground">Only organization owners and admins can manage integrations.</p> : null}{item?.last_error ? <p className="mt-3 text-xs text-red-300">Last error: {item.last_error}</p> : null}
+        {item?.last_tested_at ? <p className={`mt-3 text-xs ${item.last_test_status === 'passed' ? 'text-emerald-300' : 'text-red-300'}`}>Last connection test: {item.last_test_status === 'passed' ? 'Passed' : 'Failed'} · {new Date(item.last_tested_at).toLocaleString()}</p> : null}{!manageable ? <p className="mt-3 text-xs text-muted-foreground">Only organization owners and admins can manage integrations.</p> : null}{item?.last_error ? <p className="mt-3 text-xs text-red-300">Last error: {item.last_error}</p> : null}
       </section>
     })}</div>
   </div>
