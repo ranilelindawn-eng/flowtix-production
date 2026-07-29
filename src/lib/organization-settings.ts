@@ -1,5 +1,6 @@
 import { cache } from 'react'
 
+import { requireOwner } from '@/lib/auth'
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
@@ -87,11 +88,7 @@ export async function updateOrganizationSettings(
     >
   >
 ) {
-  const organization = await getCurrentOrganization()
-
-  if (!organization) {
-    throw new Error('Organization not found.')
-  }
+  const organization = await requireOwner()
 
   const supabase = await createServerSupabaseClient()
 

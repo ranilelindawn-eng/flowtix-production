@@ -104,7 +104,6 @@ const ownerPermissions: readonly Permission[] = [
 
 const adminPermissions: readonly Permission[] = [
   'organization.view',
-  'organization.update',
 
   'team.view',
   'team.invite',

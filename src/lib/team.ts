@@ -37,8 +37,24 @@ export type CurrentOrganizationMembership = {
   role: TeamRole
 }
 
-type OrganizationMembershipRow = CurrentOrganizationMembership & {
-  created_at: string
+type CurrentMembershipRpcRow = {
+  organization_id: unknown
+  role: unknown
+}
+
+type TeamMemberRpcRow = {
+  id: unknown
+  organization_id: unknown
+  user_id: unknown
+  role: unknown
+  created_at: unknown
+  full_name: unknown
+  email: unknown
+  avatar_url: unknown
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function isTeamRole(value: unknown): value is TeamRole {
@@ -50,14 +66,72 @@ function isTeamRole(value: unknown): value is TeamRole {
   )
 }
 
-function isMembershipRow(
-  value: OrganizationMembershipRow,
-): value is OrganizationMembershipRow {
-  return (
-    typeof value.organization_id === 'string' &&
-    value.organization_id.length > 0 &&
-    isTeamRole(value.role)
-  )
+function parseCurrentMembership(
+  value: unknown,
+): CurrentOrganizationMembership | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const row: CurrentMembershipRpcRow = {
+    organization_id: value.organization_id,
+    role: value.role,
+  }
+
+  if (
+    typeof row.organization_id !== 'string' ||
+    row.organization_id.length === 0 ||
+    !isTeamRole(row.role)
+  ) {
+    return null
+  }
+
+  return {
+    organization_id: row.organization_id,
+    role: row.role,
+  }
+}
+
+function parseTeamMember(value: unknown): TeamMember | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const row: TeamMemberRpcRow = {
+    id: value.id,
+    organization_id: value.organization_id,
+    user_id: value.user_id,
+    role: value.role,
+    created_at: value.created_at,
+    full_name: value.full_name,
+    email: value.email,
+    avatar_url: value.avatar_url,
+  }
+
+  if (
+    typeof row.id !== 'string' ||
+    typeof row.organization_id !== 'string' ||
+    typeof row.user_id !== 'string' ||
+    typeof row.created_at !== 'string' ||
+    !isTeamRole(row.role)
+  ) {
+    return null
+  }
+
+  return {
+    id: row.id,
+    organization_id: row.organization_id,
+    user_id: row.user_id,
+    role: row.role,
+    created_at: row.created_at,
+    profile: {
+      full_name:
+        typeof row.full_name === 'string' ? row.full_name : null,
+      email: typeof row.email === 'string' ? row.email : null,
+      avatar_url:
+        typeof row.avatar_url === 'string' ? row.avatar_url : null,
+    },
+  }
 }
 
 export const getCurrentOrganization = cache(
@@ -77,77 +151,21 @@ export const getCurrentOrganization = cache(
       return null
     }
 
-    const [profileResult, membershipResult] = await Promise.all([
-      supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', userId)
-        .maybeSingle(),
-      supabase
-        .from('organization_members')
-        .select('organization_id, role, created_at')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: true }),
-    ])
-
-    if (profileResult.error) {
-      throw new Error(
-        `Failed to load the active organization: ${profileResult.error.message}`,
-      )
-    }
-
-    if (membershipResult.error) {
-      throw new Error(
-        `Failed to load organization memberships: ${membershipResult.error.message}`,
-      )
-    }
-
-    const memberships = (membershipResult.data ?? []).filter(
-      isMembershipRow,
+    const { data, error } = await supabase.rpc(
+      'get_current_organization_membership',
     )
 
-    if (memberships.length === 0) {
-      return null
+    if (error) {
+      throw new Error(
+        `Failed to load the active organization: ${error.message}`,
+      )
     }
 
-    const activeOrganizationId =
-      typeof profileResult.data?.organization_id === 'string'
-        ? profileResult.data.organization_id
-        : null
+    const rawMembership = Array.isArray(data)
+      ? data[0] ?? null
+      : data
 
-    const selectedMembership =
-      memberships.find(
-        (membership) =>
-          membership.organization_id === activeOrganizationId,
-      ) ?? memberships[0]
-
-    if (!selectedMembership) {
-      return null
-    }
-
-    if (
-      selectedMembership.organization_id !== activeOrganizationId
-    ) {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          organization_id: selectedMembership.organization_id,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId)
-
-      if (updateError) {
-        throw new Error(
-          `Failed to repair the active organization: ${updateError.message}`,
-        )
-      }
-    }
-
-    return {
-      organization_id: selectedMembership.organization_id,
-      role: selectedMembership.role,
-    }
+    return parseCurrentMembership(rawMembership)
   },
 )
 
@@ -174,29 +192,30 @@ export async function setActiveOrganization(
     )
   }
 
-  const { data: membership, error: membershipError } =
-    await supabase
-      .from('organization_members')
-      .select('organization_id, role')
-      .eq('organization_id', normalizedOrganizationId)
-      .eq('status', 'active')
-      .maybeSingle()
+  const { data: membershipData, error: membershipError } =
+    await supabase.rpc('get_current_organization_membership')
 
-  if (
-    membershipError ||
-    !membership ||
-    !isTeamRole(membership.role)
-  ) {
+  if (membershipError) {
     throw new Error(
-      membershipError?.message ??
-        'Unable to load the selected organization membership.',
+      `Unable to load the selected organization membership: ${membershipError.message}`,
     )
   }
 
-  return {
-    organization_id: membership.organization_id,
-    role: membership.role,
+  const rawMembership = Array.isArray(membershipData)
+    ? membershipData[0] ?? null
+    : membershipData
+  const membership = parseCurrentMembership(rawMembership)
+
+  if (
+    !membership ||
+    membership.organization_id !== normalizedOrganizationId
+  ) {
+    throw new Error(
+      'Unable to load the selected organization membership.',
+    )
   }
+
+  return membership
 }
 
 export async function getTeamMembers(): Promise<TeamMember[]> {
@@ -207,25 +226,9 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
   }
 
   const supabase = await createClient()
-
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select(`
-      id,
-      organization_id,
-      user_id,
-      role,
-      created_at,
-      profile:profiles (
-        full_name,
-        email,
-        avatar_url
-      )
-    `)
-    .eq('organization_id', organization.organization_id)
-    .order('created_at', {
-      ascending: true,
-    })
+  const { data, error } = await supabase.rpc(
+    'get_current_organization_team_members',
+  )
 
   if (error) {
     throw new Error(
@@ -233,31 +236,11 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
     )
   }
 
-  return (data ?? []).flatMap((member) => {
-    if (!isTeamRole(member.role)) {
-      return []
-    }
+  const rows: unknown[] = Array.isArray(data) ? data : []
 
-    const profile = Array.isArray(member.profile)
-      ? member.profile[0] ?? null
-      : member.profile
-
-    return [
-      {
-        id: member.id,
-        organization_id: member.organization_id,
-        user_id: member.user_id,
-        role: member.role,
-        created_at: member.created_at,
-        profile: profile
-          ? {
-              full_name: profile.full_name,
-              email: profile.email,
-              avatar_url: profile.avatar_url,
-            }
-          : null,
-      },
-    ]
+  return rows.flatMap((row): TeamMember[] => {
+    const member = parseTeamMember(row)
+    return member ? [member] : []
   })
 }
 
