@@ -1,7 +1,28 @@
 import { requireOrganization } from '@/lib/auth'
-import AIWorkspace from './AIWorkspace'
+import { createClient } from '@/lib/supabase/server'
+import AIWorkspace, { type ConversationSummary } from './AIWorkspace'
 
 export default async function AIPage() {
-  await requireOrganization()
-  return <div className="space-y-6"><div><p className="text-sm font-medium text-blue-400">CallFlow intelligence</p><h1 className="mt-1 text-3xl font-bold text-white">AI Workspace</h1><p className="mt-2 text-sm text-slate-400">Turn conversations and CRM context into clear actions.</p></div><AIWorkspace /></div>
+  const organization = await requireOrganization()
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  let conversations: ConversationSummary[] = []
+
+  if (user) {
+    const { data } = await supabase
+      .from('ai_conversations')
+      .select('id,title,agent_key,updated_at')
+      .eq('organization_id', organization.organization_id)
+      .eq('created_by', user.id)
+      .is('archived_at', null)
+      .order('updated_at', { ascending: false })
+      .limit(50)
+
+    conversations = (data ?? []) as ConversationSummary[]
+  }
+
+  return <AIWorkspace initialConversations={conversations} />
 }

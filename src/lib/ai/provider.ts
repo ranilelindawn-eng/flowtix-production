@@ -11,6 +11,11 @@ export type AIAnalysis = {
   nextBestAction: string
 }
 
+export type AIChatMessage = {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
 type JsonSchema = Record<string, unknown>
 
 type ChatCompletionResponse = {
@@ -31,32 +36,7 @@ export class AIConfigurationError extends Error {
   }
 }
 
-function extractJson(value: string): unknown {
-  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i)
-  const candidate = (fenced?.[1] ?? value).trim()
-  const start = candidate.indexOf('{')
-  const end = candidate.lastIndexOf('}')
-
-  if (start < 0 || end <= start) {
-    throw new Error('The AI provider returned a response that did not contain valid JSON.')
-  }
-
-  try {
-    return JSON.parse(candidate.slice(start, end + 1))
-  } catch {
-    throw new Error('The AI provider returned malformed JSON. Please try again.')
-  }
-}
-
-export function getAIProviderLabel(): string {
-  return process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
-}
-
-export async function generateStructuredAI<T>(input: {
-  system: string
-  prompt: string
-  schemaDescription: JsonSchema
-}): Promise<T> {
+function getConfiguration() {
   const apiKey = process.env.OPENAI_API_KEY?.trim()
 
   if (!apiKey) {
@@ -65,8 +45,19 @@ export async function generateStructuredAI<T>(input: {
     )
   }
 
-  const baseUrl = (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, '')
-  const model = getAIProviderLabel()
+  return {
+    apiKey,
+    baseUrl: (process.env.OPENAI_BASE_URL?.trim() || 'https://api.openai.com/v1').replace(/\/$/, ''),
+    model: getAIProviderLabel(),
+  }
+}
+
+async function requestCompletion(input: {
+  messages: AIChatMessage[]
+  temperature?: number
+  responseFormat?: { type: 'json_object' }
+}): Promise<string> {
+  const { apiKey, baseUrl, model } = getConfiguration()
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 60_000)
 
@@ -79,15 +70,9 @@ export async function generateStructuredAI<T>(input: {
       },
       body: JSON.stringify({
         model,
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `${input.system}\nReturn only valid JSON matching this structure: ${JSON.stringify(input.schemaDescription)}`,
-          },
-          { role: 'user', content: input.prompt },
-        ],
+        temperature: input.temperature ?? 0.3,
+        response_format: input.responseFormat,
+        messages: input.messages,
       }),
       cache: 'no-store',
       signal: controller.signal,
@@ -112,18 +97,65 @@ export async function generateStructuredAI<T>(input: {
     }
 
     const content = payload.choices?.[0]?.message?.content?.trim()
-    if (!content) {
-      throw new Error('The AI provider returned an empty response.')
-    }
-
-    return extractJson(content) as T
+    if (!content) throw new Error('The AI provider returned an empty response.')
+    return content
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('The AI request timed out. Please try again with a shorter input.')
     }
-
     throw error
   } finally {
     clearTimeout(timeout)
   }
+}
+
+function extractJson(value: string): unknown {
+  const fenced = value.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  const candidate = (fenced?.[1] ?? value).trim()
+  const start = candidate.indexOf('{')
+  const end = candidate.lastIndexOf('}')
+
+  if (start < 0 || end <= start) {
+    throw new Error('The AI provider returned a response that did not contain valid JSON.')
+  }
+
+  try {
+    return JSON.parse(candidate.slice(start, end + 1))
+  } catch {
+    throw new Error('The AI provider returned malformed JSON. Please try again.')
+  }
+}
+
+export function getAIProviderLabel(): string {
+  return process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
+}
+
+export async function generateTextAI(input: {
+  system: string
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>
+}): Promise<string> {
+  return requestCompletion({
+    temperature: 0.35,
+    messages: [{ role: 'system', content: input.system }, ...input.messages],
+  })
+}
+
+export async function generateStructuredAI<T>(input: {
+  system: string
+  prompt: string
+  schemaDescription: JsonSchema
+}): Promise<T> {
+  const content = await requestCompletion({
+    temperature: 0.2,
+    responseFormat: { type: 'json_object' },
+    messages: [
+      {
+        role: 'system',
+        content: `${input.system}\nReturn only valid JSON matching this structure: ${JSON.stringify(input.schemaDescription)}`,
+      },
+      { role: 'user', content: input.prompt },
+    ],
+  })
+
+  return extractJson(content) as T
 }
