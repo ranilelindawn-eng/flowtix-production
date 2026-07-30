@@ -30,7 +30,7 @@ export default async function CalendarPage() {
     supabase.from('opportunities').select('id,name').eq('organization_id', organizationId).order('name').limit(500),
     getTeamMembers(),
     supabase.from('organizations').select('timezone').eq('id', organizationId).maybeSingle(),
-    supabase.from('organization_integrations').select('provider,enabled,status').eq('organization_id', organizationId).in('provider', ['zoom', 'google-calendar']),
+    supabase.from('organization_integrations').select('provider,enabled,status').eq('organization_id', organizationId).in('provider', ['zoom', 'google-calendar', 'microsoft-teams']),
   ])
 
   const memberRows = Array.isArray(membersResult) ? membersResult : []
@@ -42,11 +42,12 @@ export default async function CalendarPage() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">Organization scheduling</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Calendar</h1>
-          <p className="mt-2 max-w-3xl text-slate-400">Plan meetings, calls, demos, tasks, and follow-ups. Events are visible across the organization and can be linked to contacts, companies, deals, Zoom, and Google Calendar.</p>
+          <p className="mt-2 max-w-3xl text-slate-400">Plan meetings, calls, demos, tasks, and follow-ups. Events are visible across the organization and can be linked to contacts, companies, deals, Zoom, Microsoft Teams, and Google Calendar.</p>
         </div>
         <div className="flex gap-2 text-xs">
           <span className={integrations.some((item) => item.provider === 'zoom' && item.enabled && item.status === 'connected') ? 'rounded-full bg-emerald-400/10 px-3 py-1.5 text-emerald-300' : 'rounded-full bg-white/5 px-3 py-1.5 text-slate-400'}>Zoom {integrations.some((item) => item.provider === 'zoom' && item.enabled && item.status === 'connected') ? 'connected' : 'not connected'}</span>
           <span className={integrations.some((item) => item.provider === 'google-calendar' && item.enabled && item.status === 'connected') ? 'rounded-full bg-emerald-400/10 px-3 py-1.5 text-emerald-300' : 'rounded-full bg-white/5 px-3 py-1.5 text-slate-400'}>Google Calendar {integrations.some((item) => item.provider === 'google-calendar' && item.enabled && item.status === 'connected') ? 'connected' : 'not connected'}</span>
+          <span className={integrations.some((item) => item.provider === 'microsoft-teams' && item.enabled && item.status === 'connected') ? 'rounded-full bg-emerald-400/10 px-3 py-1.5 text-emerald-300' : 'rounded-full bg-white/5 px-3 py-1.5 text-slate-400'}>Teams {integrations.some((item) => item.provider === 'microsoft-teams' && item.enabled && item.status === 'connected') ? 'connected' : 'not connected'}</span>
         </div>
       </div>
 
@@ -59,6 +60,7 @@ export default async function CalendarPage() {
         currentUserId={userId}
         timezone={organizationResult.data?.timezone || 'Asia/Manila'}
         zoomConnected={integrations.some((item) => item.provider === 'zoom' && item.enabled && item.status === 'connected')}
+        teamsConnected={integrations.some((item) => item.provider === 'microsoft-teams' && item.enabled && item.status === 'connected')}
         googleCalendarConnected={integrations.some((item) => item.provider === 'google-calendar' && item.enabled && item.status === 'connected')}
       />
     </div>

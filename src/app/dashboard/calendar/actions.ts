@@ -4,6 +4,11 @@ import { revalidatePath } from 'next/cache'
 
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-client'
 import {
+  createTeamsMeeting,
+  deleteTeamsMeeting,
+  updateTeamsMeeting,
+} from '@/lib/integrations/teams-client'
+import {
   createZoomMeeting,
   deleteZoomMeeting,
   updateZoomMeeting,
@@ -90,6 +95,15 @@ export async function createCalendarEvent(formData: FormData) {
     meetingUrl = zoom.join_url
     hostUrl = zoom.start_url ?? null
     meetingPassword = zoom.password ?? null
+  } else if (meetingProvider === 'teams') {
+    const teams = await createTeamsMeeting(organizationId, {
+      subject: title,
+      startTime: start,
+      endTime: end,
+      attendeeEmails,
+    })
+    externalMeetingId = teams.id
+    meetingUrl = teams.joinWebUrl
   }
 
   let googleEventId: string | null = null
@@ -167,6 +181,11 @@ export async function updateCalendarEvent(formData: FormData) {
   const description = text(formData, 'description')
   const timezone = text(formData, 'timezone') || 'Asia/Manila'
 
+  const attendeeEmails = text(formData, 'attendee_emails')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+
   if (existing.meeting_provider === 'zoom' && existing.external_meeting_id) {
     await updateZoomMeeting(organizationId, existing.external_meeting_id, {
       topic: title,
@@ -174,6 +193,13 @@ export async function updateCalendarEvent(formData: FormData) {
       startTime: start,
       durationMinutes: Math.max(1, Math.round((end.getTime() - start.getTime()) / 60_000)),
       timezone,
+    })
+  } else if (existing.meeting_provider === 'teams' && existing.external_meeting_id) {
+    await updateTeamsMeeting(organizationId, existing.external_meeting_id, {
+      subject: title,
+      startTime: start,
+      endTime: end,
+      attendeeEmails,
     })
   }
 
@@ -193,10 +219,7 @@ export async function updateCalendarEvent(formData: FormData) {
       company_id: optionalId(formData, 'company_id'),
       opportunity_id: optionalId(formData, 'opportunity_id'),
       owner_id: optionalId(formData, 'owner_id') ?? userId,
-      attendee_emails: text(formData, 'attendee_emails')
-        .split(',')
-        .map((value) => value.trim())
-        .filter(Boolean),
+      attendee_emails: attendeeEmails,
       updated_at: new Date().toISOString(),
     })
     .eq('organization_id', organizationId)
@@ -227,6 +250,8 @@ export async function deleteCalendarEvent(formData: FormData) {
 
   if (existing.meeting_provider === 'zoom' && existing.external_meeting_id) {
     await deleteZoomMeeting(organizationId, existing.external_meeting_id)
+  } else if (existing.meeting_provider === 'teams' && existing.external_meeting_id) {
+    await deleteTeamsMeeting(organizationId, existing.external_meeting_id)
   }
 
   const { error: deleteError } = await supabase

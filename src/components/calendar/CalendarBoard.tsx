@@ -54,6 +54,7 @@ type Props = {
   currentUserId: string
   timezone: string
   zoomConnected: boolean
+  teamsConnected: boolean
   googleCalendarConnected: boolean
 }
 
@@ -90,6 +91,7 @@ export default function CalendarBoard({
   currentUserId,
   timezone,
   zoomConnected,
+  teamsConnected,
   googleCalendarConnected,
 }: Props) {
   const [cursor, setCursor] = useState(() => new Date())
@@ -215,7 +217,7 @@ export default function CalendarBoard({
               <label><span className="mb-2 block text-sm font-medium text-slate-300">Ends</span><input required type="datetime-local" name="ends_at" defaultValue={dateInputValue(selected ? new Date(selected.ends_at) : defaultEnd)} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
               <label><span className="mb-2 block text-sm font-medium text-slate-300">Type</span><select name="event_type" defaultValue={selected?.event_type ?? 'meeting'} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="meeting">Meeting</option><option value="demo">Demo</option><option value="call">Call</option><option value="task">Task / follow-up</option><option value="internal">Internal event</option></select></label>
               <label><span className="mb-2 block text-sm font-medium text-slate-300">Status</span><select name="status" defaultValue={selected?.status ?? 'scheduled'} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="scheduled">Scheduled</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No show</option></select></label>
-              {!selected && <label><span className="mb-2 block text-sm font-medium text-slate-300">Meeting method</span><select name="meeting_provider" defaultValue="none" className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="none">No video meeting</option>{zoomConnected && <option value="zoom">Zoom</option>}<option value="custom">Custom link</option></select></label>}
+              {!selected && <label><span className="mb-2 block text-sm font-medium text-slate-300">Meeting method</span><select name="meeting_provider" defaultValue="none" className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="none">No video meeting</option>{zoomConnected && <option value="zoom">Zoom</option>}{teamsConnected && <option value="teams">Microsoft Teams</option>}<option value="custom">Custom link</option></select></label>}
               {!selected && <label><span className="mb-2 block text-sm font-medium text-slate-300">Custom meeting link</span><input name="meeting_url" placeholder="https://..." className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>}
               <label><span className="mb-2 block text-sm font-medium text-slate-300">Assigned member</span><select name="owner_id" defaultValue={selected?.owner_id ?? currentUserId} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white">{members.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
               <label><span className="mb-2 block text-sm font-medium text-slate-300">Contact</span><select name="contact_id" defaultValue={selected?.contact_id ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="">No contact</option>{contacts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>

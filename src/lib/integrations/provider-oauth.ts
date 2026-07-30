@@ -22,7 +22,7 @@ export function buildProviderAuthorizationUrl(provider: ExternalOAuthProvider, o
     url.searchParams.set('prompt', 'select_account')
     const scopes = provider === 'outlook'
       ? ['openid', 'profile', 'email', 'offline_access', 'User.Read', 'Mail.Read', 'Mail.Send', 'Calendars.ReadWrite']
-      : ['openid', 'profile', 'email', 'offline_access', 'User.Read', 'Team.ReadBasic.All', 'Channel.ReadBasic.All']
+      : ['openid', 'profile', 'email', 'offline_access', 'User.Read', 'OnlineMeetings.ReadWrite', 'Team.ReadBasic.All', 'Channel.ReadBasic.All']
     url.searchParams.set('scope', scopes.join(' '))
     return url
   }

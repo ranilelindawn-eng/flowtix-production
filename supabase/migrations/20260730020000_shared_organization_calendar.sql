@@ -15,7 +15,7 @@ create table if not exists public.calendar_events (
   all_day boolean not null default false,
   location text,
   meeting_provider text not null default 'none'
-    check (meeting_provider in ('none','zoom','custom')),
+    check (meeting_provider in ('none','zoom','teams','custom')),
   external_meeting_id text,
   meeting_url text,
   host_url text,
