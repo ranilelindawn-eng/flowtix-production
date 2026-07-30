@@ -1,0 +1,240 @@
+'use client'
+
+import { useMemo, useState, useTransition } from 'react'
+import {
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  ExternalLink,
+  MapPin,
+  Plus,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react'
+
+import {
+  createCalendarEvent,
+  deleteCalendarEvent,
+  updateCalendarEvent,
+} from '@/app/dashboard/calendar/actions'
+
+type SelectOption = { id: string; label: string }
+
+type CalendarEvent = {
+  id: string
+  title: string
+  description: string | null
+  event_type: string
+  status: string
+  starts_at: string
+  ends_at: string
+  timezone: string
+  all_day: boolean
+  location: string | null
+  meeting_provider: string
+  meeting_url: string | null
+  host_url: string | null
+  meeting_password: string | null
+  contact_id: string | null
+  company_id: string | null
+  opportunity_id: string | null
+  owner_id: string | null
+  created_by: string
+  attendee_emails: string[]
+}
+
+type Props = {
+  events: CalendarEvent[]
+  contacts: SelectOption[]
+  companies: SelectOption[]
+  opportunities: SelectOption[]
+  members: SelectOption[]
+  currentUserId: string
+  timezone: string
+  zoomConnected: boolean
+  googleCalendarConnected: boolean
+}
+
+type ViewMode = 'month' | 'agenda'
+
+const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function dateInputValue(value: Date) {
+  const offset = value.getTimezoneOffset()
+  return new Date(value.getTime() - offset * 60_000).toISOString().slice(0, 16)
+}
+
+function sameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  )
+}
+
+function eventTone(type: string) {
+  if (type === 'call') return 'border-amber-400/30 bg-amber-400/10 text-amber-100'
+  if (type === 'task') return 'border-violet-400/30 bg-violet-400/10 text-violet-100'
+  if (type === 'demo') return 'border-cyan-400/30 bg-cyan-400/10 text-cyan-100'
+  return 'border-blue-400/30 bg-blue-400/10 text-blue-100'
+}
+
+export default function CalendarBoard({
+  events,
+  contacts,
+  companies,
+  opportunities,
+  members,
+  currentUserId,
+  timezone,
+  zoomConnected,
+  googleCalendarConnected,
+}: Props) {
+  const [cursor, setCursor] = useState(() => new Date())
+  const [view, setView] = useState<ViewMode>('month')
+  const [selected, setSelected] = useState<CalendarEvent | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [error, setError] = useState('')
+  const [pending, startTransition] = useTransition()
+
+  const monthCells = useMemo(() => {
+    const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+    const gridStart = new Date(first)
+    gridStart.setDate(first.getDate() - first.getDay())
+    return Array.from({ length: 42 }, (_, index) => {
+      const day = new Date(gridStart)
+      day.setDate(gridStart.getDate() + index)
+      return day
+    })
+  }, [cursor])
+
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => a.starts_at.localeCompare(b.starts_at)),
+    [events],
+  )
+
+  function submit(action: (data: FormData) => Promise<void>, formData: FormData) {
+    setError('')
+    startTransition(async () => {
+      try {
+        await action(formData)
+        setCreating(false)
+        setSelected(null)
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'Unable to save the event.')
+      }
+    })
+  }
+
+  const defaultStart = new Date()
+  defaultStart.setMinutes(Math.ceil(defaultStart.getMinutes() / 15) * 15, 0, 0)
+  const defaultEnd = new Date(defaultStart.getTime() + 30 * 60_000)
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setCursor(new Date())}
+            className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
+          >
+            Today
+          </button>
+          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="rounded-xl p-2 hover:bg-white/5" aria-label="Previous month"><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="rounded-xl p-2 hover:bg-white/5" aria-label="Next month"><ChevronRight className="h-5 w-5" /></button>
+          <h2 className="text-xl font-semibold text-white">
+            {cursor.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          </h2>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex rounded-2xl border border-white/10 bg-[#07111F] p-1">
+            {(['month', 'agenda'] as const).map((mode) => (
+              <button key={mode} type="button" onClick={() => setView(mode)} className={view === mode ? 'rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white' : 'rounded-xl px-4 py-2 text-sm text-slate-400'}>
+                {mode === 'month' ? 'Month' : 'Agenda'}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => setCreating(true)} className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500">
+            <Plus className="h-4 w-4" /> New event
+          </button>
+        </div>
+      </div>
+
+      {view === 'month' ? (
+        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.025]">
+          <div className="grid grid-cols-7 border-b border-white/10 bg-white/[0.025]">
+            {weekDays.map((day) => <div key={day} className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.15em] text-slate-500">{day}</div>)}
+          </div>
+          <div className="grid grid-cols-7">
+            {monthCells.map((day) => {
+              const dayEvents = sortedEvents.filter((event) => sameDay(new Date(event.starts_at), day))
+              const muted = day.getMonth() !== cursor.getMonth()
+              return (
+                <div key={day.toISOString()} className="min-h-32 border-b border-r border-white/10 p-2 last:border-r-0 sm:min-h-36">
+                  <div className={sameDay(day, new Date()) ? 'mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white' : muted ? 'mb-2 text-xs text-slate-600' : 'mb-2 text-xs text-slate-400'}>{day.getDate()}</div>
+                  <div className="space-y-1.5">
+                    {dayEvents.slice(0, 3).map((event) => (
+                      <button key={event.id} type="button" onClick={() => setSelected(event)} className={`block w-full truncate rounded-lg border px-2 py-1.5 text-left text-xs ${eventTone(event.event_type)}`}>
+                        {new Date(event.starts_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} {event.title}
+                      </button>
+                    ))}
+                    {dayEvents.length > 3 && <button type="button" onClick={() => setView('agenda')} className="px-1 text-xs text-slate-500">+{dayEvents.length - 3} more</button>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sortedEvents.length === 0 ? (
+            <div className="rounded-[28px] border border-dashed border-white/15 p-12 text-center text-slate-400">No events yet. Create the organization’s first event.</div>
+          ) : sortedEvents.map((event) => (
+            <button key={event.id} type="button" onClick={() => setSelected(event)} className="flex w-full items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4 text-left hover:bg-white/[0.05]">
+              <div className="min-w-20 rounded-2xl bg-white/5 px-3 py-2 text-center"><div className="text-xs uppercase text-slate-500">{new Date(event.starts_at).toLocaleDateString(undefined, { month: 'short' })}</div><div className="text-2xl font-semibold text-white">{new Date(event.starts_at).getDate()}</div></div>
+              <div className="min-w-0 flex-1"><div className="font-semibold text-white">{event.title}</div><div className="mt-1 flex flex-wrap gap-3 text-sm text-slate-400"><span className="inline-flex items-center gap-1"><Clock3 className="h-4 w-4" />{new Date(event.starts_at).toLocaleString()} – {new Date(event.ends_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>{event.location && <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4" />{event.location}</span>}</div></div>
+              <span className={`rounded-full border px-3 py-1 text-xs ${eventTone(event.event_type)}`}>{event.event_type}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {(creating || selected) && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0B1726] p-6 shadow-2xl">
+            <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold text-white">{selected ? 'Event details' : 'Create calendar event'}</h3><p className="mt-1 text-sm text-slate-400">Shared with your CallFlow organization.</p></div><button type="button" onClick={() => { setCreating(false); setSelected(null); setError('') }} className="rounded-xl p-2 hover:bg-white/5"><X className="h-5 w-5" /></button></div>
+            {error && <div className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">{error}</div>}
+            <form action={(formData) => submit(selected ? updateCalendarEvent : createCalendarEvent, formData)} className="grid gap-4 md:grid-cols-2">
+              {selected && <input type="hidden" name="id" value={selected.id} />}
+              <label className="md:col-span-2"><span className="mb-2 block text-sm font-medium text-slate-300">Title</span><input required name="title" defaultValue={selected?.title ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none focus:border-blue-500" /></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Starts</span><input required type="datetime-local" name="starts_at" defaultValue={dateInputValue(selected ? new Date(selected.starts_at) : defaultStart)} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Ends</span><input required type="datetime-local" name="ends_at" defaultValue={dateInputValue(selected ? new Date(selected.ends_at) : defaultEnd)} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Type</span><select name="event_type" defaultValue={selected?.event_type ?? 'meeting'} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="meeting">Meeting</option><option value="demo">Demo</option><option value="call">Call</option><option value="task">Task / follow-up</option><option value="internal">Internal event</option></select></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Status</span><select name="status" defaultValue={selected?.status ?? 'scheduled'} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="scheduled">Scheduled</option><option value="confirmed">Confirmed</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option><option value="no_show">No show</option></select></label>
+              {!selected && <label><span className="mb-2 block text-sm font-medium text-slate-300">Meeting method</span><select name="meeting_provider" defaultValue="none" className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="none">No video meeting</option>{zoomConnected && <option value="zoom">Zoom</option>}<option value="custom">Custom link</option></select></label>}
+              {!selected && <label><span className="mb-2 block text-sm font-medium text-slate-300">Custom meeting link</span><input name="meeting_url" placeholder="https://..." className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>}
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Assigned member</span><select name="owner_id" defaultValue={selected?.owner_id ?? currentUserId} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white">{members.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Contact</span><select name="contact_id" defaultValue={selected?.contact_id ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="">No contact</option>{contacts.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Company</span><select name="company_id" defaultValue={selected?.company_id ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="">No company</option>{companies.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Deal</span><select name="opportunity_id" defaultValue={selected?.opportunity_id ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"><option value="">No deal</option>{opportunities.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label>
+              <label><span className="mb-2 block text-sm font-medium text-slate-300">Location</span><input name="location" defaultValue={selected?.location ?? ''} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
+              <input type="hidden" name="timezone" value={timezone} />
+              <label className="md:col-span-2"><span className="mb-2 block text-sm font-medium text-slate-300">Attendee emails</span><input name="attendee_emails" defaultValue={selected?.attendee_emails?.join(', ') ?? ''} placeholder="customer@example.com, manager@example.com" className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
+              <label className="md:col-span-2"><span className="mb-2 block text-sm font-medium text-slate-300">Description</span><textarea name="description" defaultValue={selected?.description ?? ''} rows={4} className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white" /></label>
+              {!selected && googleCalendarConnected && <label className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300"><input type="checkbox" name="sync_google_calendar" defaultChecked className="h-4 w-4" /> Also create this event in the connected Google Calendar</label>}
+              {selected?.meeting_url && <div className="md:col-span-2 flex flex-wrap gap-3 rounded-2xl border border-blue-400/20 bg-blue-400/10 p-4"><a href={selected.meeting_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white"><Video className="h-4 w-4" /> Join meeting</a>{selected.host_url && <a href={selected.host_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-white"><ExternalLink className="h-4 w-4" /> Start as host</a>}</div>}
+              <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3 pt-3">
+                {selected ? <button type="button" disabled={pending} onClick={() => { const data = new FormData(); data.set('id', selected.id); submit(deleteCalendarEvent, data) }} className="inline-flex items-center gap-2 rounded-2xl border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-200 hover:bg-red-400/10"><Trash2 className="h-4 w-4" /> Delete</button> : <div />}
+                <button type="submit" disabled={pending} className="rounded-2xl bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{pending ? 'Saving…' : selected ? 'Save changes' : 'Create event'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

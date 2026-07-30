@@ -1,0 +1,240 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+
+import { createGoogleCalendarEvent } from '@/lib/integrations/google-client'
+import {
+  createZoomMeeting,
+  deleteZoomMeeting,
+  updateZoomMeeting,
+} from '@/lib/integrations/zoom-client'
+import { createClient } from '@/lib/supabase/server'
+import { getCurrentOrganization } from '@/lib/team'
+
+const EDIT_ALL_ROLES = new Set(['owner', 'admin'])
+const EDIT_TEAM_ROLES = new Set(['owner', 'admin', 'manager'])
+
+function text(formData: FormData, key: string) {
+  return String(formData.get(key) ?? '').trim()
+}
+
+function optionalId(formData: FormData, key: string) {
+  const value = text(formData, key)
+  return value.length > 0 ? value : null
+}
+
+function bool(formData: FormData, key: string) {
+  return formData.get(key) === 'on' || formData.get(key) === 'true'
+}
+
+async function context() {
+  const supabase = await createClient()
+  const { data: claimsData, error } = await supabase.auth.getClaims()
+  const userId = claimsData?.claims?.sub
+  const membership = await getCurrentOrganization()
+
+  if (error || typeof userId !== 'string' || !membership) {
+    throw new Error('You must be signed in to manage calendar events.')
+  }
+
+  return {
+    supabase,
+    userId,
+    organizationId: membership.organization_id,
+    role: membership.role,
+  }
+}
+
+function parseTimes(formData: FormData) {
+  const start = new Date(text(formData, 'starts_at'))
+  const end = new Date(text(formData, 'ends_at'))
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    throw new Error('Enter a valid start and end time.')
+  }
+  if (end <= start) throw new Error('The end time must be after the start time.')
+
+  return { start, end }
+}
+
+export async function createCalendarEvent(formData: FormData) {
+  const { supabase, userId, organizationId } = await context()
+  const { start, end } = parseTimes(formData)
+  const title = text(formData, 'title')
+  const eventType = text(formData, 'event_type') || 'meeting'
+  const meetingProvider = text(formData, 'meeting_provider') || 'none'
+  const timezone = text(formData, 'timezone') || 'Asia/Manila'
+  const description = text(formData, 'description')
+  const attendeeEmails = text(formData, 'attendee_emails')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  if (!title) throw new Error('Event title is required.')
+
+  let externalMeetingId: string | null = null
+  let meetingUrl: string | null = text(formData, 'meeting_url') || null
+  let hostUrl: string | null = null
+  let meetingPassword: string | null = null
+
+  if (meetingProvider === 'zoom') {
+    const zoom = await createZoomMeeting(organizationId, {
+      topic: title,
+      agenda: description,
+      startTime: start,
+      durationMinutes: Math.max(1, Math.round((end.getTime() - start.getTime()) / 60_000)),
+      timezone,
+      attendeeEmails,
+    })
+    externalMeetingId = String(zoom.id)
+    meetingUrl = zoom.join_url
+    hostUrl = zoom.start_url ?? null
+    meetingPassword = zoom.password ?? null
+  }
+
+  let googleEventId: string | null = null
+  let googleEventUrl: string | null = null
+  if (bool(formData, 'sync_google_calendar')) {
+    try {
+      const google = await createGoogleCalendarEvent(organizationId, {
+        summary: title,
+        description: [description, meetingUrl ? `Join: ${meetingUrl}` : '']
+          .filter(Boolean)
+          .join('\n\n'),
+        start,
+        end,
+      })
+      googleEventId = google.id ?? null
+      googleEventUrl = google.htmlLink ?? null
+    } catch (error) {
+      console.error('Google Calendar sync failed:', error)
+    }
+  }
+
+  const { error } = await supabase.from('calendar_events').insert({
+    organization_id: organizationId,
+    title,
+    description: description || null,
+    event_type: eventType,
+    status: 'scheduled',
+    starts_at: start.toISOString(),
+    ends_at: end.toISOString(),
+    timezone,
+    all_day: bool(formData, 'all_day'),
+    location: text(formData, 'location') || null,
+    meeting_provider: meetingProvider,
+    external_meeting_id: externalMeetingId,
+    meeting_url: meetingUrl,
+    host_url: hostUrl,
+    meeting_password: meetingPassword,
+    google_event_id: googleEventId,
+    google_event_url: googleEventUrl,
+    contact_id: optionalId(formData, 'contact_id'),
+    company_id: optionalId(formData, 'company_id'),
+    opportunity_id: optionalId(formData, 'opportunity_id'),
+    owner_id: optionalId(formData, 'owner_id') ?? userId,
+    created_by: userId,
+    attendee_emails: attendeeEmails,
+    metadata: {},
+  })
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/calendar')
+}
+
+export async function updateCalendarEvent(formData: FormData) {
+  const { supabase, userId, organizationId, role } = await context()
+  const id = text(formData, 'id')
+  if (!id) throw new Error('Missing event ID.')
+
+  const { data: existing, error: existingError } = await supabase
+    .from('calendar_events')
+    .select('created_by,owner_id,external_meeting_id,meeting_provider')
+    .eq('organization_id', organizationId)
+    .eq('id', id)
+    .single()
+
+  if (existingError || !existing) throw new Error('Calendar event was not found.')
+  const canEdit =
+    EDIT_ALL_ROLES.has(role) ||
+    existing.created_by === userId ||
+    existing.owner_id === userId ||
+    (role === 'manager' && EDIT_TEAM_ROLES.has(role))
+  if (!canEdit) throw new Error('You do not have permission to edit this event.')
+
+  const { start, end } = parseTimes(formData)
+  const title = text(formData, 'title')
+  const description = text(formData, 'description')
+  const timezone = text(formData, 'timezone') || 'Asia/Manila'
+
+  if (existing.meeting_provider === 'zoom' && existing.external_meeting_id) {
+    await updateZoomMeeting(organizationId, existing.external_meeting_id, {
+      topic: title,
+      agenda: description,
+      startTime: start,
+      durationMinutes: Math.max(1, Math.round((end.getTime() - start.getTime()) / 60_000)),
+      timezone,
+    })
+  }
+
+  const { error } = await supabase
+    .from('calendar_events')
+    .update({
+      title,
+      description: description || null,
+      event_type: text(formData, 'event_type') || 'meeting',
+      status: text(formData, 'status') || 'scheduled',
+      starts_at: start.toISOString(),
+      ends_at: end.toISOString(),
+      timezone,
+      all_day: bool(formData, 'all_day'),
+      location: text(formData, 'location') || null,
+      contact_id: optionalId(formData, 'contact_id'),
+      company_id: optionalId(formData, 'company_id'),
+      opportunity_id: optionalId(formData, 'opportunity_id'),
+      owner_id: optionalId(formData, 'owner_id') ?? userId,
+      attendee_emails: text(formData, 'attendee_emails')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('organization_id', organizationId)
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+  revalidatePath('/dashboard/calendar')
+}
+
+export async function deleteCalendarEvent(formData: FormData) {
+  const { supabase, userId, organizationId, role } = await context()
+  const id = text(formData, 'id')
+  if (!id) throw new Error('Missing event ID.')
+
+  const { data: existing, error } = await supabase
+    .from('calendar_events')
+    .select('created_by,owner_id,external_meeting_id,meeting_provider')
+    .eq('organization_id', organizationId)
+    .eq('id', id)
+    .single()
+
+  if (error || !existing) throw new Error('Calendar event was not found.')
+  const canDelete =
+    EDIT_ALL_ROLES.has(role) ||
+    existing.created_by === userId ||
+    existing.owner_id === userId
+  if (!canDelete) throw new Error('You do not have permission to delete this event.')
+
+  if (existing.meeting_provider === 'zoom' && existing.external_meeting_id) {
+    await deleteZoomMeeting(organizationId, existing.external_meeting_id)
+  }
+
+  const { error: deleteError } = await supabase
+    .from('calendar_events')
+    .delete()
+    .eq('organization_id', organizationId)
+    .eq('id', id)
+
+  if (deleteError) throw new Error(deleteError.message)
+  revalidatePath('/dashboard/calendar')
+}

@@ -20,6 +20,7 @@ import {
   Tags,
   TextQuote,
   Activity,
+  CalendarDays,
   Clock3,
   ListOrdered,
   UsersRound,
@@ -83,6 +84,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/sequences',
     permission: 'campaigns.view',
     icon: ListOrdered,
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    href: '/dashboard/calendar',
+    permission: 'contacts.view',
+    icon: CalendarDays,
   },
   {
     id: 'communications',
