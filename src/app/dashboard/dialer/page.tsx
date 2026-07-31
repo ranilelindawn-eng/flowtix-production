@@ -1,4 +1,5 @@
 import { requirePermission } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 
 import DialerClient from './DialerClient'
 import { getDialerContactById } from './actions'
@@ -10,12 +11,18 @@ type DialerPageProps = {
   }>
 }
 
+export type DialerPhoneNumber = {
+  id: string
+  phoneNumber: string
+  friendlyName: string
+  isDefault: boolean
+}
+
 export default async function DialerPage({
   searchParams,
 }: DialerPageProps) {
   const params = await searchParams
-
-  await requirePermission('calls.create')
+  const organization = await requirePermission('calls.create')
 
   const contactId = params?.contactId?.trim() ?? ''
   const initialPhoneNumber = params?.phone?.trim() ?? ''
@@ -25,10 +32,40 @@ export default async function DialerPage({
       ? await getDialerContactById(contactId)
       : null
 
+  const supabase = await createClient()
+  const { data: phoneNumberRows, error: phoneNumberError } = await supabase
+    .from('organization_phone_numbers')
+    .select('id,phone_number,friendly_name,is_default,capabilities')
+    .eq('organization_id', organization.organization_id)
+    .eq('provider', 'twilio')
+    .order('is_default', { ascending: false })
+    .order('friendly_name', { ascending: true })
+
+  if (phoneNumberError) {
+    throw new Error(`Unable to load workspace phone numbers: ${phoneNumberError.message}`)
+  }
+
+  const callerIds: DialerPhoneNumber[] = (phoneNumberRows ?? [])
+    .filter((row) => {
+      const capabilities =
+        row.capabilities && typeof row.capabilities === 'object'
+          ? (row.capabilities as Record<string, unknown>)
+          : {}
+
+      return capabilities.voice !== false
+    })
+    .map((row) => ({
+      id: row.id,
+      phoneNumber: row.phone_number,
+      friendlyName: row.friendly_name,
+      isDefault: row.is_default,
+    }))
+
   return (
     <DialerClient
       initialContact={initialContact}
       initialPhoneNumber={initialPhoneNumber}
+      callerIds={callerIds}
     />
   )
 }

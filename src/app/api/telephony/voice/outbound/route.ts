@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   const organizationId = form.get('CallFlowOrganizationId')?.trim() ?? ''
   const contactId = form.get('ContactId')?.trim() || null
   const record = form.get('Record') !== 'false'
+  const callerId = form.get('CallerId')?.trim() || null
   const response = new twilio.twiml.VoiceResponse()
 
   if (!/^\+[1-9]\d{7,14}$/.test(to) || !userId || !organizationId) {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
   let config
   try {
-    config = await getOrganizationTwilioConfiguration(organizationId)
+    config = await getOrganizationTwilioConfiguration(organizationId, callerId)
   } catch (error) {
     response.say(error instanceof Error ? error.message : 'Twilio is not configured for this workspace.')
     return twimlResponse(response.toString())

@@ -24,9 +24,17 @@ import {
   type DialerContact,
 } from './actions'
 
+type DialerPhoneNumber = {
+  id: string
+  phoneNumber: string
+  friendlyName: string
+  isDefault: boolean
+}
+
 type DialerClientProps = {
   initialContact?: DialerContact | null
   initialPhoneNumber?: string
+  callerIds?: DialerPhoneNumber[]
 }
 
 type TokenPayload = {
@@ -70,9 +78,15 @@ function getDefaultFollowUpDate() {
 export default function DialerClient({
   initialContact = null,
   initialPhoneNumber = '',
+  callerIds = [],
 }: DialerClientProps) {
   const [phoneNumber, setPhoneNumber] = useState(
     initialContact?.phoneNumber ?? initialPhoneNumber,
+  )
+  const [selectedCallerId, setSelectedCallerId] = useState(
+    callerIds.find((number) => number.isDefault)?.phoneNumber ??
+      callerIds[0]?.phoneNumber ??
+      '',
   )
   const [deviceState, setDeviceState] = useState<DeviceState>('offline')
   const [callState, setCallState] = useState<CallState>('idle')
@@ -241,6 +255,11 @@ export default function DialerClient({
   }, [callState, isOnHold])
 
   async function placeCall() {
+    if (!selectedCallerId) {
+      setMessage('Import and select a Twilio voice number before placing calls.')
+      return
+    }
+
     if (
       !deviceRef.current ||
       !tokenPayload ||
@@ -257,6 +276,7 @@ export default function DialerClient({
           CallFlowUserId: tokenPayload.userId,
           CallFlowOrganizationId: tokenPayload.organizationId,
           ContactId: initialContact?.id ?? '',
+          CallerId: selectedCallerId,
           Record: String(isRecording),
         },
       })
@@ -434,6 +454,34 @@ export default function DialerClient({
             <Radio className="h-5 w-5 text-cyan-300" />
           </div>
 
+          {callerIds.length > 0 ? (
+            <label className="mt-6 block text-sm text-slate-300">
+              Outbound caller ID
+              <select
+                value={selectedCallerId}
+                onChange={(event) => setSelectedCallerId(event.target.value)}
+                disabled={active}
+                className={`${fieldClass} mt-2`}
+              >
+                {callerIds.map((number) => (
+                  <option
+                    key={number.id}
+                    value={number.phoneNumber}
+                    className="bg-white text-slate-950"
+                  >
+                    {number.friendlyName} · {number.phoneNumber}
+                    {number.isDefault ? ' · Default' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
+              No Twilio voice number is available. Connect Twilio and import a
+              phone number in Settings → Integrations before placing calls.
+            </div>
+          )}
+
           {callState === 'incoming' ? (
             <div className="mt-8 rounded-3xl border border-cyan-400/30 bg-cyan-400/10 p-8 text-center">
               <p className="text-sm uppercase tracking-[0.25em] text-cyan-200">
@@ -495,7 +543,7 @@ export default function DialerClient({
                   <button
                     type="button"
                     onClick={() => void placeCall()}
-                    disabled={deviceState !== 'ready'}
+                    disabled={deviceState !== 'ready' || !selectedCallerId}
                     className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
                   >
                     <Phone className="h-7 w-7" />

@@ -64,7 +64,29 @@ export async function getOrganizationTwilioConfiguration(
   const credentials = decryptIntegrationSecret<Partial<TwilioCredentials>>(secret.encrypted_credentials)
 
   let callerId = callerIdOverride?.trim() || ''
-  if (!callerId) {
+
+  if (callerId) {
+    const { data: selectedNumber, error: selectedNumberError } = await admin
+      .from('organization_phone_numbers')
+      .select('phone_number,capabilities')
+      .eq('organization_id', normalizedOrganizationId)
+      .eq('provider', 'twilio')
+      .eq('phone_number', callerId)
+      .maybeSingle()
+
+    if (selectedNumberError) {
+      throw new Error(`Unable to validate the selected caller ID: ${selectedNumberError.message}`)
+    }
+
+    const capabilities =
+      selectedNumber?.capabilities && typeof selectedNumber.capabilities === 'object'
+        ? (selectedNumber.capabilities as Record<string, unknown>)
+        : {}
+
+    if (!selectedNumber || capabilities.voice === false) {
+      throw new Error('The selected caller ID is not an active voice number in this workspace.')
+    }
+  } else {
     const { data: defaultNumber, error: numberError } = await admin
       .from('organization_phone_numbers')
       .select('phone_number')
