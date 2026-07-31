@@ -74,14 +74,41 @@ export default async function InvitationPage({ params, searchParams }: Invitatio
   }
 
   if (signedInEmail !== preview.email.toLowerCase()) {
-    const loginParams = new URLSearchParams({ next: invitationPath, email: preview.email })
+    async function continueWithInvitedEmail() {
+      'use server'
+
+      const client = await createClient()
+      await client.auth.signOut()
+
+      if (!preview) {
+  redirect('/login')
+}
+
+const signupParams = new URLSearchParams({
+  next: invitationPath,
+  email: preview.email,
+})
+
+redirect(`/signup?${signupParams.toString()}`)
+    }
+
     return (
-      <InvitationMessage
-        title="Email does not match"
-        description={`This invitation belongs to ${preview.email}. Sign in with that email to continue.`}
-        actionHref={`/login?${loginParams.toString()}`}
-        actionLabel="Sign in with invited email"
-      />
+      <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
+        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+          <h1 className="text-2xl font-bold">Email does not match</h1>
+          <p className="mt-3 text-slate-400">
+            This invitation belongs to {preview.email}. Create or sign in to the account that uses that email to continue.
+          </p>
+          <form action={continueWithInvitedEmail} className="mt-6">
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500"
+            >
+              Continue with invited email
+            </button>
+          </form>
+        </div>
+      </main>
     )
   }
 
