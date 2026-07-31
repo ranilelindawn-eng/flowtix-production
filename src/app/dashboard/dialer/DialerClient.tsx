@@ -29,7 +29,7 @@ type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
-  provider: string
+  provider: 'twilio' | 'telnyx'
 }
 
 type DialerClientProps = {
@@ -39,11 +39,47 @@ type DialerClientProps = {
 }
 
 type TokenPayload = {
+  provider: 'twilio' | 'telnyx'
   token: string
   userId: string
   organizationId: string
   identity: string
   expiresIn: number
+}
+
+
+type TelnyxCallLike = {
+  state?: string
+  direction?: string
+  remotePartyNumber?: string
+  options?: { remoteCallerNumber?: string }
+  answer?: () => void | Promise<void>
+  hangup?: () => void | Promise<void>
+  hold?: () => void | Promise<void>
+  unhold?: () => void | Promise<void>
+  muteAudio?: () => void
+  unmuteAudio?: () => void
+  sendDigits?: (digits: string) => void
+  dtmf?: (digits: string) => void
+  transfer?: (target: string) => void | Promise<void>
+}
+
+type TelnyxNotification = {
+  type?: string
+  call?: TelnyxCallLike
+}
+
+type TelnyxClientLike = {
+  remoteElement?: string
+  connect: () => void
+  disconnect: () => void
+  on: (event: string, handler: (payload?: unknown) => void) => TelnyxClientLike
+  newCall: (options: {
+    destinationNumber: string
+    callerNumber: string
+    audio: boolean
+    customHeaders?: Array<{ name: string; value: string }>
+  }) => TelnyxCallLike
 }
 
 type DeviceState = 'offline' | 'connecting' | 'ready' | 'error'
@@ -112,6 +148,13 @@ export default function DialerClient({
 
   const deviceRef = useRef<Device | null>(null)
   const callRef = useRef<Call | null>(null)
+  const telnyxClientRef = useRef<TelnyxClientLike | null>(null)
+  const telnyxCallRef = useRef<TelnyxCallLike | null>(null)
+
+  const selectedProvider =
+    callerIds.find((number) => number.phoneNumber === selectedCallerId)?.provider ??
+    callerIds[0]?.provider ??
+    'twilio'
 
   const formatTime = (seconds: number) =>
     `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
@@ -164,8 +207,8 @@ export default function DialerClient({
     })
   }, [])
 
-  const fetchToken = useCallback(async (): Promise<TokenPayload> => {
-    const response = await fetch('/api/telephony/token', {
+  const fetchToken = useCallback(async (provider: 'twilio' | 'telnyx'): Promise<TokenPayload> => {
+    const response = await fetch(`/api/telephony/token?provider=${provider}`, {
       cache: 'no-store',
     })
     const payload = (await response.json()) as TokenPayload & {
@@ -182,15 +225,77 @@ export default function DialerClient({
 
   const connectDevice = useCallback(async () => {
     setDeviceState('connecting')
-    setMessage('Connecting browser softphone…')
+    setMessage(`Connecting ${selectedProvider === 'telnyx' ? 'Telnyx' : 'Twilio'} browser softphone…`)
 
     try {
+      await deviceRef.current?.destroy()
+      deviceRef.current = null
+      telnyxClientRef.current?.disconnect?.()
+      telnyxClientRef.current = null
+      telnyxCallRef.current = null
+
+      if (selectedProvider === 'telnyx') {
+        const [{ TelnyxRTC }, payload] = await Promise.all([
+          import('@telnyx/webrtc'),
+          fetchToken('telnyx'),
+        ])
+
+        const client = new TelnyxRTC({
+          login_token: payload.token,
+          debug: false,
+          enableCallReports: true,
+        }) as unknown as TelnyxClientLike
+        client.remoteElement = 'flowtix-telnyx-remote-audio'
+        client.on('telnyx.ready', () => {
+          setDeviceState('ready')
+          setMessage('Telnyx softphone ready for inbound and outbound calls.')
+        })
+        client.on('telnyx.error', (payload?: unknown) => {
+          const error = payload && typeof payload === 'object' && 'message' in payload
+            ? String((payload as { message?: unknown }).message ?? '')
+            : ''
+          setDeviceState('error')
+          setMessage(error || 'Telnyx softphone connection failed.')
+        })
+        client.on('telnyx.socket.close', () => setDeviceState('offline'))
+        client.on('telnyx.notification', (payload?: unknown) => {
+          const notification = payload as TelnyxNotification | undefined
+          if (notification?.type !== 'callUpdate' || !notification.call) return
+          const call = notification.call
+          telnyxCallRef.current = call
+          const state = String(call.state ?? '')
+          if (state === 'ringing') {
+            const inbound = call.direction === 'inbound'
+            setCallState(inbound ? 'incoming' : 'ringing')
+            setIncomingFrom(call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? 'Unknown caller')
+            setMessage(inbound ? 'Incoming Telnyx call' : 'Ringing…')
+          } else if (state === 'active') {
+            setCallState('connected')
+            setMessage('Call connected')
+            setElapsed(0)
+          } else if (state === 'held') {
+            setCallState('connected')
+            setIsOnHold(true)
+            setMessage('Call on hold')
+          } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
+            setCallState('ended')
+            setMessage('Call ended — complete the call outcome before moving on.')
+            setIsMuted(false)
+            setIsOnHold(false)
+            telnyxCallRef.current = null
+            window.setTimeout(() => setCallState('idle'), 1200)
+          }
+        })
+        telnyxClientRef.current = client
+        setTokenPayload(payload)
+        client.connect()
+        return
+      }
+
       const [{ Device: TwilioDevice }, payload] = await Promise.all([
         import('@twilio/voice-sdk'),
-        fetchToken(),
+        fetchToken('twilio'),
       ])
-
-      await deviceRef.current?.destroy()
 
       const device = new TwilioDevice(payload.token, {
         closeProtection: true,
@@ -213,7 +318,7 @@ export default function DialerClient({
       })
       device.on('tokenWillExpire', async () => {
         try {
-          device.updateToken((await fetchToken()).token)
+          device.updateToken((await fetchToken('twilio')).token)
         } catch (error) {
           setMessage(
             error instanceof Error ? error.message : 'Token refresh failed.',
@@ -231,7 +336,7 @@ export default function DialerClient({
           : 'Unable to connect the softphone.',
       )
     }
-  }, [attachCallEvents, fetchToken])
+  }, [attachCallEvents, fetchToken, selectedProvider])
 
   useEffect(() => {
     const connectTimer = window.setTimeout(() => {
@@ -241,6 +346,7 @@ export default function DialerClient({
     return () => {
       window.clearTimeout(connectTimer)
       void deviceRef.current?.destroy()
+      telnyxClientRef.current?.disconnect?.()
     }
   }, [connectDevice])
 
@@ -262,7 +368,6 @@ export default function DialerClient({
     }
 
     if (
-      !deviceRef.current ||
       !tokenPayload ||
       !/^\+[1-9]\d{7,14}$/.test(phoneNumber.trim())
     ) {
@@ -271,18 +376,35 @@ export default function DialerClient({
     }
 
     try {
-      const call = await deviceRef.current.connect({
-        params: {
-          To: phoneNumber.trim(),
-          CallFlowUserId: tokenPayload.userId,
-          CallFlowOrganizationId: tokenPayload.organizationId,
-          ContactId: initialContact?.id ?? '',
-          CallerId: selectedCallerId,
-          Record: String(isRecording),
-        },
-      })
-
-      attachCallEvents(call)
+      if (selectedProvider === 'telnyx') {
+        const client = telnyxClientRef.current
+        if (!client) throw new Error('Telnyx softphone is not connected.')
+        const call = client.newCall({
+          destinationNumber: phoneNumber.trim(),
+          callerNumber: selectedCallerId,
+          audio: true,
+          customHeaders: [
+            { name: 'X-Flowtix-Organization', value: tokenPayload.organizationId },
+            { name: 'X-Flowtix-User', value: tokenPayload.userId },
+          ],
+        })
+        telnyxCallRef.current = call
+        setCallState('connecting')
+        setMessage('Connecting Telnyx call…')
+      } else {
+        if (!deviceRef.current) throw new Error('Twilio softphone is not connected.')
+        const call = await deviceRef.current.connect({
+          params: {
+            To: phoneNumber.trim(),
+            CallFlowUserId: tokenPayload.userId,
+            CallFlowOrganizationId: tokenPayload.organizationId,
+            ContactId: initialContact?.id ?? '',
+            CallerId: selectedCallerId,
+            Record: String(isRecording),
+          },
+        })
+        attachCallEvents(call)
+      }
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : 'Unable to place the call.',
@@ -291,40 +413,71 @@ export default function DialerClient({
   }
 
   function acceptIncoming() {
-    callRef.current?.accept()
+    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.answer?.()
+    else callRef.current?.accept()
   }
 
   function rejectIncoming() {
-    callRef.current?.reject()
+    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.hangup?.()
+    else callRef.current?.reject()
     setCallState('idle')
   }
 
   function hangUp() {
-    callRef.current?.disconnect()
+    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.hangup?.()
+    else callRef.current?.disconnect()
   }
 
   function toggleMute() {
     const next = !isMuted
-    callRef.current?.mute(next)
+    if (selectedProvider === 'telnyx') {
+      if (next) telnyxCallRef.current?.muteAudio?.()
+      else telnyxCallRef.current?.unmuteAudio?.()
+    } else {
+      callRef.current?.mute(next)
+    }
     setIsMuted(next)
   }
 
   function toggleHold() {
     const next = !isOnHold
-    callRef.current?.mute(next)
+    if (selectedProvider === 'telnyx') {
+      void (next ? telnyxCallRef.current?.hold?.() : telnyxCallRef.current?.unhold?.())
+      setMessage(next ? 'Call on hold' : 'Call resumed')
+    } else {
+      callRef.current?.mute(next)
+      setMessage(next ? 'Call on hold (local audio muted)' : 'Call resumed')
+    }
     setIsOnHold(next)
-    setMessage(next ? 'Call on hold (local audio muted)' : 'Call resumed')
   }
 
   function sendDigit(digit: string) {
     if (callState === 'connected') {
-      callRef.current?.sendDigits(digit)
+      if (selectedProvider === 'telnyx') {
+        if (typeof telnyxCallRef.current?.sendDigits === 'function') telnyxCallRef.current.sendDigits(digit)
+        else telnyxCallRef.current?.dtmf?.(digit)
+      } else callRef.current?.sendDigits(digit)
     } else {
       setPhoneNumber((value) => `${value}${digit}`)
     }
   }
 
   async function transferCall() {
+    if (selectedProvider === 'telnyx') {
+      if (!transferTarget.trim()) {
+        setMessage('Enter a transfer destination.')
+        return
+      }
+      const call = telnyxCallRef.current
+      if (typeof call?.transfer === 'function') {
+        await call.transfer(transferTarget.trim())
+        setMessage('Transfer requested.')
+      } else {
+        setMessage('Telnyx transfer is not available in this SDK session.')
+      }
+      return
+    }
+
     const callSid = callRef.current?.parameters.CallSid
 
     if (!callSid || !transferTarget.trim()) {
@@ -406,6 +559,7 @@ export default function DialerClient({
 
   return (
     <div className="space-y-6">
+      <audio id="flowtix-telnyx-remote-audio" autoPlay className="hidden" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
@@ -415,8 +569,7 @@ export default function DialerClient({
             Browser softphone
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Twilio WebRTC calling with inbound registration, DTMF, mute, hold,
-            transfer and recording.
+            Subscriber-owned Twilio and Telnyx WebRTC calling with inbound registration, DTMF, mute, hold and transfer.
           </p>
         </div>
 
@@ -470,7 +623,7 @@ export default function DialerClient({
                     value={number.phoneNumber}
                     className="bg-white text-slate-950"
                   >
-                    {number.friendlyName} · {number.phoneNumber}
+                    {number.friendlyName} · {number.phoneNumber} · {number.provider === 'telnyx' ? 'Telnyx' : 'Twilio'}
                     {number.isDefault ? ' · Default' : ''}
                   </option>
                 ))}
@@ -478,8 +631,7 @@ export default function DialerClient({
             </label>
           ) : (
             <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
-              No Twilio voice number is available. Connect Twilio and import a
-              phone number in Settings → Integrations before placing calls.
+              No supported voice number is available. Connect Twilio or Telnyx and import a phone number in Settings → Integrations before placing calls.
             </div>
           )}
 

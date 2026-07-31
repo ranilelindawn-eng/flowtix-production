@@ -6,7 +6,7 @@ import { decryptIntegrationSecret, encryptIntegrationSecret } from '@/lib/integr
 import { createGoogleCalendarEvent, sendGmailMessage, updateIntegrationHealth } from '@/lib/integrations/google-client'
 import twilio from 'twilio'
 import { isTelephonyProvider } from '@/lib/telephony/provider'
-import { listOwnedProviderNumbers, verifyProviderConnection } from '@/lib/telephony/provider-admin'
+import { createTelnyxTelephonyCredential, listOwnedProviderNumbers, verifyProviderConnection } from '@/lib/telephony/provider-admin'
 
 const supportedProviders = new Set([
   'twilio', 'telnyx', 'signalwire', 'plivo', 'openai', 'google-calendar',
@@ -35,6 +35,37 @@ export async function saveCredentialIntegration(formData: FormData) {
     else credentials[key] = text
   }
   if (Object.keys(credentials).length === 0) throw new Error('Enter the required provider credentials.')
+
+  // Telnyx WebRTC JWTs require an on-demand Telephony Credential tied to the
+  // subscriber-owned Credential SIP Connection. Flowtix creates it securely so
+  // subscribers only provide their API key and Connection ID.
+  if (provider === 'telnyx') {
+    const apiKey = credentials.apiKey
+    const connectionId = config.connection_id
+    if (!apiKey) throw new Error('Telnyx API Key is required.')
+    if (!connectionId) throw new Error('Telnyx Credential Connection ID is required.')
+
+    // Validate that the connection belongs to the supplied Telnyx account before
+    // creating the browser credential.
+    const connectionResponse = await fetch(
+      `https://api.telnyx.com/v2/credential_connections/${encodeURIComponent(connectionId)}`,
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        cache: 'no-store',
+      },
+    )
+    if (!connectionResponse.ok) {
+      const body = await connectionResponse.text()
+      throw new Error(body || `Unable to validate the Telnyx connection (HTTP ${connectionResponse.status}).`)
+    }
+
+    const telephonyCredential = await createTelnyxTelephonyCredential(
+      apiKey,
+      connectionId,
+      `Flowtix ${organizationId} WebRTC`,
+    )
+    credentials.telephonyCredentialId = telephonyCredential.id
+  }
 
   const { data: integration, error } = await supabase.from('organization_integrations').upsert({
     organization_id: organizationId,

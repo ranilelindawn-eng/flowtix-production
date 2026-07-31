@@ -16,7 +16,7 @@ export type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
-  provider: string
+  provider: 'twilio' | 'telnyx'
 }
 
 export default async function DialerPage({
@@ -38,6 +38,7 @@ export default async function DialerPage({
     .from('organization_phone_numbers')
     .select('id,provider,phone_number,friendly_name,is_default,capabilities')
     .eq('organization_id', organization.organization_id)
+    .in('provider', ['twilio', 'telnyx'])
     .order('is_default', { ascending: false })
     .order('friendly_name', { ascending: true })
 
@@ -59,7 +60,7 @@ export default async function DialerPage({
       phoneNumber: row.phone_number,
       friendlyName: row.friendly_name,
       isDefault: row.is_default,
-      provider: row.provider,
+      provider: row.provider === 'telnyx' ? 'telnyx' : 'twilio',
     }))
 
   return (

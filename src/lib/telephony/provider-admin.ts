@@ -33,6 +33,37 @@ async function jsonRequest<T>(url: string, init: RequestInit): Promise<T> {
   return payload as T
 }
 
+
+export async function createTelnyxTelephonyCredential(
+  apiKeyValue: unknown,
+  connectionIdValue: unknown,
+  name: string,
+): Promise<{ id: string }> {
+  const apiKey = required(apiKeyValue, 'Telnyx API Key')
+  const connectionId = required(connectionIdValue, 'Telnyx Credential Connection ID')
+  const safeName = name.trim() || 'Flowtix browser credential'
+
+  const payload = await jsonRequest<{ data?: { id?: string; resource_id?: string } }>(
+    'https://api.telnyx.com/v2/telephony_credentials',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        connection_id: connectionId,
+        name: safeName,
+        tag: 'flowtix-webrtc',
+      }),
+    },
+  )
+
+  const credentialId = payload.data?.id?.trim()
+  if (!credentialId) throw new Error('Telnyx did not return a Telephony Credential ID.')
+  return { id: credentialId }
+}
+
 export async function verifyProviderConnection(organizationId: string, provider: ConfiguredTelephonyProviderName): Promise<string> {
   const connection = await getOrganizationProviderConnection<Record<string, unknown>>(organizationId, provider)
   if (provider === 'twilio') {
