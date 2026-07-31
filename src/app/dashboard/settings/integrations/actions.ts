@@ -5,6 +5,8 @@ import { canManageSettings, requireSettingsContext } from '@/lib/settings-contex
 import { decryptIntegrationSecret, encryptIntegrationSecret } from '@/lib/integrations/crypto'
 import { createGoogleCalendarEvent, sendGmailMessage, updateIntegrationHealth } from '@/lib/integrations/google-client'
 import twilio from 'twilio'
+import { isTelephonyProvider } from '@/lib/telephony/provider'
+import { listOwnedProviderNumbers, verifyProviderConnection } from '@/lib/telephony/provider-admin'
 
 const supportedProviders = new Set([
   'twilio', 'telnyx', 'signalwire', 'plivo', 'openai', 'google-calendar',
@@ -385,4 +387,73 @@ export async function setTwilioDefaultPhoneNumber(formData: FormData) {
 
   revalidatePath('/dashboard/settings/integrations')
   revalidatePath('/dashboard/settings/phone-numbers')
+}
+
+
+export async function testTelephonyIntegration(formData: FormData) {
+  const { supabase, organizationId, role } = await requireSettingsContext()
+  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  const provider = clean(formData, 'provider')
+  if (!isTelephonyProvider(provider)) throw new Error('Unsupported telephony provider.')
+  const { data: integration, error } = await supabase.from('organization_integrations')
+    .select('id,config').eq('organization_id', organizationId).eq('provider', provider).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!integration) throw new Error(`Connect ${provider} before testing it.`)
+  try {
+    const connectedName = await verifyProviderConnection(organizationId, provider)
+    const { error: updateError } = await supabase.from('organization_integrations').update({
+      enabled: true, status: 'connected', last_error: null,
+      last_tested_at: new Date().toISOString(), last_test_status: 'passed',
+      config: { ...(integration.config ?? {}), connected_name: connectedName }, updated_at: new Date().toISOString(),
+    }).eq('id', integration.id).eq('organization_id', organizationId)
+    if (updateError) throw new Error(updateError.message)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : `${provider} connection test failed.`
+    await supabase.from('organization_integrations').update({ status: 'error', last_error: message, last_tested_at: new Date().toISOString(), last_test_status: 'failed', updated_at: new Date().toISOString() }).eq('id', integration.id).eq('organization_id', organizationId)
+    throw new Error(message)
+  }
+  revalidatePath('/dashboard/settings/integrations')
+}
+
+export async function syncTelephonyPhoneNumbers(formData: FormData) {
+  const { supabase, organizationId, role } = await requireSettingsContext()
+  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  const provider = clean(formData, 'provider')
+  if (!isTelephonyProvider(provider)) throw new Error('Unsupported telephony provider.')
+  const numbers = await listOwnedProviderNumbers(organizationId, provider)
+  if (!numbers.length) throw new Error(`No active phone numbers were found in the connected ${provider} account.`)
+
+  const { data: existingDefault, error: defaultError } = await supabase.from('organization_phone_numbers')
+    .select('phone_number').eq('organization_id', organizationId).eq('provider', provider).eq('is_default', true).maybeSingle()
+  if (defaultError) throw new Error(defaultError.message)
+  const owned = new Set(numbers.map((number) => number.phoneNumber))
+  const selectedDefault = existingDefault?.phone_number && owned.has(existingDefault.phone_number) ? existingDefault.phone_number : numbers[0].phoneNumber
+  const rows = numbers.map((number) => ({ organization_id: organizationId, provider, provider_number_id: number.providerNumberId, phone_number: number.phoneNumber, friendly_name: number.friendlyName, capabilities: number.capabilities, is_default: number.phoneNumber === selectedDefault, updated_at: new Date().toISOString() }))
+  const { error: upsertError } = await supabase.from('organization_phone_numbers').upsert(rows, { onConflict: 'organization_id,phone_number' })
+  if (upsertError) throw new Error(upsertError.message)
+  const { data: integration, error: integrationError } = await supabase.from('organization_integrations').select('id,config').eq('organization_id', organizationId).eq('provider', provider).single()
+  if (integrationError) throw new Error(integrationError.message)
+  const { error: updateError } = await supabase.from('organization_integrations').update({ status: 'connected', enabled: true, last_error: null, last_tested_at: new Date().toISOString(), last_test_status: 'passed', config: { ...(integration.config ?? {}), phone_number: selectedDefault, imported_phone_number_count: rows.length, phone_numbers_synced_at: new Date().toISOString() }, updated_at: new Date().toISOString() }).eq('id', integration.id).eq('organization_id', organizationId)
+  if (updateError) throw new Error(updateError.message)
+  revalidatePath('/dashboard/settings/integrations')
+  revalidatePath('/dashboard/settings/phone-numbers')
+  revalidatePath('/dashboard/dialer')
+}
+
+export async function setDefaultTelephonyPhoneNumber(formData: FormData) {
+  const { supabase, organizationId, role } = await requireSettingsContext()
+  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  const provider = clean(formData, 'provider')
+  const phoneNumber = clean(formData, 'phone_number')
+  if (!isTelephonyProvider(provider)) throw new Error('Unsupported telephony provider.')
+  if (!/^\+[1-9]\d{7,14}$/.test(phoneNumber)) throw new Error('Select a valid E.164 phone number.')
+  const numbers = await listOwnedProviderNumbers(organizationId, provider)
+  if (!numbers.some((number) => number.phoneNumber === phoneNumber)) throw new Error(`That number does not belong to the connected ${provider} account.`)
+  const { error: clearError } = await supabase.from('organization_phone_numbers').update({ is_default: false, updated_at: new Date().toISOString() }).eq('organization_id', organizationId)
+  if (clearError) throw new Error(clearError.message)
+  const { error: setError } = await supabase.from('organization_phone_numbers').update({ is_default: true, updated_at: new Date().toISOString() }).eq('organization_id', organizationId).eq('provider', provider).eq('phone_number', phoneNumber)
+  if (setError) throw new Error(setError.message)
+  revalidatePath('/dashboard/settings/integrations')
+  revalidatePath('/dashboard/settings/phone-numbers')
+  revalidatePath('/dashboard/dialer')
 }

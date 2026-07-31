@@ -29,6 +29,7 @@ type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
+  provider: string
 }
 
 type DialerClientProps = {
@@ -256,7 +257,7 @@ export default function DialerClient({
 
   async function placeCall() {
     if (!selectedCallerId) {
-      setMessage('Import and select a Twilio voice number before placing calls.')
+      setMessage('Import and select an owned voice number before placing calls.')
       return
     }
 

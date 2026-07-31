@@ -16,6 +16,7 @@ export type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
+  provider: string
 }
 
 export default async function DialerPage({
@@ -35,9 +36,8 @@ export default async function DialerPage({
   const supabase = await createClient()
   const { data: phoneNumberRows, error: phoneNumberError } = await supabase
     .from('organization_phone_numbers')
-    .select('id,phone_number,friendly_name,is_default,capabilities')
+    .select('id,provider,phone_number,friendly_name,is_default,capabilities')
     .eq('organization_id', organization.organization_id)
-    .eq('provider', 'twilio')
     .order('is_default', { ascending: false })
     .order('friendly_name', { ascending: true })
 
@@ -59,6 +59,7 @@ export default async function DialerPage({
       phoneNumber: row.phone_number,
       friendlyName: row.friendly_name,
       isDefault: row.is_default,
+      provider: row.provider,
     }))
 
   return (
