@@ -49,10 +49,16 @@ type TokenPayload = {
 
 
 type TelnyxCallLike = {
+  id?: string
   state?: string
   direction?: string
   remotePartyNumber?: string
   options?: { remoteCallerNumber?: string }
+  cause?: string
+  causeCode?: number | string
+  sipCode?: number | string
+  sipReason?: string
+  on?: (event: string, handler: (payload?: unknown) => void) => TelnyxCallLike
   answer?: () => void | Promise<void>
   hangup?: () => void | Promise<void>
   hold?: () => void | Promise<void>
@@ -67,6 +73,19 @@ type TelnyxCallLike = {
 type TelnyxNotification = {
   type?: string
   call?: TelnyxCallLike
+  error?: unknown
+  errorName?: string
+  errorMessage?: string
+  state?: string
+  sessionId?: string
+}
+
+type TelnyxErrorLike = {
+  code?: number | string
+  message?: string
+  error?: { code?: number | string; message?: string } | Error | unknown
+  sessionId?: string
+  type?: string
 }
 
 type TelnyxClientLike = {
@@ -102,6 +121,43 @@ const keyRows = [
 
 const fieldClass =
   'min-h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white outline-none transition focus:border-cyan-400/50'
+
+function describeTelnyxCall(call?: TelnyxCallLike | null) {
+  if (!call) return null
+
+  return {
+    id: call.id ?? null,
+    state: call.state ?? null,
+    direction: call.direction ?? null,
+    remotePartyNumber: call.remotePartyNumber ?? null,
+    cause: call.cause ?? null,
+    causeCode: call.causeCode ?? null,
+    sipCode: call.sipCode ?? null,
+    sipReason: call.sipReason ?? null,
+  }
+}
+
+function describeTelnyxError(payload?: unknown) {
+  if (!payload || typeof payload !== 'object') {
+    return { message: String(payload ?? 'Unknown Telnyx error') }
+  }
+
+  const event = payload as TelnyxErrorLike
+  const nested = event.error
+  const nestedRecord =
+    nested && typeof nested === 'object' ? (nested as { code?: unknown; message?: unknown }) : null
+
+  return {
+    code: event.code ?? nestedRecord?.code ?? null,
+    message:
+      event.message ??
+      (typeof nestedRecord?.message === 'string' ? nestedRecord.message : null) ??
+      (nested instanceof Error ? nested.message : null) ??
+      'Unknown Telnyx error',
+    sessionId: event.sessionId ?? null,
+    type: event.type ?? null,
+  }
+}
 
 function getDefaultFollowUpDate() {
   const date = new Date()
@@ -207,6 +263,62 @@ export default function DialerClient({
     })
   }, [])
 
+  const handleTelnyxNotification = useCallback((payload?: unknown) => {
+    const notification = payload as TelnyxNotification | undefined
+
+    console.info('[Flowtix Telnyx] notification', {
+      type: notification?.type ?? null,
+      state: notification?.state ?? null,
+      sessionId: notification?.sessionId ?? null,
+      call: describeTelnyxCall(notification?.call),
+      errorName: notification?.errorName ?? null,
+      errorMessage: notification?.errorMessage ?? null,
+    })
+
+    if (notification?.type !== 'callUpdate' || !notification.call) {
+      if (notification?.errorMessage) setMessage(notification.errorMessage)
+      return
+    }
+
+    const call = notification.call
+    telnyxCallRef.current = call
+    const state = String(call.state ?? '')
+
+    if (state === 'new' || state === 'trying' || state === 'requesting') {
+      setCallState('connecting')
+      setMessage(`Telnyx call ${state}…`)
+    } else if (state === 'ringing') {
+      const inbound = call.direction === 'inbound'
+      setCallState(inbound ? 'incoming' : 'ringing')
+      setIncomingFrom(
+        call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? 'Unknown caller',
+      )
+      setMessage(inbound ? 'Incoming Telnyx call' : 'Ringing…')
+    } else if (state === 'active') {
+      setCallState('connected')
+      setMessage('Call connected')
+      setElapsed(0)
+      setIsOnHold(false)
+    } else if (state === 'held') {
+      setCallState('connected')
+      setIsOnHold(true)
+      setMessage('Call on hold')
+    } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
+      const reason =
+        call.sipReason ||
+        call.cause ||
+        (call.sipCode ? `SIP ${call.sipCode}` : '') ||
+        'Call ended'
+
+      setCallState('ended')
+      setMessage(`${reason} — complete the call outcome before moving on.`)
+      setIsMuted(false)
+      setIsOnHold(false)
+      telnyxCallRef.current = null
+      window.setTimeout(() => setCallState('idle'), 1200)
+    }
+  }, [])
+
   const fetchToken = useCallback(async (provider: 'twilio' | 'telnyx'): Promise<TokenPayload> => {
     const response = await fetch(`/api/telephony/token?provider=${provider}`, {
       cache: 'no-store',
@@ -247,45 +359,36 @@ export default function DialerClient({
         }) as unknown as TelnyxClientLike
         client.remoteElement = 'flowtix-telnyx-remote-audio'
         client.on('telnyx.ready', () => {
+          console.info('[Flowtix Telnyx] ready', {
+            provider: payload.provider,
+            organizationId: payload.organizationId,
+            userId: payload.userId,
+            identity: payload.identity,
+            expiresIn: payload.expiresIn,
+          })
           setDeviceState('ready')
           setMessage('Telnyx softphone ready for inbound and outbound calls.')
         })
-        client.on('telnyx.error', (payload?: unknown) => {
-          const error = payload && typeof payload === 'object' && 'message' in payload
-            ? String((payload as { message?: unknown }).message ?? '')
-            : ''
+        client.on('telnyx.error', (event?: unknown) => {
+          const error = describeTelnyxError(event)
+          console.error('[Flowtix Telnyx] error', error)
           setDeviceState('error')
-          setMessage(error || 'Telnyx softphone connection failed.')
+          setMessage(error.message || 'Telnyx softphone connection failed.')
         })
-        client.on('telnyx.socket.close', () => setDeviceState('offline'))
-        client.on('telnyx.notification', (payload?: unknown) => {
-          const notification = payload as TelnyxNotification | undefined
-          if (notification?.type !== 'callUpdate' || !notification.call) return
-          const call = notification.call
-          telnyxCallRef.current = call
-          const state = String(call.state ?? '')
-          if (state === 'ringing') {
-            const inbound = call.direction === 'inbound'
-            setCallState(inbound ? 'incoming' : 'ringing')
-            setIncomingFrom(call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? 'Unknown caller')
-            setMessage(inbound ? 'Incoming Telnyx call' : 'Ringing…')
-          } else if (state === 'active') {
-            setCallState('connected')
-            setMessage('Call connected')
-            setElapsed(0)
-          } else if (state === 'held') {
-            setCallState('connected')
-            setIsOnHold(true)
-            setMessage('Call on hold')
-          } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
-            setCallState('ended')
-            setMessage('Call ended — complete the call outcome before moving on.')
-            setIsMuted(false)
-            setIsOnHold(false)
-            telnyxCallRef.current = null
-            window.setTimeout(() => setCallState('idle'), 1200)
-          }
+        client.on('telnyx.warning', (event?: unknown) => {
+          console.warn('[Flowtix Telnyx] warning', describeTelnyxError(event))
         })
+        client.on('telnyx.socket.close', (event?: unknown) => {
+          console.warn('[Flowtix Telnyx] socket closed', event)
+          setDeviceState('offline')
+        })
+        client.on('telnyx.socket.error', (event?: unknown) => {
+          console.error('[Flowtix Telnyx] socket error', event)
+        })
+        client.on('telnyx.stats.report', (event?: unknown) => {
+          console.info('[Flowtix Telnyx] call report', event)
+        })
+        client.on('telnyx.notification', handleTelnyxNotification)
         telnyxClientRef.current = client
         setTokenPayload(payload)
         client.connect()
@@ -336,7 +439,7 @@ export default function DialerClient({
           : 'Unable to connect the softphone.',
       )
     }
-  }, [attachCallEvents, fetchToken, selectedProvider])
+  }, [attachCallEvents, fetchToken, handleTelnyxNotification, selectedProvider])
 
   useEffect(() => {
     const connectTimer = window.setTimeout(() => {
@@ -379,8 +482,17 @@ export default function DialerClient({
       if (selectedProvider === 'telnyx') {
         const client = telnyxClientRef.current
         if (!client) throw new Error('Telnyx softphone is not connected.')
+        const destinationNumber = phoneNumber.trim()
+        console.info('[Flowtix Telnyx] placing outbound call', {
+          destinationNumber,
+          callerNumber: selectedCallerId,
+          organizationId: tokenPayload.organizationId,
+          userId: tokenPayload.userId,
+          identity: tokenPayload.identity,
+        })
+
         const call = client.newCall({
-          destinationNumber: phoneNumber.trim(),
+          destinationNumber,
           callerNumber: selectedCallerId,
           audio: true,
           customHeaders: [
@@ -389,6 +501,8 @@ export default function DialerClient({
           ],
         })
         telnyxCallRef.current = call
+        call.on?.('telnyx.notification', handleTelnyxNotification)
+        console.info('[Flowtix Telnyx] outbound call created', describeTelnyxCall(call))
         setCallState('connecting')
         setMessage('Connecting Telnyx call…')
       } else {
