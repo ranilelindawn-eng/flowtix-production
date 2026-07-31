@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
-import { getTwilioConfiguration } from '@/lib/telephony/config'
+import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 
 export async function GET() {
   try {
@@ -14,7 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const config = getTwilioConfiguration()
+    const config = await getOrganizationTwilioConfiguration(organization.organization_id)
     const identity = `cf_${userId.replace(/-/g, '')}`
     const AccessToken = twilio.jwt.AccessToken
     const VoiceGrant = AccessToken.VoiceGrant

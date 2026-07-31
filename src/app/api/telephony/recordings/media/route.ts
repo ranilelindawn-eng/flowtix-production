@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
-import { getTwilioConfiguration } from '@/lib/telephony/config'
+import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 
 export async function GET(request: Request) {
   const organization = await getCurrentOrganization()
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     .maybeSingle()
   if (!recording?.provider_url) return NextResponse.json({ error: 'Recording not found.' }, { status: 404 })
 
-  const config = getTwilioConfiguration()
+  const config = await getOrganizationTwilioConfiguration(organization.organization_id)
   const mediaUrl = `${recording.provider_url}.mp3`
   const response = await fetch(mediaUrl, {
     headers: {

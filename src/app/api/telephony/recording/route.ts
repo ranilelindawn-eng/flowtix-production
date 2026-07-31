@@ -1,9 +1,15 @@
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
+import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import { parseTwilioForm, validateTwilioWebhook } from '@/lib/telephony/validation'
 
 export async function POST(request: Request) {
   const form = await parseTwilioForm(request)
-  if (!validateTwilioWebhook(request, form)) return new Response('Forbidden', { status: 403 })
+  const organizationId = new URL(request.url).searchParams.get('organizationId')
+  if (!organizationId) return new Response('Forbidden', { status: 403 })
+
+  const config = await getOrganizationTwilioConfiguration(organizationId)
+  if (!validateTwilioWebhook(request, form, config.authToken)) return new Response('Forbidden', { status: 403 })
+
   const callSid = form.get('CallSid')
   const recordingSid = form.get('RecordingSid')
   const recordingUrl = form.get('RecordingUrl')
@@ -13,6 +19,7 @@ export async function POST(request: Request) {
   const { data: call } = await admin
     .from('calls')
     .select('id, organization_id, created_by')
+    .eq('organization_id', organizationId)
     .or(`provider_call_sid.eq.${callSid},provider_child_call_sid.eq.${callSid}`)
     .maybeSingle()
   if (!call) return new Response('OK')
@@ -29,6 +36,6 @@ export async function POST(request: Request) {
     created_by: call.created_by,
   }, { onConflict: 'provider_recording_sid' })
 
-  await admin.from('calls').update({ recording_available: true }).eq('id', call.id)
+  await admin.from('calls').update({ recording_available: true }).eq('id', call.id).eq('organization_id', organizationId)
   return new Response('OK')
 }

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
-import { getTwilioConfiguration } from '@/lib/telephony/config'
+import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 
 export async function POST(request: Request) {
   const body = await request.json() as { callId?: string; target?: string }
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   const { data: call } = await supabase.from('calls').select('provider_child_call_sid, provider_call_sid').eq('organization_id', organization.organization_id).or(`id.eq.${body.callId},provider_call_sid.eq.${body.callId},provider_child_call_sid.eq.${body.callId}`).maybeSingle()
   const sid = call?.provider_child_call_sid ?? call?.provider_call_sid
   if (!sid) return NextResponse.json({ error: 'Active call not found.' }, { status: 404 })
-  const config = getTwilioConfiguration()
+  const config = await getOrganizationTwilioConfiguration(organization.organization_id)
   const target = body.target.trim()
   const twiml = /^\+[1-9]\d{7,14}$/.test(target)
     ? `<Response><Dial callerId="${config.callerId}"><Number>${target}</Number></Dial></Response>`

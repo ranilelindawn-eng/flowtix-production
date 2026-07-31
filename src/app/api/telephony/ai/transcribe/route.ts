@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
-import { getTwilioConfiguration } from '@/lib/telephony/config'
+import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 
 export async function POST(request: Request) {
   const { recordingId } = await request.json() as { recordingId?: string }
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     .maybeSingle()
   if (!recording) return NextResponse.json({ error: 'Recording not found.' }, { status: 404 })
 
-  const config = getTwilioConfiguration()
+  const config = await getOrganizationTwilioConfiguration(organization.organization_id)
   const audioResponse = await fetch(`${recording.provider_url}.mp3`, {
     headers: { Authorization: `Basic ${Buffer.from(`${config.accountSid}:${config.authToken}`).toString('base64')}` },
   })
