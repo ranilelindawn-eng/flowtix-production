@@ -1,4 +1,4 @@
-# CallFlow implementation status — 2026-07-26
+# Flowtix implementation status — 2026-07-26
 
 This source package is an implementation snapshot, not a claim that every external provider is production-certified.
 
@@ -7,7 +7,7 @@ This source package is an implementation snapshot, not a claim that every extern
 - Bulk CSV contact import at `/dashboard/contacts/import`.
 - CSV parsing with quoted-field support and common-header auto-mapping.
 - Preview before import, 5,000-row request limit, duplicate-email skipping, validation, batch inserts, and import summary.
-- Downloadable example CSV in `public/callflow-contacts-import-template.csv`.
+- Downloadable example CSV in `public/flowtix-contacts-import-template.csv`.
 - Clickable dashboard KPI cards linked to contacts, calls, reports, and campaigns.
 - Owner-paid workspace foundation: invited members do not require individual subscriptions.
 - Roles: Owner, Admin, Manager, Supervisor, Agent.

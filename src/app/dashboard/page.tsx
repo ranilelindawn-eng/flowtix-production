@@ -531,7 +531,7 @@ export default async function DashboardPage() {
       href: '/dashboard/dialer',
       title: 'Open dialer',
       description:
-        'Start calling contacts directly from your CallFlow workspace.',
+        'Start calling contacts directly from your Flowtix workspace.',
       icon: <PhoneIcon />,
     },
     {

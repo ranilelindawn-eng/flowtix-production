@@ -1,4 +1,4 @@
-# CallFlow Phase 6 — AI Setup
+# Flowtix Phase 6 — AI Setup
 
 ## Added
 - AI call summaries and follow-ups
@@ -13,7 +13,7 @@
 - Organization-scoped storage and RLS
 
 ## Install
-1. Merge this folder into the existing CallFlow project and allow replacements.
+1. Merge this folder into the existing Flowtix project and allow replacements.
 2. Run the migration: `supabase/migrations/20260724_phase6_ai.sql`.
 3. Add the environment variables below.
 4. Run `npm install`, `npx tsc --noEmit`, `npm run lint`, and `npm run build`.

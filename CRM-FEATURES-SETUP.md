@@ -1,4 +1,4 @@
-# CallFlow Phase 3 — CRM Features
+# Flowtix Phase 3 — CRM Features
 
 This package is based on the completed Phase 2 Cloud Dialer package and adds the Phase 3 CRM modules.
 
@@ -22,9 +22,9 @@ This package is based on the completed Phase 2 Cloud Dialer package and adds the
 
 ## Installation
 
-1. Back up your current CallFlow folder.
+1. Back up your current Flowtix folder.
 2. Extract this ZIP.
-3. Copy all contents into your existing CallFlow project and allow Windows to replace matching files.
+3. Copy all contents into your existing Flowtix project and allow Windows to replace matching files.
 4. Run:
 
 ```powershell
@@ -41,7 +41,7 @@ supabase/migrations/20260724_phase3_crm_features.sql
 
 ```env
 RESEND_API_KEY=re_your_actual_key
-RESEND_FROM_EMAIL=CallFlow <noreply@your-verified-domain.com>
+RESEND_FROM_EMAIL=Flowtix <noreply@your-verified-domain.com>
 ```
 
 SMS uses the Twilio values already configured for Phase 2:

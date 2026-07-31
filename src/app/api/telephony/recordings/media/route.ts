@@ -31,7 +31,7 @@ export async function GET(request: Request) {
     headers: {
       'Content-Type': response.headers.get('content-type') ?? 'audio/mpeg',
       'Cache-Control': 'private, max-age=300',
-      ...(download ? { 'Content-Disposition': `attachment; filename="callflow-recording-${id}.mp3"` } : {}),
+      ...(download ? { 'Content-Disposition': `attachment; filename="flowtix-recording-${id}.mp3"` } : {}),
     },
   })
 }

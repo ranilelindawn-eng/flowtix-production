@@ -44,7 +44,7 @@ export default function MfaManager() {
 
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
-      friendlyName: 'CallFlow Authenticator',
+      friendlyName: 'Flowtix Authenticator',
     })
 
     if (error) {

@@ -50,7 +50,7 @@ export default async function InvitationPage({ params, searchParams }: Invitatio
   const invitationPath = `/invite/${encodeURIComponent(token)}`
 
   if (!/^[0-9a-f-]{36}$/i.test(token)) {
-    return <InvitationMessage title="Invitation unavailable" description="This invitation link is invalid." actionHref="/" actionLabel="Go to CallFlow" />
+    return <InvitationMessage title="Invitation unavailable" description="This invitation link is invalid." actionHref="/" actionLabel="Go to Flowtix" />
   }
 
   const supabase = await createClient()
@@ -61,7 +61,7 @@ export default async function InvitationPage({ params, searchParams }: Invitatio
   const preview = firstRow(previewData as InvitationPreview[] | InvitationPreview | null)
 
   if (previewError || !preview) {
-    return <InvitationMessage title="Invitation unavailable" description="This invitation is invalid, expired, already accepted, or revoked." actionHref="/" actionLabel="Go to CallFlow" />
+    return <InvitationMessage title="Invitation unavailable" description="This invitation is invalid, expired, already accepted, or revoked." actionHref="/" actionLabel="Go to Flowtix" />
   }
 
   const { data: claims, error: claimsError } = await supabase.auth.getClaims()
@@ -108,7 +108,7 @@ export default async function InvitationPage({ params, searchParams }: Invitatio
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
       <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
-        <p className="text-sm font-medium text-cyan-400">CallFlow invitation</p>
+        <p className="text-sm font-medium text-cyan-400">Flowtix invitation</p>
         <h1 className="mt-2 text-2xl font-bold">Join {preview.organization_name}</h1>
         <p className="mt-3 text-slate-400">
           You were invited as <span className="font-semibold capitalize text-white">{preview.role}</span> using <span className="font-semibold text-white">{preview.email}</span>.

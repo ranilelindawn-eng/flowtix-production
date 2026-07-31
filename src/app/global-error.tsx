@@ -58,12 +58,12 @@ export default function GlobalError({
             </p>
 
             <h1 className="mt-3 text-3xl font-bold tracking-tight">
-              CallFlow could not load
+              Flowtix could not load
             </h1>
 
             <p className="mt-4 text-sm leading-7 text-slate-400">
               An unexpected application error occurred. Please try
-              loading CallFlow again.
+              loading Flowtix again.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">

@@ -185,8 +185,8 @@ export async function inviteTeamMember(
         body: JSON.stringify({
           from: fromEmail,
           to: [email],
-          subject: 'You are invited to join CallFlow',
-          html: `<p>You were invited to join a CallFlow organization as <strong>${role}</strong>.</p><p><a href="${invitationUrl}">Accept invitation</a></p><p>This invitation expires in 7 days.</p>`,
+          subject: 'You are invited to join Flowtix',
+          html: `<p>You were invited to join a Flowtix organization as <strong>${role}</strong>.</p><p><a href="${invitationUrl}">Accept invitation</a></p><p>This invitation expires in 7 days.</p>`,
         }),
       })
 

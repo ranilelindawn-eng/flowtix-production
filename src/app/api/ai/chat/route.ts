@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 
 const MAX_MESSAGE_LENGTH = 20_000
 const AGENT_PROMPTS: Record<string, string> = {
-  general: 'You are CallFlow AI, a concise and practical CRM assistant.',
+  general: 'You are Flowtix AI, a concise and practical CRM assistant.',
   sales: 'You are a senior sales coach. Focus on pipeline progress, qualification, objections, and next actions.',
   sdr: 'You are an expert SDR. Help with prospecting, outreach, cold-call scripts, and follow-up sequences.',
   support: 'You are a customer support specialist. Be empathetic, accurate, and action-oriented.',
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     const chronological = ((history ?? []) as MessageRow[]).reverse()
     const system = `${AGENT_PROMPTS[conversation.agent_key] ?? AGENT_PROMPTS.general}
-You are operating inside one tenant-isolated CallFlow workspace.
+You are operating inside one tenant-isolated Flowtix workspace.
 Known CRM totals: ${contactCount ?? 0} contacts, ${companyCount ?? 0} companies, ${callCount ?? 0} calls.
 Do not claim access to records you have not been given. When data is insufficient, say what is missing. Never invent customer details.`
 

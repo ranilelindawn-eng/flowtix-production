@@ -1,10 +1,10 @@
-# CallFlow Phase 5 — SaaS Features Setup
+# Flowtix Phase 5 — SaaS Features Setup
 
 This phase adds production-oriented Stripe subscriptions, plan changes, tenant isolation, and database-enforced usage limits.
 
 ## 1. Merge the package
 
-Copy the contents of this folder into your existing CallFlow project and allow matching files to be replaced. Keep your existing `.env.local`.
+Copy the contents of this folder into your existing Flowtix project and allow matching files to be replaced. Keep your existing `.env.local`.
 
 ## 2. Install packages
 

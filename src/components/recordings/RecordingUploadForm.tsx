@@ -195,7 +195,7 @@ export default function RecordingUploadForm({
           </h2>
 
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Attach an audio recording to an existing CallFlow call.
+            Attach an audio recording to an existing Flowtix call.
           </p>
         </div>
 

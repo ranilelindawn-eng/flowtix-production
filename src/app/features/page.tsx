@@ -10,4 +10,4 @@ const items = [
   { title: 'Recordings and transcripts', description: 'Upload and manage recordings and transcripts with organization-scoped access.' },
   { title: 'AI-ready insights', description: 'Create and review summaries and insight records while external AI processing is connected separately.' }
 ]
-export default function Page() { return <MarketingShell><MarketingHero eyebrow='Product features' title='Everything your team needs to manage customer conversations' description='Organize contacts, calls, campaigns, tasks, recordings, transcripts, summaries, and team activity in one secure workspace.' /><ContentSection title="Explore CallFlow"><CardGrid items={items} /></ContentSection></MarketingShell> }
+export default function Page() { return <MarketingShell><MarketingHero eyebrow='Product features' title='Everything your team needs to manage customer conversations' description='Organize contacts, calls, campaigns, tasks, recordings, transcripts, summaries, and team activity in one secure workspace.' /><ContentSection title="Explore Flowtix"><CardGrid items={items} /></ContentSection></MarketingShell> }

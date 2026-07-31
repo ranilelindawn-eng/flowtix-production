@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (!number) {
-    response.say('This CallFlow number is not configured.')
+    response.say('This Flowtix number is not configured.')
     response.hangup()
     return twimlResponse(response.toString())
   }

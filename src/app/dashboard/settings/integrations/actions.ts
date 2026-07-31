@@ -98,8 +98,8 @@ export async function testGmailIntegration() {
     if (!email) throw new Error('Connected Gmail address is unavailable.')
     await sendGmailMessage(organizationId, {
       to: email,
-      subject: 'CallFlow Gmail connection test',
-      body: 'Your subscriber-owned Gmail integration is working correctly. This message was sent by CallFlow.',
+      subject: 'Flowtix Gmail connection test',
+      body: 'Your subscriber-owned Gmail integration is working correctly. This message was sent by Flowtix.',
     })
     await updateIntegrationHealth(organizationId, 'gmail', { ok: true })
   } catch (error) {
@@ -117,7 +117,7 @@ export async function testGoogleCalendarIntegration() {
     const start = new Date(Date.now() + 10 * 60 * 1000)
     const end = new Date(start.getTime() + 15 * 60 * 1000)
     await createGoogleCalendarEvent(organizationId, {
-      summary: 'CallFlow calendar connection test',
+      summary: 'Flowtix calendar connection test',
       description: 'This event confirms that the subscriber-owned Google Calendar integration is working.',
       start,
       end,

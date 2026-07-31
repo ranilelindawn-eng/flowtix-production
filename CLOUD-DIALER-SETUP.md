@@ -1,6 +1,6 @@
-# CallFlow Phase 2 — Cloud Dialer Setup
+# Flowtix Phase 2 — Cloud Dialer Setup
 
-This package adds a Twilio-based WebRTC browser softphone and the CallFlow database/API foundation for outbound calls, inbound calls, live call monitoring, ring groups, queues, recordings, secure playback/download, transcription, summaries, sentiment, action items and keywords.
+This package adds a Twilio-based WebRTC browser softphone and the Flowtix database/API foundation for outbound calls, inbound calls, live call monitoring, ring groups, queues, recordings, secure playback/download, transcription, summaries, sentiment, action items and keywords.
 
 ## 1. Install packages
 
@@ -47,7 +47,7 @@ Use HTTP POST for both.
 
 For local webhook testing, expose localhost with the Twilio CLI or another HTTPS tunnel and set `NEXT_PUBLIC_SITE_URL` to that public HTTPS URL.
 
-## 5. Register the Twilio number in CallFlow
+## 5. Register the Twilio number in Flowtix
 
 After the migration, insert the purchased Twilio number into `public.phone_numbers`. Associate it with either a `ring_group_id` or a `queue_id`. Add agents to `ring_group_members` or `queue_members` using their Supabase Auth user IDs.
 

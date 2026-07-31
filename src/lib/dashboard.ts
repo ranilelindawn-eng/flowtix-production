@@ -126,7 +126,7 @@ function createEmptyDashboardData(
 ): DashboardData {
   return {
     userName: 'there',
-    organizationName: 'CallFlow workspace',
+    organizationName: 'Flowtix workspace',
 
     totalContacts: 0,
     totalCalls: 0,
@@ -271,7 +271,7 @@ async function getOrganizationName(
 
   return (
     organization?.name?.trim() ||
-    'CallFlow workspace'
+    'Flowtix workspace'
   )
 }
 

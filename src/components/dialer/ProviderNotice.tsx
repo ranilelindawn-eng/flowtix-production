@@ -49,7 +49,7 @@ export default function ProviderNotice({
           </p>
 
           <p className="mt-3 text-xs leading-5 text-blue-200/70">
-            CallFlow intentionally avoids simulating successful
+            Flowtix intentionally avoids simulating successful
             live calls when no provider is connected.
           </p>
         </div>

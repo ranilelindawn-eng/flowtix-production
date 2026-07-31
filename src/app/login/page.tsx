@@ -46,7 +46,7 @@ export default async function LoginPage({
             </p>
 
             <h1 className="mt-4 text-3xl font-semibold text-white">
-              Welcome back to CallFlow
+              Welcome back to Flowtix
             </h1>
           </div>
 
@@ -76,7 +76,7 @@ export default async function LoginPage({
               </p>
 
               <p className="mt-1 text-emerald-100/90">
-                Your new password is ready. You can now sign in to CallFlow.
+                Your new password is ready. You can now sign in to Flowtix.
               </p>
             </div>
           )}
@@ -110,7 +110,7 @@ export default async function LoginPage({
                 Confirm your email to continue
               </p>
               <p className="mt-1 text-cyan-100/90">
-                Check your inbox, confirm your CallFlow account, then sign in to accept the invitation.
+                Check your inbox, confirm your Flowtix account, then sign in to accept the invitation.
               </p>
             </div>
           )}

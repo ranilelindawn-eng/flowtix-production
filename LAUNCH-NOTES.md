@@ -1,4 +1,4 @@
-# CallFlow Launch Notes
+# Flowtix Launch Notes
 
 ## Included public routes
 

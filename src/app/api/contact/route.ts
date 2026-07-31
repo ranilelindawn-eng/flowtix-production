@@ -137,14 +137,14 @@ export async function POST(request: NextRequest) {
       await sendResendEmail({
         to: [ownerEmail],
         replyTo: email,
-        subject: `[CallFlow Contact] ${topic} — ${name}`,
-        html: `<h2>New CallFlow inquiry</h2><p><strong>Name:</strong> ${safeName}</p><p><strong>Email:</strong> ${safeEmail}</p><p><strong>Topic:</strong> ${safeTopic}</p><p><strong>Message:</strong></p><p>${safeMessage}</p><hr /><p>Inquiry ID: ${inquiry.id}</p>`,
+        subject: `[Flowtix Contact] ${topic} — ${name}`,
+        html: `<h2>New Flowtix inquiry</h2><p><strong>Name:</strong> ${safeName}</p><p><strong>Email:</strong> ${safeEmail}</p><p><strong>Topic:</strong> ${safeTopic}</p><p><strong>Message:</strong></p><p>${safeMessage}</p><hr /><p>Inquiry ID: ${inquiry.id}</p>`,
       })
 
       await sendResendEmail({
         to: [email],
-        subject: 'We received your CallFlow message',
-        html: `<p>Hi ${safeName},</p><p>Thank you for contacting CallFlow. We received your message about <strong>${safeTopic}</strong> and will respond as soon as possible.</p><p>Reference: ${inquiry.id}</p><p>— The CallFlow team</p>`,
+        subject: 'We received your Flowtix message',
+        html: `<p>Hi ${safeName},</p><p>Thank you for contacting Flowtix. We received your message about <strong>${safeTopic}</strong> and will respond as soon as possible.</p><p>Reference: ${inquiry.id}</p><p>— The Flowtix team</p>`,
       })
 
       deliveryStatus = 'sent'

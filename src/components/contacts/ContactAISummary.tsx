@@ -28,11 +28,11 @@ function getSummary(contact: Contact): string {
   const title = ''
 
   if (company && title) {
-    return `${fullName} is listed as ${title} at ${company}. CallFlow has not collected enough conversation data yet to generate a detailed AI relationship summary.`
+    return `${fullName} is listed as ${title} at ${company}. Flowtix has not collected enough conversation data yet to generate a detailed AI relationship summary.`
   }
 
   if (company) {
-    return `${fullName} is associated with ${company}. More calls, notes, and transcripts are needed before CallFlow can generate a detailed AI relationship summary.`
+    return `${fullName} is associated with ${company}. More calls, notes, and transcripts are needed before Flowtix can generate a detailed AI relationship summary.`
   }
 
   return `${fullName} does not yet have enough interaction history for a detailed AI relationship summary. Add calls, notes, or transcripts to improve future insights.`
@@ -73,7 +73,7 @@ export default function ContactAISummary({
 
                 <span className="inline-flex items-center gap-1 rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 text-[11px] font-medium text-violet-200">
                   <Sparkles className="h-3 w-3" />
-                  CallFlow AI
+                  Flowtix AI
                 </span>
               </div>
 

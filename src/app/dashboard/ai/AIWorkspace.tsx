@@ -238,7 +238,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
               <Sparkles className="h-5 w-5 text-cyan-300" />
               <h1 className="text-lg font-semibold text-white">AI Workspace</h1>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Tenant-isolated assistant for your CallFlow workspace</p>
+            <p className="mt-1 text-xs text-slate-500">Tenant-isolated assistant for your Flowtix workspace</p>
           </div>
           <div className="flex items-center gap-2">
             <select
@@ -301,7 +301,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-400 text-white shadow-xl shadow-blue-950/50">
                 <Sparkles className="h-8 w-8" />
               </div>
-              <h2 className="mt-6 text-3xl font-bold text-white">How can CallFlow AI help?</h2>
+              <h2 className="mt-6 text-3xl font-bold text-white">How can Flowtix AI help?</h2>
               <p className="mt-3 max-w-xl leading-7 text-slate-400">Use the {selectedAgent.label} for CRM planning, outreach, call preparation, and practical next actions.</p>
               <p className="mt-1 text-sm text-slate-500">{selectedAgent.description}</p>
               <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
@@ -329,7 +329,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
                 }}
                 rows={1}
                 maxLength={20_000}
-                placeholder="Ask CallFlow AI anything…"
+                placeholder="Ask Flowtix AI anything…"
                 className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-white outline-none placeholder:text-slate-500"
               />
               <button type="submit" disabled={!draft.trim() || sending} className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">

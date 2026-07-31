@@ -280,7 +280,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
           <div>
             <p className="text-sm uppercase tracking-[0.32em] text-slate-400">
-              CallFlow
+              Flowtix
             </p>
 
             <p className="text-lg font-semibold text-white">

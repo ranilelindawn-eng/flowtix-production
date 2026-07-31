@@ -134,21 +134,21 @@ const plans = [
 ]
 
 const faqItems = [
-  ['Can CallFlow replace separate dialer and CRM tools?', 'CallFlow is designed to bring cloud calling, contact management, pipelines, campaigns, recordings, transcripts, reporting, and AI-assisted workflows into one workspace.'],
+  ['Can Flowtix replace separate dialer and CRM tools?', 'Flowtix is designed to bring cloud calling, contact management, pipelines, campaigns, recordings, transcripts, reporting, and AI-assisted workflows into one workspace.'],
   ['Do I need a payment method for the trial?', 'Yes. A payment method is collected securely through Stripe. The selected subscription begins after the 7-day trial unless it is cancelled beforehand.'],
-  ['Are call minutes included in the subscription?', 'Carrier numbers, call minutes, messaging, transcription processing, and other third-party provider charges are separate from the CallFlow software subscription.'],
-  ['Can I invite my whole team?', 'Yes. Owners can invite members and assign roles. Plan member limits apply, and organization data remains isolated from other CallFlow customers.'],
-  ['Can I use my own calling provider?', 'CallFlow is designed around provider integrations, including programmable voice workflows. Provider credentials and usage charges are configured separately.'],
+  ['Are call minutes included in the subscription?', 'Carrier numbers, call minutes, messaging, transcription processing, and other third-party provider charges are separate from the Flowtix software subscription.'],
+  ['Can I invite my whole team?', 'Yes. Owners can invite members and assign roles. Plan member limits apply, and organization data remains isolated from other Flowtix customers.'],
+  ['Can I use my own calling provider?', 'Flowtix is designed around provider integrations, including programmable voice workflows. Provider credentials and usage charges are configured separately.'],
   ['Is AI included?', 'AI Workspace, AI insights, summaries, and content-generation workflows are supported when an AI provider is connected and configured for the organization.'],
 ]
 
 function BrandMark() {
   return (
-    <Link href="/" className="inline-flex items-center gap-3" aria-label="CallFlow home">
+    <Link href="/" className="inline-flex items-center gap-3" aria-label="Flowtix home">
       <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-cyan-300/20 bg-cyan-300/10">
         <Logo className="h-7 w-7" />
       </span>
-      <span className="text-lg font-semibold tracking-tight text-white">CallFlow</span>
+      <span className="text-lg font-semibold tracking-tight text-white">Flowtix</span>
     </Link>
   )
 }
@@ -199,7 +199,7 @@ function ProductDashboard() {
 
         <div className="grid min-h-[510px] md:grid-cols-[150px_1fr]">
           <aside className="hidden border-r border-white/10 bg-[#050b18] p-4 md:block">
-            <div className="flex items-center gap-2 text-sm font-semibold text-white"><span className="h-7 w-7 rounded-lg bg-cyan-400/15" /> CallFlow</div>
+            <div className="flex items-center gap-2 text-sm font-semibold text-white"><span className="h-7 w-7 rounded-lg bg-cyan-400/15" /> Flowtix</div>
             <div className="mt-8 space-y-2 text-xs text-slate-400">
               {['Dashboard', 'Contacts', 'Companies', 'Calls', 'Pipelines', 'Campaigns', 'AI Workspace', 'Reports'].map((item, index) => (
                 <div key={item} className={`rounded-xl px-3 py-2.5 ${index === 0 ? 'bg-blue-500/15 text-white' : ''}`}>{item}</div>
@@ -242,12 +242,12 @@ function ProductDashboard() {
                 </div>
                 <svg viewBox="0 0 500 160" className="mt-4 w-full" role="img" aria-label="Sample rising call activity chart">
                   <defs>
-                    <linearGradient id="callflow-chart" x1="0" y1="0" x2="0" y2="1">
+                    <linearGradient id="flowtix-chart" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.35" />
                       <stop offset="100%" stopColor="#2563eb" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  <path d="M0 130 C55 118,80 85,125 104 S196 62,235 77 S310 32,355 54 S420 25,500 8 L500 160 L0 160 Z" fill="url(#callflow-chart)" />
+                  <path d="M0 130 C55 118,80 85,125 104 S196 62,235 77 S310 32,355 54 S420 25,500 8 L500 160 L0 160 Z" fill="url(#flowtix-chart)" />
                   <path d="M0 130 C55 118,80 85,125 104 S196 62,235 77 S310 32,355 54 S420 25,500 8" fill="none" stroke="#22d3ee" strokeWidth="4" strokeLinecap="round" />
                 </svg>
                 <div className="mt-4 space-y-3">
@@ -370,7 +370,7 @@ function AISection() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-violet-300">AI that works for you</p>
           <h2 className="mt-4 text-4xl font-bold tracking-tight text-white sm:text-5xl">Turn every call into a clear next step.</h2>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-400">CallFlow connects conversation intelligence with the CRM, so summaries, coaching, recommended actions, and follow-ups stay attached to the right customer record.</p>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-400">Flowtix connects conversation intelligence with the CRM, so summaries, coaching, recommended actions, and follow-ups stay attached to the right customer record.</p>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {['Call summaries', 'Sentiment analysis', 'Objection detection', 'Lead scoring', 'Next-best-action suggestions', 'AI email and SMS writing', 'Sales coaching', 'Organization-aware AI chat'].map((item) => (
               <div key={item} className="flex items-center gap-3 text-sm text-slate-300"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/15 text-blue-300"><Check className="h-3.5 w-3.5" /></span>{item}</div>
@@ -534,7 +534,7 @@ function FAQSection() {
   return (
     <section className="py-24">
       <div className="mx-auto grid max-w-6xl gap-12 px-5 sm:px-6 lg:grid-cols-[0.7fr_1.3fr] lg:px-8">
-        <div><p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">FAQ</p><h2 className="mt-4 text-4xl font-bold text-white">Frequently asked questions.</h2><p className="mt-5 leading-8 text-slate-400">Need help evaluating CallFlow for your team? Our contact and help pages are ready for deeper questions.</p><Link href="/contact" className="mt-7 inline-flex items-center gap-2 font-semibold text-cyan-300">Talk to us <ArrowRight className="h-4 w-4" /></Link></div>
+        <div><p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">FAQ</p><h2 className="mt-4 text-4xl font-bold text-white">Frequently asked questions.</h2><p className="mt-5 leading-8 text-slate-400">Need help evaluating Flowtix for your team? Our contact and help pages are ready for deeper questions.</p><Link href="/contact" className="mt-7 inline-flex items-center gap-2 font-semibold text-cyan-300">Talk to us <ArrowRight className="h-4 w-4" /></Link></div>
         <div className="space-y-3">
           {faqItems.map(([question, answer]) => (
             <details key={question} className="group rounded-2xl border border-white/10 bg-[#0a1425] p-5 open:border-cyan-300/20">
@@ -572,7 +572,7 @@ function LandingFooter() {
         <div><BrandMark /><p className="mt-5 max-w-sm text-sm leading-7 text-slate-500">An AI-powered cloud dialer and CRM workspace for teams that want every conversation organized, actionable, and connected.</p></div>
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">{groups.map(([title, links]) => <div key={title}><h3 className="text-sm font-semibold text-white">{title}</h3><div className="mt-4 grid gap-3">{links.map(([label, href]) => <Link key={label} href={href} className="text-sm text-slate-500 transition hover:text-white">{label}</Link>)}</div></div>)}</div>
       </div>
-      <div className="mx-auto mt-12 flex max-w-7xl flex-col gap-4 border-t border-white/10 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} CallFlow. All rights reserved.</p><div className="flex flex-wrap gap-5"><Link href="/terms">Terms</Link><Link href="/privacy">Privacy</Link><Link href="/acceptable-use">Acceptable Use</Link><Link href="/recording-consent">Recording Consent</Link></div></div>
+      <div className="mx-auto mt-12 flex max-w-7xl flex-col gap-4 border-t border-white/10 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} Flowtix. All rights reserved.</p><div className="flex flex-wrap gap-5"><Link href="/terms">Terms</Link><Link href="/privacy">Privacy</Link><Link href="/acceptable-use">Acceptable Use</Link><Link href="/recording-consent">Recording Consent</Link></div></div>
     </footer>
   )
 }

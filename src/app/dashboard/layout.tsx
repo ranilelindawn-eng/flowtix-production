@@ -92,7 +92,7 @@ export default async function DashboardLayout({
         <div className="border-b border-white/10 bg-[#07111F]/90 py-5 backdrop-blur-xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-8">
             <div className="text-sm text-slate-400">
-              CallFlow Dashboard
+              Flowtix Dashboard
             </div>
 
             <div className="hidden items-center gap-4 text-slate-400 sm:flex">

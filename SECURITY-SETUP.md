@@ -1,4 +1,4 @@
-# CallFlow Phase 8 — Security Setup
+# Flowtix Phase 8 — Security Setup
 
 ## Included
 - Database-backed rate limiting for sign-in and password reset

@@ -208,7 +208,7 @@ export default function CalendarBoard({
       {(creating || selected) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[30px] border border-white/10 bg-[#0B1726] p-6 shadow-2xl">
-            <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold text-white">{selected ? 'Event details' : 'Create calendar event'}</h3><p className="mt-1 text-sm text-slate-400">Shared with your CallFlow organization.</p></div><button type="button" onClick={() => { setCreating(false); setSelected(null); setError('') }} className="rounded-xl p-2 hover:bg-white/5"><X className="h-5 w-5" /></button></div>
+            <div className="mb-6 flex items-center justify-between"><div><h3 className="text-xl font-semibold text-white">{selected ? 'Event details' : 'Create calendar event'}</h3><p className="mt-1 text-sm text-slate-400">Shared with your Flowtix organization.</p></div><button type="button" onClick={() => { setCreating(false); setSelected(null); setError('') }} className="rounded-xl p-2 hover:bg-white/5"><X className="h-5 w-5" /></button></div>
             {error && <div className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">{error}</div>}
             <form action={(formData) => submit(selected ? updateCalendarEvent : createCalendarEvent, formData)} className="grid gap-4 md:grid-cols-2">
               {selected && <input type="hidden" name="id" value={selected.id} />}

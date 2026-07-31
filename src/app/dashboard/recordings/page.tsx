@@ -313,7 +313,7 @@ export default async function RecordingsPage({
           <div>
             <p className="text-sm font-semibold text-cyan-300">Twilio cloud recordings</p>
             <h2 className="mt-1 text-xl font-semibold text-white">Automatic call capture</h2>
-            <p className="mt-2 text-sm text-slate-400">Stream recordings securely through CallFlow or download the MP3 file.</p>
+            <p className="mt-2 text-sm text-slate-400">Stream recordings securely through Flowtix or download the MP3 file.</p>
           </div>
           <span className="text-sm text-slate-400">{cloudRecordings?.length ?? 0} recent</span>
         </div>

@@ -586,7 +586,7 @@ export async function sendCommunication(formData: FormData) {
       try {
         const gmail = await sendGmailMessage(membership.organization_id, {
           to: recipient,
-          subject: subject || 'Message from CallFlow',
+          subject: subject || 'Message from Flowtix',
           body,
         })
         provider = 'gmail'
@@ -599,7 +599,7 @@ export async function sendCommunication(formData: FormData) {
         const response = await fetch('https://api.resend.com/emails', {
           method: 'POST',
           headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [recipient], subject: subject || 'Message from CallFlow', html: body.replace(/\n/g, '<br>') }),
+          body: JSON.stringify({ from, to: [recipient], subject: subject || 'Message from Flowtix', html: body.replace(/\n/g, '<br>') }),
         })
         const payload = await response.json() as { id?: string; message?: string }
         if (!response.ok) throw new Error(payload.message || 'Email provider rejected the message.')

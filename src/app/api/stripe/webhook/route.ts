@@ -18,7 +18,7 @@ async function syncSubscription(subscription: Stripe.Subscription) {
   const priceId = subscription.items.data[0]?.price.id
   const admin = createTelephonyAdminClient()
   const { data: plan } = await admin.from('subscription_plans').select('id').eq('stripe_price_id', priceId).maybeSingle()
-  if (!plan) throw new Error(`No CallFlow plan is mapped to Stripe price ${priceId}.`)
+  if (!plan) throw new Error(`No Flowtix plan is mapped to Stripe price ${priceId}.`)
 
   const item = subscription.items.data[0]
   await admin.from('organization_subscriptions').upsert({
