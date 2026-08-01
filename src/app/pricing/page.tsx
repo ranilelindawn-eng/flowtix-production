@@ -92,21 +92,21 @@ const plans: PricingPlan[] = [
     name: 'Enterprise',
     price: '$499',
     suffix: '/month',
-    trial: 'Sales-assisted onboarding',
+    trial: '7-day free trial',
     description:
-      'For high-volume organizations that need unlimited team capacity, dedicated onboarding, and tailored commercial terms.',
-    href: '/contact',
+      'For high-volume organizations that need unlimited capacity, advanced controls, and priority support.',
+    href: '/signup?plan=enterprise',
     featured: false,
-    cta: 'Contact Sales',
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Business',
       'Unlimited team members',
       'Unlimited contacts',
-      'Dedicated onboarding',
-      'Priority implementation',
+      'Enterprise roles and controls',
+      'Priority onboarding and support',
       'Security and architecture review',
       'Integration planning',
-      'Commercial support options',
+      'Priority implementation support',
     ],
   },
 ]
@@ -127,9 +127,9 @@ export default function Page() {
               Payment method required to begin the trial
             </p>
             <p className="mt-1 leading-6 text-slate-400">
-              Starter, Professional, and Business subscriptions start
-              automatically after the 7-day trial unless you cancel
-              beforehand. Enterprise onboarding is handled by our sales team.
+              Starter, Professional, Business, and Enterprise subscriptions
+              start automatically after the 7-day trial unless you cancel
+              beforehand.
             </p>
           </div>
 
@@ -201,9 +201,7 @@ export default function Page() {
               </Link>
 
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-                {plan.name === 'Enterprise'
-                  ? 'Contact sales to confirm onboarding, billing, and implementation requirements.'
-                  : 'Card required. Cancel during the 7-day trial to avoid the first monthly charge.'}
+                Card required. Cancel during the 7-day trial to avoid the first monthly charge.
               </p>
             </article>
           ))}

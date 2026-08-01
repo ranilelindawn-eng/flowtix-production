@@ -6,7 +6,12 @@ import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
 import { getStripe } from '@/lib/stripe'
 
-const allowedPlans = ['starter', 'professional', 'business'] as const
+const allowedPlans = [
+  'starter',
+  'professional',
+  'business',
+  'enterprise',
+] as const
 
 type Plan = (typeof allowedPlans)[number]
 
@@ -49,6 +54,7 @@ const getStripePriceId = (plan: Plan) => {
     starter: process.env.STRIPE_STARTER_PRICE_ID,
     professional: process.env.STRIPE_PROFESSIONAL_PRICE_ID,
     business: process.env.STRIPE_BUSINESS_PRICE_ID,
+    enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID,
   }
 
   const priceId = priceIds[plan]

@@ -1,21 +1,39 @@
 import Link from 'next/link'
 import { signUp } from '../auth/actions'
 
+type Plan = 'starter' | 'professional' | 'business' | 'enterprise'
+
 type SignupPageProps = {
-  searchParams: Promise<{ next?: string; email?: string }>
+  searchParams: Promise<{ next?: string; email?: string; plan?: string }>
 }
 
 function safeNext(value?: string) {
   return value && value.startsWith('/') && !value.startsWith('//') ? value : '/dashboard'
 }
 
+function safePlan(value?: string): Plan {
+  const plan = value?.trim().toLowerCase()
+
+  if (
+    plan === 'professional' ||
+    plan === 'business' ||
+    plan === 'enterprise'
+  ) {
+    return plan
+  }
+
+  return 'starter'
+}
+
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const params = await searchParams
   const next = safeNext(params.next)
+  const plan = safePlan(params.plan)
   const invitedEmail = params.email?.trim().toLowerCase() ?? ''
   const invitationSignup = /^\/invite\/[0-9a-f-]{36}$/i.test(next) && Boolean(invitedEmail)
   const loginParams = new URLSearchParams({ next })
   if (invitedEmail) loginParams.set('email', invitedEmail)
+  if (!invitationSignup) loginParams.set('plan', plan)
 
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
@@ -28,6 +46,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           </div>
           <form action={signUp} className="space-y-6">
             <input type="hidden" name="next" value={next} />
+            <input type="hidden" name="plan" value={plan} />
             <input type="hidden" name="invited_email" value={invitedEmail} />
             <label className="block">
               <span className="text-sm text-slate-300">Email</span>

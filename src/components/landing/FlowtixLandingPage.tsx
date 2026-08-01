@@ -9,10 +9,8 @@ import {
   BarChart3,
   Bot,
   BrainCircuit,
-  Building2,
   Check,
   ChevronRight,
-  CircleDollarSign,
   Clock3,
   Cloud,
   ContactRound,
@@ -24,18 +22,15 @@ import {
   LockKeyhole,
   Mail,
   Menu,
-  MessageSquareText,
   Mic2,
   Phone,
   PhoneCall,
   Play,
   Radio,
-  Route,
   Send,
   ShieldCheck,
   Sparkles,
   Star,
-  Tags,
   Target,
   Users,
   WandSparkles,
@@ -148,6 +143,13 @@ const plans = [
     note: 'For larger revenue organizations.',
     features: ['30 team members', 'Advanced permissions', 'Priority onboarding', 'Security support', 'Premium integrations'],
     href: '/signup?plan=business',
+  },
+  {
+    name: 'Enterprise',
+    price: '$499',
+    note: 'For high-volume organizations.',
+    features: ['Unlimited team members', 'Unlimited contacts', 'Enterprise roles and controls', 'Priority onboarding and support', 'Premium integrations'],
+    href: '/signup?plan=enterprise',
   },
 ]
 
@@ -416,7 +418,7 @@ function Hero() {
             </Link>
           </div>
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
-            {['$0 due today', 'Secure Stripe billing', 'Cancel during trial'].map((item) => (
+            {['$0 due today', 'Secure billing', 'Cancel during trial'].map((item) => (
               <span key={item} className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-cyan-300" /> {item}</span>
             ))}
           </div>
@@ -555,7 +557,7 @@ function WorkflowSection() {
 
 function IntegrationsSection() {
   const integrations = useMemo(() => [
-    ['Twilio', PhoneCall], ['Telnyx', Radio], ['Google Calendar', Clock3], ['Microsoft Teams', Users], ['Zoom', Cloud], ['Stripe', CircleDollarSign], ['Email', Mail], ['API', KeyRound],
+    ['Twilio', PhoneCall], ['Telnyx', Radio], ['Google Calendar', Clock3], ['Microsoft Teams', Users], ['Zoom', Cloud], ['Email', Mail], ['API', KeyRound],
   ], [])
 
   return (
@@ -563,7 +565,7 @@ function IntegrationsSection() {
       <div className="mx-auto max-w-7xl px-5 text-center sm:px-8">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Connect your stack</p>
         <h2 className="mx-auto mt-4 max-w-3xl text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Built to work with the providers and tools your business already trusts.</h2>
-        <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+        <div className="mt-12 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
           {integrations.map(([name, Icon]) => {
             const IntegrationIcon = Icon as typeof PhoneCall
             return <div key={name as string} className="rounded-2xl border border-white/[0.08] bg-[#07111f]/80 p-5"><IntegrationIcon className="mx-auto h-5 w-5 text-blue-300" /><p className="mt-3 text-xs font-medium text-slate-300">{name as string}</p></div>
@@ -580,7 +582,7 @@ function PricingSection() {
     <section id="pricing" className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
         <div className="mx-auto max-w-3xl text-center"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Flexible plans</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Start focused. Scale confidently.</h2><p className="mt-5 text-lg text-slate-400">Choose the workspace size that fits your team. Carrier and provider usage are billed separately.</p></div>
-        <div className="mt-14 grid gap-4 lg:grid-cols-3">
+        <div className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <article key={plan.name} className={`relative rounded-[28px] border p-7 ${plan.featured ? 'border-blue-400/35 bg-gradient-to-b from-blue-500/[0.12] to-[#07111f]' : 'border-white/[0.08] bg-[#07111f]/75'}`}>
               {plan.featured && <span className="absolute right-5 top-5 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">Most popular</span>}
