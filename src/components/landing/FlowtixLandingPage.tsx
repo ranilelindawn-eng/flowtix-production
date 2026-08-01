@@ -290,6 +290,28 @@ function ProductDashboard() {
         <p className="mt-3 rounded-xl bg-white/5 p-3 text-xs leading-5 text-slate-300">The prospect is interested in the Professional plan. Recommend a demo and pricing follow-up.</p>
         <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-500"><span>Ask anything…</span><Send className="h-3.5 w-3.5" /></div>
       </div>
+
+      <div className="absolute -bottom-16 -right-3 hidden w-44 rotate-[5deg] rounded-[2rem] border border-white/15 bg-[#050b18] p-2 shadow-[0_30px_80px_-25px_rgba(37,99,235,0.9)] 2xl:block">
+        <div className="overflow-hidden rounded-[1.55rem] border border-white/10 bg-gradient-to-b from-[#0d1a2f] to-[#050b18] px-4 pb-5 pt-3">
+          <div className="mx-auto h-1.5 w-14 rounded-full bg-white/15" />
+          <div className="mt-5 text-center">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Mobile dialer</p>
+            <p className="mt-4 text-sm font-semibold text-white">Robert Ford</p>
+            <p className="mt-1 text-[10px] text-slate-500">(555) 012-4472</p>
+            <p className="mt-3 text-xs font-semibold text-emerald-300">00:01:32</p>
+          </div>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            {[Mic2, Phone, Radio, Clock3, Users, FileAudio].map((Icon, index) => (
+              <span key={index} className="flex aspect-square items-center justify-center rounded-full bg-white/[0.055] text-slate-300">
+                <Icon className="h-3.5 w-3.5" />
+              </span>
+            ))}
+          </div>
+          <div className="mx-auto mt-5 flex h-11 w-11 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-950/40">
+            <Phone className="h-4 w-4 rotate-[135deg]" />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -577,7 +599,7 @@ function LandingFooter() {
   )
 }
 
-export default function CallFlowLandingPage() {
+export default function FlowtixLandingPage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#050b18] text-white">
       <LandingHeader />

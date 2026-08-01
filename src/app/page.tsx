@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import CallFlowLandingPage from '@/components/landing/CallFlowLandingPage'
+import FlowtixLandingPage from '@/components/landing/FlowtixLandingPage'
 
 export const metadata: Metadata = {
   title: 'Flowtix | AI Cloud Dialer and CRM',
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function Home() {
-  return <CallFlowLandingPage />
+  return <FlowtixLandingPage />
 }
