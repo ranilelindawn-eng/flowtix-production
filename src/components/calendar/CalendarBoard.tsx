@@ -126,6 +126,9 @@ export default function CalendarBoard({
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
+  const [attendeeEmails, setAttendeeEmails] = useState<string[]>([])
+  const [attendeeInput, setAttendeeInput] = useState('')
+  const [attendeeError, setAttendeeError] = useState('')
   const [pending, startTransition] = useTransition()
 
   const monthCells = useMemo(() => {
@@ -182,6 +185,9 @@ export default function CalendarBoard({
         await action(formData)
         setCreating(false)
         setSelected(null)
+        setAttendeeEmails([])
+        setAttendeeInput('')
+        setAttendeeError('')
       } catch (caught) {
         setError(
           caught instanceof Error
@@ -192,10 +198,64 @@ export default function CalendarBoard({
     })
   }
 
+  function openCreateDialog() {
+    setSelected(null)
+    setCreating(true)
+    setError('')
+    setAttendeeEmails([])
+    setAttendeeInput('')
+    setAttendeeError('')
+  }
+
+  function openEventDialog(event: CalendarEvent) {
+    setCreating(false)
+    setSelected(event)
+    setError('')
+    setAttendeeEmails(event.attendee_emails ?? [])
+    setAttendeeInput('')
+    setAttendeeError('')
+  }
+
   function closeDialog() {
     setCreating(false)
     setSelected(null)
     setError('')
+    setAttendeeEmails([])
+    setAttendeeInput('')
+    setAttendeeError('')
+  }
+
+  function addAttendeeEmails(rawValue = attendeeInput) {
+    const candidates = rawValue
+      .split(/[\s,;]+/)
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean)
+
+    if (candidates.length === 0) {
+      return
+    }
+
+    const invalidEmail = candidates.find(
+      (email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    )
+
+    if (invalidEmail) {
+      setAttendeeError(`Enter a valid email address: ${invalidEmail}`)
+      return
+    }
+
+    setAttendeeEmails((current) =>
+      Array.from(new Set([...current, ...candidates])),
+    )
+    setAttendeeInput('')
+    setAttendeeError('')
+  }
+
+  function removeAttendeeEmail(emailToRemove: string) {
+    setAttendeeEmails((current) =>
+      current.filter((email) => email !== emailToRemove),
+    )
+    setAttendeeError('')
   }
 
   function deleteSelectedEvent() {
@@ -294,7 +354,7 @@ export default function CalendarBoard({
 
           <button
             type="button"
-            onClick={() => setCreating(true)}
+            onClick={openCreateDialog}
             className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500"
           >
             <Plus className="h-4 w-4" />
@@ -345,7 +405,7 @@ export default function CalendarBoard({
                       <button
                         key={event.id}
                         type="button"
-                        onClick={() => setSelected(event)}
+                        onClick={() => openEventDialog(event)}
                         className={`block w-full truncate rounded-lg border px-2 py-1.5 text-left text-xs ${eventTone(
                           event.event_type,
                         )}`}
@@ -391,7 +451,7 @@ export default function CalendarBoard({
                 <button
                   key={event.id}
                   type="button"
-                  onClick={() => setSelected(event)}
+                  onClick={() => openEventDialog(event)}
                   className="flex w-full items-center gap-4 rounded-[24px] border border-white/10 bg-white/[0.03] p-4 text-left hover:bg-white/[0.05]"
                 >
                   <div className="min-w-20 rounded-2xl bg-white/5 px-3 py-2 text-center">
@@ -477,14 +537,33 @@ export default function CalendarBoard({
             )}
 
             <form
-              action={(formData) =>
+              action={(formData) => {
+                const pendingEmail = attendeeInput.trim().toLowerCase()
+                const submittedEmails = [...attendeeEmails]
+
+                if (pendingEmail) {
+                  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(pendingEmail)) {
+                    setAttendeeError(
+                      `Enter a valid email address: ${pendingEmail}`,
+                    )
+                    return
+                  }
+
+                  submittedEmails.push(pendingEmail)
+                }
+
+                formData.set(
+                  'attendee_emails',
+                  Array.from(new Set(submittedEmails)).join(', '),
+                )
+
                 submit(
                   selected
                     ? updateCalendarEvent
                     : createCalendarEvent,
                   formData,
                 )
-              }
+              }}
               className="grid gap-4 md:grid-cols-2"
             >
               {selected && (
@@ -746,21 +825,90 @@ export default function CalendarBoard({
                 value={timezone}
               />
 
-              <label className="md:col-span-2">
+              <div className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-300">
                   Attendee emails
                 </span>
 
                 <input
+                  type="hidden"
                   name="attendee_emails"
-                  defaultValue={
-                    selected?.attendee_emails?.join(', ') ??
-                    ''
-                  }
-                  placeholder="customer@example.com, manager@example.com"
-                  className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
+                  value={attendeeEmails.join(', ')}
                 />
-              </label>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="email"
+                    value={attendeeInput}
+                    onChange={(event) => {
+                      setAttendeeInput(event.target.value)
+                      setAttendeeError('')
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'Enter' ||
+                        event.key === ',' ||
+                        event.key === ';'
+                      ) {
+                        event.preventDefault()
+                        addAttendeeEmails()
+                      }
+                    }}
+                    onPaste={(event) => {
+                      const pastedText = event.clipboardData.getData('text')
+
+                      if (/[\s,;]/.test(pastedText.trim())) {
+                        event.preventDefault()
+                        addAttendeeEmails(pastedText)
+                      }
+                    }}
+                    placeholder="attendee@example.com"
+                    aria-label="Attendee email address"
+                    className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none focus:border-blue-500"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => addAttendeeEmails()}
+                    disabled={!attendeeInput.trim()}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-400/30 bg-blue-500/10 px-4 py-3 text-sm font-semibold text-blue-100 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add email
+                  </button>
+                </div>
+
+                <p className="mt-2 text-xs text-slate-500">
+                  Press Enter, comma, or semicolon to add each attendee.
+                </p>
+
+                {attendeeError && (
+                  <p className="mt-2 text-sm text-red-300">
+                    {attendeeError}
+                  </p>
+                )}
+
+                {attendeeEmails.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {attendeeEmails.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex max-w-full items-center gap-2 rounded-full border border-blue-400/25 bg-blue-400/10 px-3 py-1.5 text-sm text-blue-100"
+                      >
+                        <span className="truncate">{email}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttendeeEmail(email)}
+                          aria-label={`Remove ${email}`}
+                          className="rounded-full p-0.5 text-blue-200 hover:bg-white/10 hover:text-white"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-300">
