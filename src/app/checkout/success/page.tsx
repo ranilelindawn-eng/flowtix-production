@@ -13,13 +13,12 @@ export default function CheckoutSuccessPage() {
         </p>
 
         <h1 className="mt-4 text-3xl font-semibold">
-          Your 7-day Flowtix trial is ready.
+          Your Flowtix payment is complete.
         </h1>
 
         <p className="mt-4 leading-7 text-slate-400">
-          Stripe has securely saved your payment method. Check your email for
-          the Supabase confirmation message, confirm your account if required,
-          and then sign in to Flowtix.
+          PayMongo has securely processed your payment. Sign in to Flowtix to
+          view your workspace, current plan, and usage limits.
         </p>
 
         <Link

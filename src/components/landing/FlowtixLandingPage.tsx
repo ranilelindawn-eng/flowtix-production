@@ -124,14 +124,14 @@ const workflowSteps = [
 const plans = [
   {
     name: 'Starter',
-    price: '$29',
+    price: '₱1,699',
     note: 'For solo operators and small teams.',
     features: ['5 team members', '1,000 contacts', 'Core CRM', 'Tasks and notes', 'Basic reporting'],
     href: '/signup?plan=starter',
   },
   {
     name: 'Professional',
-    price: '$79',
+    price: '₱4,599',
     note: 'For growing sales teams.',
     features: ['10 team members', '10,000 contacts', 'Recordings and transcripts', 'AI summaries', 'Advanced reporting'],
     href: '/signup?plan=professional',
@@ -139,14 +139,14 @@ const plans = [
   },
   {
     name: 'Business',
-    price: '$199',
+    price: '₱11,599',
     note: 'For larger revenue organizations.',
     features: ['30 team members', 'Advanced permissions', 'Priority onboarding', 'Security support', 'Premium integrations'],
     href: '/signup?plan=business',
   },
   {
     name: 'Enterprise',
-    price: '$499',
+    price: '₱28,999',
     note: 'For high-volume organizations.',
     features: ['Unlimited team members', 'Unlimited contacts', 'Enterprise roles and controls', 'Priority onboarding and support', 'Premium integrations'],
     href: '/signup?plan=enterprise',
@@ -418,7 +418,7 @@ function Hero() {
             </Link>
           </div>
           <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-400">
-            {['$0 due today', 'Secure billing', 'Cancel during trial'].map((item) => (
+            {['PayMongo hosted checkout', 'Secure billing', 'Philippine payment methods'].map((item) => (
               <span key={item} className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-cyan-300" /> {item}</span>
             ))}
           </div>
@@ -588,7 +588,7 @@ function PricingSection() {
               {plan.featured && <span className="absolute right-5 top-5 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">Most popular</span>}
               <p className="font-semibold text-white">{plan.name}</p><p className="mt-4 text-4xl font-semibold tracking-tight text-white">{plan.price}<span className="text-sm font-normal text-slate-500">/month</span></p><p className="mt-3 text-sm text-slate-400">{plan.note}</p>
               <ul className="mt-7 space-y-3 text-sm text-slate-300">{plan.features.map((feature) => <li key={feature} className="flex gap-3"><Check className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />{feature}</li>)}</ul>
-              <Link href={plan.href} className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${plan.featured ? 'bg-blue-600 text-white hover:bg-blue-500' : 'border border-white/15 text-white hover:bg-white/[0.05]'}`}>Start free trial</Link>
+              <Link href={plan.href} className={`mt-8 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition ${plan.featured ? 'bg-blue-600 text-white hover:bg-blue-500' : 'border border-white/15 text-white hover:bg-white/[0.05]'}`}>Choose plan</Link>
             </article>
           ))}
         </div>

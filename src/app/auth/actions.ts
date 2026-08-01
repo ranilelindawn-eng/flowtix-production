@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
-import { getStripe } from '@/lib/stripe'
 
 const allowedPlans = [
   'starter',
@@ -47,25 +46,6 @@ const getPlan = (formData: FormData): Plan => {
   return allowedPlans.includes(requestedPlan as Plan)
     ? (requestedPlan as Plan)
     : 'starter'
-}
-
-const getStripePriceId = (plan: Plan) => {
-  const priceIds: Record<Plan, string | undefined> = {
-    starter: process.env.STRIPE_STARTER_PRICE_ID,
-    professional: process.env.STRIPE_PROFESSIONAL_PRICE_ID,
-    business: process.env.STRIPE_BUSINESS_PRICE_ID,
-    enterprise: process.env.STRIPE_ENTERPRISE_PRICE_ID,
-  }
-
-  const priceId = priceIds[plan]
-
-  if (!priceId) {
-    throw new Error(
-      `Missing Stripe Price ID for the ${plan} plan. Check your .env.local file.`,
-    )
-  }
-
-  return priceId
 }
 
 const getSiteUrl = () => {
@@ -151,8 +131,8 @@ export async function signUp(formData: FormData) {
     throw new Error('Supabase did not return a user after signup.')
   }
 
-  // Invited team members join an existing subscription and must not be sent
-  // through a separate Stripe Checkout flow.
+  // Invited team members join an existing workspace subscription and must
+  // not be sent through a separate billing flow.
   if (invitationSignup) {
     await writeAuditLog('auth.invited_user_sign_up', 'user')
 
@@ -165,44 +145,23 @@ export async function signUp(formData: FormData) {
     )
   }
 
-  const stripe = getStripe()
-  const priceId = getStripePriceId(plan)
-
-  const checkoutSession = await stripe.checkout.sessions.create({
-    mode: 'subscription',
-    customer_email: email,
-    client_reference_id: data.user.id,
-    line_items: [
-      {
-        price: priceId,
-        quantity: 1,
-      },
-    ],
-    payment_method_collection: 'always',
-    subscription_data: {
-      trial_period_days: 7,
-      metadata: {
-        supabase_user_id: data.user.id,
-        plan,
-      },
-    },
-    metadata: {
-      supabase_user_id: data.user.id,
-      plan,
-    },
-    allow_promotion_codes: true,
-    billing_address_collection: 'auto',
-    success_url: `${siteUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${siteUrl}/pricing?checkout=cancelled`,
-  })
-
-  if (!checkoutSession.url) {
-    throw new Error('Stripe did not return a Checkout URL.')
-  }
-
   await writeAuditLog('auth.sign_up', 'user')
 
-  redirect(checkoutSession.url)
+  const billingPath = `/dashboard/billing?plan=${encodeURIComponent(plan)}`
+
+  // PayMongo Checkout requires an authenticated workspace and organization.
+  // When email confirmation is disabled, the new session can proceed directly.
+  // Otherwise, the user confirms their email, signs in, and then chooses the
+  // selected plan from the billing page.
+  if (data.session) {
+    redirect(billingPath)
+  }
+
+  redirect(
+    `/login?signup=confirmation-required&next=${encodeURIComponent(
+      billingPath,
+    )}`,
+  )
 }
 
 export async function signOut() {

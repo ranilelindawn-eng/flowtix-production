@@ -1,0 +1,19 @@
+FLOWTIX PREMIUM HOMEPAGE
+
+1. In your project root, install Motion for React:
+
+   npm install motion
+
+2. Replace these files with the files in this package:
+
+   src/app/page.tsx
+   src/components/landing/FlowtixLandingPage.tsx
+
+3. Validate:
+
+   npm run lint
+   npm run build
+
+4. Deploy only after both commands pass.
+
+This package changes only the public homepage files. It does not change dashboard, API, Supabase, Stripe, Twilio, Telnyx, calendar, CRM, authentication, or database files.
