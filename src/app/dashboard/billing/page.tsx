@@ -4,6 +4,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 
+import { AutoCheckoutForm } from '@/components/billing/AutoCheckoutForm'
 import { UsageMeter } from '@/components/billing/UsageMeter'
 import { requirePermission } from '@/lib/auth'
 import {
@@ -56,6 +57,23 @@ export default async function BillingPage({
     typeof query.checkout === 'string'
       ? query.checkout
       : null
+  const requestedPlanCode =
+    typeof query.plan === 'string'
+      ? query.plan.trim().toLowerCase()
+      : null
+
+  const requestedPlan = requestedPlanCode
+    ? plans.find(
+        (plan) =>
+          plan.code.toLowerCase() === requestedPlanCode &&
+          plan.monthly_price_cents > 0,
+      )
+    : null
+
+  const requestedPlanIsCurrent =
+    requestedPlan &&
+    (subscription?.plan?.id === requestedPlan.id ||
+      usage?.planCode === requestedPlan.code)
 
   return (
     <div className="space-y-8">
@@ -71,6 +89,22 @@ export default async function BillingPage({
         </p>
       </div>
 
+      {requestedPlan &&
+      !requestedPlanIsCurrent &&
+      canManage &&
+      !checkoutState ? (
+        <AutoCheckoutForm
+          planId={requestedPlan.id}
+          planCode={requestedPlan.code}
+        />
+      ) : null}
+
+      {requestedPlan && !canManage ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+          Only the workspace owner can change the subscription plan.
+        </div>
+      ) : null}
+
       {checkoutState === 'success' ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
           Payment completed. PayMongo is updating your workspace
@@ -85,37 +119,33 @@ export default async function BillingPage({
       ) : null}
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-cyan-400" />
-              <p className="text-sm text-slate-400">
-                Current workspace plan
-              </p>
-            </div>
-
-            <p className="mt-2 text-2xl font-bold text-white">
-              {usage?.planName ??
-                subscription?.plan?.name ??
-                'Starter'}
+        <div>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-cyan-400" />
+            <p className="text-sm text-slate-400">
+              Current workspace plan
             </p>
-
-            <p className="mt-1 text-sm capitalize text-slate-400">
-              Status:{' '}
-              {usage?.subscriptionStatus ??
-                subscription?.status ??
-                'active'}
-            </p>
-
-            {usage?.cancelAtPeriodEnd ? (
-              <p className="mt-2 flex items-center gap-2 text-sm text-amber-300">
-                <AlertTriangle className="h-4 w-4" />
-                Cancels at the end of the current billing period.
-              </p>
-            ) : null}
           </div>
 
+          <p className="mt-2 text-2xl font-bold text-white">
+            {usage?.planName ??
+              subscription?.plan?.name ??
+              'Starter'}
+          </p>
 
+          <p className="mt-1 text-sm capitalize text-slate-400">
+            Status:{' '}
+            {usage?.subscriptionStatus ??
+              subscription?.status ??
+              'active'}
+          </p>
+
+          {usage?.cancelAtPeriodEnd ? (
+            <p className="mt-2 flex items-center gap-2 text-sm text-amber-300">
+              <AlertTriangle className="h-4 w-4" />
+              Cancels at the end of the current billing period.
+            </p>
+          ) : null}
         </div>
       </section>
 
