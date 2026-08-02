@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Choose a Flowtix plan with secure PayMongo-hosted checkout.',
+    'Choose a Flowtix plan and start a 7-day free trial with secure Stripe billing.',
 }
 
 type PricingPlan = {
@@ -27,14 +27,14 @@ type PricingPlan = {
 const plans: PricingPlan[] = [
   {
     name: 'Starter',
-    price: '₱1,699',
+    price: '$29',
     suffix: '/month',
-    trial: 'Secure monthly billing',
+    trial: '7-day free trial',
     description:
       'For freelancers, virtual assistants, and small teams building a reliable calling workflow.',
     href: '/signup?plan=starter',
     featured: false,
-    cta: 'Choose Plan',
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Up to 5 team members including the owner',
       '1,000 contacts',
@@ -47,14 +47,14 @@ const plans: PricingPlan[] = [
   },
   {
     name: 'Professional',
-    price: '₱4,599',
+    price: '$79',
     suffix: '/month',
-    trial: 'Secure monthly billing',
+    trial: '7-day free trial',
     description:
       'For active sales teams that need collaboration, recordings, AI, and advanced workflow tools.',
     href: '/signup?plan=professional',
     featured: true,
-    cta: 'Choose Plan',
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Starter',
       'Up to 10 team members including the owner',
@@ -69,14 +69,14 @@ const plans: PricingPlan[] = [
   },
   {
     name: 'Business',
-    price: '₱11,599',
+    price: '$199',
     suffix: '/month',
-    trial: 'Secure monthly billing',
+    trial: '7-day free trial',
     description:
       'For larger organizations that require advanced permissions, onboarding, and support.',
     href: '/signup?plan=business',
     featured: false,
-    cta: 'Choose Plan',
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Professional',
       'Up to 30 team members including the owner',
@@ -90,14 +90,14 @@ const plans: PricingPlan[] = [
   },
   {
     name: 'Enterprise',
-    price: '₱28,999',
+    price: '$499',
     suffix: '/month',
-    trial: 'Secure monthly billing',
+    trial: '7-day free trial',
     description:
       'For high-volume organizations that need unlimited capacity, advanced controls, and priority support.',
     href: '/signup?plan=enterprise',
     featured: false,
-    cta: 'Choose Plan',
+    cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Business',
       'Unlimited team members',
@@ -116,23 +116,25 @@ export default function Page() {
     <MarketingShell>
       <MarketingHero
         eyebrow="Simple pricing"
-        title="Choose the right plan for your Flowtix workspace."
-        description="Create your Flowtix account, choose a plan, and complete payment through PayMongo-hosted checkout using supported Philippine payment methods."
+        title="Start free for 7 days. Pay only when your trial ends."
+        description="Create your Flowtix account, securely add your payment details through Stripe, and begin your 7-day free trial. Cancel before the trial ends to avoid being charged."
       />
 
       <ContentSection title="Plans">
         <div className="mb-10 flex flex-col gap-4 rounded-3xl border border-cyan-400/15 bg-cyan-400/[0.05] px-6 py-5 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-white">
-              Secure checkout through PayMongo
+              Payment method required to begin the trial
             </p>
             <p className="mt-1 leading-6 text-slate-400">
-              Choose a plan after creating your workspace. Your plan becomes active after PayMongo confirms the payment.
+              Starter, Professional, Business, and Enterprise subscriptions
+              start automatically after the 7-day trial unless you cancel
+              beforehand.
             </p>
           </div>
 
           <span className="inline-flex w-fit rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">
-            PayMongo checkout
+            $0 due today
           </span>
         </div>
 
