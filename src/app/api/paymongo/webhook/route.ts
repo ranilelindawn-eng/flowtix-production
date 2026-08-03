@@ -2,23 +2,34 @@ import { NextResponse } from 'next/server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 
+type PayMongoResource = {
+  id?: string
+  type?: string
+  attributes?: {
+    metadata?: {
+      organization_id?: string
+      plan_code?: string
+    }
+    payments?: Array<{
+      id?: string
+    }>
+    payment_intent?: {
+      attributes?: {
+        payments?: Array<{
+          id?: string
+        }>
+      }
+    }
+  }
+}
+
 type PayMongoWebhookBody = {
   data?: {
     id?: string
+    type?: string
     attributes?: {
       type?: string
-      data?: {
-        id?: string
-        attributes?: {
-          metadata?: {
-            organization_id?: string
-            plan_code?: string
-          }
-          payments?: Array<{
-            id?: string
-          }>
-        }
-      }
+      data?: PayMongoResource
     }
   }
 }
@@ -28,14 +39,13 @@ export async function POST(request: Request) {
     const body =
       (await request.json()) as PayMongoWebhookBody
 
-    console.log(
-      'PAYMONGO WEBHOOK RECEIVED:',
-      JSON.stringify(body, null, 2),
-    )
-
     const eventType =
       body.data?.attributes?.type
 
+    /*
+     * PayMongo may send other subscribed event types.
+     * Always acknowledge events that this route does not process.
+     */
     if (
       eventType !==
       'checkout_session.payment.paid'
@@ -49,44 +59,130 @@ export async function POST(request: Request) {
     const checkoutSession =
       body.data?.attributes?.data
 
-    const checkoutId = checkoutSession?.id
+    const checkoutId =
+      checkoutSession?.id ?? null
+
     const checkoutAttributes =
       checkoutSession?.attributes
+
     const metadata =
       checkoutAttributes?.metadata
 
     const organizationId =
-      metadata?.organization_id
-    const planCode = metadata?.plan_code
-    const paymentId =
-      checkoutAttributes?.payments?.[0]?.id ?? null
+      metadata?.organization_id?.trim() ?? ''
 
+    const planCode =
+      metadata?.plan_code?.trim() ?? ''
+
+    const paymentId =
+      checkoutAttributes?.payments?.[0]?.id ??
+      checkoutAttributes?.payment_intent
+        ?.attributes?.payments?.[0]?.id ??
+      null
+
+    /*
+     * A malformed or historical event should be acknowledged
+     * instead of returning 400/500 forever and disabling the webhook.
+     */
     if (
       !checkoutId ||
       !organizationId ||
       !planCode
     ) {
-      console.error(
-        'PAYMONGO WEBHOOK METADATA MISSING:',
+      console.warn(
+        'PAYMONGO WEBHOOK IGNORED: incomplete metadata',
         {
+          eventType,
           checkoutId,
           organizationId,
           planCode,
         },
       )
 
+      return NextResponse.json({
+        received: true,
+        ignored: 'incomplete_metadata',
+      })
+    }
+
+    const admin = createAdminClient()
+
+    const {
+      data: subscription,
+      error: subscriptionError,
+    } = await admin
+      .from('organization_subscriptions')
+      .select(
+        `
+          id,
+          organization_id,
+          paymongo_checkout_id,
+          paymongo_plan_code,
+          status
+        `,
+      )
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+
+    if (subscriptionError) {
+      console.error(
+        'PAYMONGO SUBSCRIPTION LOOKUP ERROR:',
+        subscriptionError,
+      )
+
       return NextResponse.json(
         {
-          error:
-            'Checkout metadata is incomplete.',
+          error: 'Unable to verify subscription.',
         },
         {
-          status: 400,
+          status: 500,
         },
       )
     }
 
-    const admin = createAdminClient()
+    /*
+     * This handles deleted test accounts and old webhook events.
+     * Return 200 so PayMongo does not keep retrying stale deliveries.
+     */
+    if (!subscription) {
+      console.warn(
+        'PAYMONGO WEBHOOK IGNORED: organization subscription no longer exists',
+        {
+          organizationId,
+          checkoutId,
+          planCode,
+        },
+      )
+
+      return NextResponse.json({
+        received: true,
+        ignored: 'subscription_not_found',
+      })
+    }
+
+    /*
+     * Prevent an older checkout from overriding a newer plan choice.
+     */
+    if (
+      subscription.paymongo_checkout_id &&
+      subscription.paymongo_checkout_id !==
+        checkoutId
+    ) {
+      console.warn(
+        'PAYMONGO WEBHOOK IGNORED: stale checkout',
+        {
+          organizationId,
+          incomingCheckoutId: checkoutId,
+          currentCheckoutId:
+            subscription.paymongo_checkout_id,
+        },
+      )
+
+      return NextResponse.json({
+        received: true,
+        ignored: 'stale_checkout',
+      })
+    }
 
     const {
       data: plan,
@@ -97,20 +193,40 @@ export async function POST(request: Request) {
       .eq('code', planCode)
       .maybeSingle()
 
-    if (planError || !plan) {
+    if (planError) {
       console.error(
-        'PLAN LOOKUP ERROR:',
+        'PAYMONGO PLAN LOOKUP ERROR:',
         planError,
       )
 
       return NextResponse.json(
         {
-          error: 'Subscription plan not found.',
+          error: 'Unable to load subscription plan.',
         },
         {
-          status: 404,
+          status: 500,
         },
       )
+    }
+
+    /*
+     * Old plans should also be acknowledged rather than causing
+     * endless webhook retries.
+     */
+    if (!plan) {
+      console.warn(
+        'PAYMONGO WEBHOOK IGNORED: plan not found',
+        {
+          planCode,
+          organizationId,
+          checkoutId,
+        },
+      )
+
+      return NextResponse.json({
+        received: true,
+        ignored: 'plan_not_found',
+      })
     }
 
     const {
@@ -125,21 +241,19 @@ export async function POST(request: Request) {
         paymongo_plan_code: planCode,
         paymongo_payment_id: paymentId,
       })
-      .eq('organization_id', organizationId)
+      .eq('id', subscription.id)
       .select('id')
       .maybeSingle()
 
-    if (updateError || !updatedSubscription) {
+    if (updateError) {
       console.error(
-        'DATABASE UPDATE ERROR:',
+        'PAYMONGO SUBSCRIPTION UPDATE ERROR:',
         updateError,
       )
 
       return NextResponse.json(
         {
-          error:
-            updateError?.message ??
-            'Subscription record was not updated.',
+          error: 'Unable to activate subscription.',
         },
         {
           status: 500,
@@ -147,10 +261,26 @@ export async function POST(request: Request) {
       )
     }
 
+    if (!updatedSubscription) {
+      console.warn(
+        'PAYMONGO WEBHOOK IGNORED: subscription disappeared before update',
+        {
+          organizationId,
+          checkoutId,
+        },
+      )
+
+      return NextResponse.json({
+        received: true,
+        ignored: 'subscription_missing_during_update',
+      })
+    }
+
     console.log(
-      'SUBSCRIPTION ACTIVATED SUCCESSFULLY:',
+      'PAYMONGO SUBSCRIPTION ACTIVATED:',
       {
         organizationId,
+        checkoutId,
         planCode,
         paymentId,
       },
@@ -161,7 +291,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error(
-      'PAYMONGO WEBHOOK ERROR:',
+      'PAYMONGO WEBHOOK PROCESSING ERROR:',
       error,
     )
 
