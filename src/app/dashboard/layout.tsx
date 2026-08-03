@@ -21,7 +21,8 @@ export default async function DashboardLayout({
   const { data: claimsData, error: claimsError } =
     await supabase.auth.getClaims()
 
-  const userId = claimsData?.claims?.sub
+  const claims = claimsData?.claims
+  const userId = claims?.sub
 
   if (
     claimsError ||
@@ -31,20 +32,25 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
-  const claims = claimsData?.claims
   const claimEmail =
-    typeof claims?.email === 'string' ? claims.email : ''
+    typeof claims?.email === 'string'
+      ? claims.email
+      : ''
 
-  const [profileResult, currentOrganization] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('full_name, avatar_url')
-      .eq('id', userId)
-      .maybeSingle(),
-    getCurrentOrganization(),
-  ])
+  const [profileResult, currentOrganization] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', userId)
+        .maybeSingle(),
+      getCurrentOrganization(),
+    ])
 
-  const { data: profile, error: profileError } = profileResult
+  const {
+    data: profile,
+    error: profileError,
+  } = profileResult
 
   if (profileError) {
     console.error(
@@ -54,14 +60,20 @@ export default async function DashboardLayout({
   }
 
   let organizationName = 'Workspace'
+  let organizationLogoUrl: string | null = null
 
   if (currentOrganization) {
-    const { data: organization, error: organizationError } =
-      await supabase
-        .from('organizations')
-        .select('name')
-        .eq('id', currentOrganization.organization_id)
-        .maybeSingle()
+    const {
+      data: organization,
+      error: organizationError,
+    } = await supabase
+      .from('organizations')
+      .select('name, logo_url')
+      .eq(
+        'id',
+        currentOrganization.organization_id,
+      )
+      .maybeSingle()
 
     if (organizationError) {
       console.error(
@@ -70,12 +82,20 @@ export default async function DashboardLayout({
       )
     }
 
-    if (organization?.name) {
-      organizationName = organization.name
+    if (organization?.name?.trim()) {
+      organizationName =
+        organization.name.trim()
+    }
+
+    if (organization?.logo_url?.trim()) {
+      organizationLogoUrl =
+        organization.logo_url.trim()
     }
   }
 
-  const userEmail = claimEmail || 'user@example.com'
+  const userEmail =
+    claimEmail || 'user@example.com'
+
   const userName =
     profile?.full_name?.trim() ||
     userEmail.split('@')[0] ||
@@ -84,8 +104,17 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
       <SessionTracker />
+
       <div className="lg:fixed lg:inset-y-0 lg:left-0 lg:w-[280px]">
-        <Sidebar role={currentOrganization?.role ?? 'agent'} />
+        <Sidebar
+          role={
+            currentOrganization?.role ?? 'agent'
+          }
+          organizationName={organizationName}
+          organizationLogoUrl={
+            organizationLogoUrl
+          }
+        />
       </div>
 
       <div className="lg:pl-[280px]">
@@ -110,10 +139,14 @@ export default async function DashboardLayout({
             organizationName={organizationName}
             userName={userName}
             userEmail={userEmail}
-            avatarUrl={profile?.avatar_url ?? null}
+            avatarUrl={
+              profile?.avatar_url ?? null
+            }
           />
 
-          <div className="mt-10">{children}</div>
+          <div className="mt-10">
+            {children}
+          </div>
         </main>
       </div>
     </div>

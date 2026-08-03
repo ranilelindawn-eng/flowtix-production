@@ -11,11 +11,16 @@ export type SubscriptionPlan = {
   name: string
   description: string | null
   monthly_price_cents: number
+
   stripe_price_id: string | null
+
+  paymongo_price_code: string | null
+
   max_members: number | null
   max_contacts: number | null
   max_storage_bytes: number | null
   max_calls_per_month: number | null
+
   sort_order: number
   is_public: boolean
   features: string[]
@@ -26,12 +31,20 @@ export type OrganizationSubscription = {
   id: string
   organization_id: string
   plan_id: string
+
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
+
+  paymongo_checkout_id: string | null
+  paymongo_payment_id: string | null
+
   status: string
+
   current_period_start: string | null
   current_period_end: string | null
+
   cancel_at_period_end: boolean
+
   plan: SubscriptionPlan | null
 }
 

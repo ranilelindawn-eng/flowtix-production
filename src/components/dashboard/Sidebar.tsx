@@ -1,37 +1,38 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import {
+  Activity,
+  BadgeDollarSign,
+  BarChart3,
+  Briefcase,
+  Building2,
+  CalendarDays,
+  Clock3,
+  FileText,
+  FolderOpen,
+  GitBranch,
+  Home,
+  ListOrdered,
+  LockKeyhole,
+  Mail,
+  MessageSquareText,
+  Phone,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Tags,
+  TextQuote,
+  Users,
+  UsersRound,
+  Zap,
+} from 'lucide-react'
 
 import type { Permission } from '@/lib/permissions'
 import { hasPermission } from '@/lib/permissions'
 import type { TeamRole } from '@/lib/team'
-import {
-  Briefcase,
-  BadgeDollarSign,
-  Building2,
-  ShieldCheck,
-  LockKeyhole,
-  FolderOpen,
-  GitBranch,
-  Mail,
-  MessageSquareText,
-  BarChart3,
-  Tags,
-  TextQuote,
-  Activity,
-  CalendarDays,
-  Clock3,
-  ListOrdered,
-  UsersRound,
-  FileText,
-  Home,
-  Phone,
-  Settings,
-  Sparkles,
-  Users,
-  Zap,
-} from 'lucide-react'
 
 type NavItem = {
   id: string
@@ -250,13 +251,27 @@ const navItems: NavItem[] = [
 
 type SidebarProps = {
   role: TeamRole
+  organizationName: string
+  organizationLogoUrl: string | null
 }
 
-export default function Sidebar({ role }: SidebarProps) {
+function getOrganizationInitial(name: string): string {
+  const firstCharacter = name.trim().charAt(0)
+
+  return firstCharacter ? firstCharacter.toUpperCase() : 'W'
+}
+
+export default function Sidebar({
+  role,
+  organizationName,
+  organizationLogoUrl,
+}: SidebarProps) {
   const pathname = usePathname() ?? '/dashboard'
 
   const visibleNavItems = navItems.filter(
-    (item) => !item.permission || hasPermission(role, item.permission),
+    (item) =>
+      !item.permission ||
+      hasPermission(role, item.permission),
   )
 
   function isItemActive(item: NavItem): boolean {
@@ -270,27 +285,53 @@ export default function Sidebar({ role }: SidebarProps) {
     )
   }
 
+  const organizationInitial =
+    getOrganizationInitial(organizationName)
+
   return (
     <aside className="h-full overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0B1726] text-white [scrollbar-gutter:stable]">
       <div className="mx-auto flex max-w-7xl flex-col px-6 py-6 lg:px-8 lg:py-8">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#22D3EE]/20 to-[#2563EB]/15 text-white ring-1 ring-white/10">
-            <span className="text-lg font-semibold">C</span>
+        <Link
+          href="/dashboard/settings/organization"
+          className="mb-8 flex items-center gap-3 rounded-2xl transition hover:opacity-90"
+          aria-label="Open organization settings"
+        >
+          <div className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#22D3EE]/20 to-[#2563EB]/15 text-white ring-1 ring-white/10">
+            {organizationLogoUrl ? (
+              <Image
+                src={organizationLogoUrl}
+                alt={`${organizationName} logo`}
+                fill
+                unoptimized
+                sizes="44px"
+                className="object-cover"
+              />
+            ) : (
+              <span className="text-lg font-semibold">
+                {organizationInitial}
+              </span>
+            )}
           </div>
 
-          <div>
+          <div className="min-w-0">
             <p className="text-sm uppercase tracking-[0.32em] text-slate-400">
               Flowtix
             </p>
 
-            <p className="text-lg font-semibold text-white">
-              Workspace
+            <p
+              className="truncate text-lg font-semibold text-white"
+              title={organizationName}
+            >
+              {organizationName}
             </p>
           </div>
-        </div>
+        </Link>
 
         <div className="hidden lg:block">
-          <nav className="space-y-1" aria-label="Dashboard navigation">
+          <nav
+            className="space-y-1"
+            aria-label="Dashboard navigation"
+          >
             {visibleNavItems.map((item) => {
               const isActive = isItemActive(item)
 
@@ -298,7 +339,9 @@ export default function Sidebar({ role }: SidebarProps) {
                 <Link
                   key={item.id}
                   href={item.href}
-                  aria-current={isActive ? 'page' : undefined}
+                  aria-current={
+                    isActive ? 'page' : undefined
+                  }
                   className={
                     isActive
                       ? 'flex items-center gap-3 rounded-3xl bg-white/5 px-4 py-3 text-white shadow-[0_12px_35px_-20px_rgba(34,211,238,0.55)]'
@@ -333,7 +376,9 @@ export default function Sidebar({ role }: SidebarProps) {
                   <Link
                     key={item.id}
                     href={item.href}
-                    aria-current={isActive ? 'page' : undefined}
+                    aria-current={
+                      isActive ? 'page' : undefined
+                    }
                     className={
                       isActive
                         ? 'flex items-center gap-3 rounded-3xl bg-white/5 px-4 py-3 text-white'

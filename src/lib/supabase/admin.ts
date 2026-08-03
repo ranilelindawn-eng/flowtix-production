@@ -1,4 +1,7 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import {
+  createClient,
+  type SupabaseClient,
+} from '@supabase/supabase-js'
 
 type ContactInquiryRow = {
   id: string
@@ -30,9 +33,89 @@ type ContactInquiryInsert = {
 
 type ContactInquiryUpdate = Partial<ContactInquiryInsert>
 
+type OrganizationMemberRow = {
+  id: string
+  organization_id: string
+  user_id: string
+  role: string
+  status: string | null
+  created_at: string
+}
+
+type OrganizationSubscriptionRow = {
+  id: string
+  organization_id: string
+  plan_id: string
+  status: string
+  paymongo_checkout_id: string | null
+  paymongo_plan_code: string | null
+  paymongo_payment_id: string | null
+}
+
+type SubscriptionPlanRow = {
+  id: string
+  code: string
+  name: string
+}
+
 type Database = {
   public: {
     Tables: {
+      organization_members: {
+        Row: OrganizationMemberRow
+        Insert: {
+          id?: string
+          organization_id: string
+          user_id: string
+          role: string
+          status?: string | null
+          created_at?: string
+        }
+        Update: {
+          organization_id?: string
+          user_id?: string
+          role?: string
+          status?: string | null
+        }
+        Relationships: []
+      }
+
+      organization_subscriptions: {
+        Row: OrganizationSubscriptionRow
+        Insert: {
+          id?: string
+          organization_id: string
+          plan_id: string
+          status?: string
+          paymongo_checkout_id?: string | null
+          paymongo_plan_code?: string | null
+          paymongo_payment_id?: string | null
+        }
+        Update: {
+          organization_id?: string
+          plan_id?: string
+          status?: string
+          paymongo_checkout_id?: string | null
+          paymongo_plan_code?: string | null
+          paymongo_payment_id?: string | null
+        }
+        Relationships: []
+      }
+
+      subscription_plans: {
+        Row: SubscriptionPlanRow
+        Insert: {
+          id?: string
+          code: string
+          name: string
+        }
+        Update: {
+          code?: string
+          name?: string
+        }
+        Relationships: []
+      }
+
       contact_inquiries: {
         Row: ContactInquiryRow
         Insert: ContactInquiryInsert
@@ -40,6 +123,7 @@ type Database = {
         Relationships: []
       }
     }
+
     Views: Record<string, never>
     Functions: Record<string, never>
     Enums: Record<string, never>
@@ -50,21 +134,30 @@ type Database = {
 let adminClient: SupabaseClient<Database> | undefined
 
 export function createAdminClient(): SupabaseClient<Database> {
-  if (adminClient) return adminClient
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
-
-  if (!url || !serviceRoleKey) {
-    throw new Error('Missing Supabase service-role configuration.')
+  if (adminClient) {
+    return adminClient
   }
 
-  adminClient = createClient<Database>(url, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      'Missing Supabase service-role configuration.',
+    )
+  }
+
+  adminClient = createClient<Database>(
+    url,
+    serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
     },
-  })
+  )
 
   return adminClient
 }
