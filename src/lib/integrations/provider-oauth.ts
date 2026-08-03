@@ -206,19 +206,12 @@ export function buildProviderAuthorizationUrl(
    * Flowtix requires this scope to identify the
    * subscriber's connected Zoom account.
    */
-  url.searchParams.set(
-    'scope',
-    'user:read:user',
-  )
 
   /*
    * Preserve any Zoom scopes the subscriber has
    * previously granted when reconnecting.
    */
-  url.searchParams.set(
-    'include_granted_scopes',
-    'true',
-  )
+  
 
   return url
 }
