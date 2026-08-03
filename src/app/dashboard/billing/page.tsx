@@ -215,13 +215,13 @@ export default async function BillingPage({
           </div>
 
           {canManage ? (
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-white hover:bg-slate-800"
+            <a
+              href="#available-plans"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
             >
               <CreditCard className="h-4 w-4" />
               Manage subscription
-            </button>
+            </a>
           ) : null}
         </div>
       </section>
@@ -277,7 +277,10 @@ export default async function BillingPage({
         </section>
       ) : null}
 
-      <section>
+      <section
+        id="available-plans"
+        className="scroll-mt-24"
+      >
         <h2 className="text-xl font-bold text-white">
           Available plans
         </h2>
@@ -331,8 +334,7 @@ export default async function BillingPage({
                     plan.monthly_price_cents,
                   )}
 
-                  {plan.monthly_price_cents >
-                  0 ? (
+                  {plan.monthly_price_cents > 0 ? (
                     <span className="text-sm font-normal text-slate-400">
                       /month
                     </span>
@@ -400,7 +402,7 @@ export default async function BillingPage({
 
                       <button
                         type="submit"
-                        className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-500"
+                        className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
                       >
                         Choose {plan.name}
                       </button>
