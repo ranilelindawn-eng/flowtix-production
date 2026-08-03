@@ -7,26 +7,6 @@ export type ExternalOAuthProvider = Extract<
 
 type OAuthTokenData = Record<string, unknown>
 
-type MicrosoftIdentityResponse = {
-  id?: string
-  displayName?: string
-  mail?: string
-  userPrincipalName?: string
-  error?: {
-    code?: string
-    message?: string
-  }
-}
-
-type ZoomIdentityResponse = {
-  id?: string
-  first_name?: string
-  last_name?: string
-  email?: string
-  code?: number
-  message?: string
-}
-
 function required(name: string) {
   const value = process.env[name]?.trim()
 
@@ -64,6 +44,27 @@ function getZoomRedirectUri(origin: string) {
   )
 }
 
+async function readJsonResponse(
+  response: Response,
+): Promise<Record<string, unknown>> {
+  const text = await response.text()
+
+  if (!text) {
+    return {}
+  }
+
+  try {
+    return JSON.parse(text) as Record<
+      string,
+      unknown
+    >
+  } catch {
+    return {
+      raw_response: text,
+    }
+  }
+}
+
 function getAccessToken(
   tokenData: OAuthTokenData,
 ) {
@@ -79,24 +80,6 @@ function getAccessToken(
   }
 
   return accessToken
-}
-
-async function readJsonResponse(
-  response: Response,
-): Promise<unknown> {
-  const text = await response.text()
-
-  if (!text) {
-    return null
-  }
-
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return {
-      raw_response: text,
-    }
-  }
 }
 
 export function buildProviderAuthorizationUrl(
@@ -136,11 +119,7 @@ export function buildProviderAuthorizationUrl(
       'query',
     )
 
-    url.searchParams.set(
-      'state',
-      state,
-    )
-
+    url.searchParams.set('state', state)
     url.searchParams.set(
       'prompt',
       'select_account',
@@ -192,10 +171,7 @@ export function buildProviderAuthorizationUrl(
       getSlackRedirectUri(origin),
     )
 
-    url.searchParams.set(
-      'state',
-      state,
-    )
+    url.searchParams.set('state', state)
 
     url.searchParams.set(
       'scope',
@@ -224,9 +200,24 @@ export function buildProviderAuthorizationUrl(
     getZoomRedirectUri(origin),
   )
 
+  url.searchParams.set('state', state)
+
+  /*
+   * Flowtix requires this scope to identify the
+   * subscriber's connected Zoom account.
+   */
   url.searchParams.set(
-    'state',
-    state,
+    'scope',
+    'user:read:user',
+  )
+
+  /*
+   * Preserve any Zoom scopes the subscriber has
+   * previously granted when reconnecting.
+   */
+  url.searchParams.set(
+    'include_granted_scopes',
+    'true',
   )
 
   return url
@@ -270,23 +261,18 @@ export async function exchangeProviderCode(
     )
 
     const body =
-      (await readJsonResponse(
-        response,
-      )) as OAuthTokenData | null
+      await readJsonResponse(response)
 
     if (
       !response.ok ||
-      !body ||
       typeof body.access_token !== 'string'
     ) {
-      const description =
-        body &&
+      throw new Error(
         typeof body.error_description ===
           'string'
           ? body.error_description
-          : 'Microsoft token exchange failed.'
-
-      throw new Error(description)
+          : 'Microsoft token exchange failed.',
+      )
     }
 
     return body
@@ -317,23 +303,18 @@ export async function exchangeProviderCode(
     )
 
     const body =
-      (await readJsonResponse(
-        response,
-      )) as OAuthTokenData | null
+      await readJsonResponse(response)
 
     if (
       !response.ok ||
-      !body ||
       body.ok !== true ||
       typeof body.access_token !== 'string'
     ) {
-      const slackError =
-        body &&
+      throw new Error(
         typeof body.error === 'string'
           ? body.error
-          : 'Slack token exchange failed.'
-
-      throw new Error(slackError)
+          : 'Slack token exchange failed.',
+      )
     }
 
     return body
@@ -365,13 +346,10 @@ export async function exchangeProviderCode(
   )
 
   const body =
-    (await readJsonResponse(
-      response,
-    )) as OAuthTokenData | null
+    await readJsonResponse(response)
 
   if (
     !response.ok ||
-    !body ||
     typeof body.access_token !== 'string'
   ) {
     console.error(
@@ -382,21 +360,28 @@ export async function exchangeProviderCode(
       },
     )
 
-    const reason =
-      body &&
+    throw new Error(
       typeof body.reason === 'string'
         ? body.reason
-        : body &&
-            typeof body.error_description ===
-              'string'
+        : typeof body.error_description ===
+            'string'
           ? body.error_description
-          : body &&
-              typeof body.error === 'string'
+          : typeof body.error === 'string'
             ? body.error
-            : 'Zoom token exchange failed.'
-
-    throw new Error(reason)
+            : 'Zoom token exchange failed.',
+    )
   }
+
+  console.log('ZOOM TOKEN RECEIVED', {
+    scope:
+      typeof body.scope === 'string'
+        ? body.scope
+        : null,
+    expiresIn:
+      typeof body.expires_in === 'number'
+        ? body.expires_in
+        : null,
+  })
 
   return body
 }
@@ -423,13 +408,10 @@ export async function fetchProviderIdentity(
     )
 
     const body =
-      (await readJsonResponse(
-        response,
-      )) as MicrosoftIdentityResponse | null
+      await readJsonResponse(response)
 
     if (
       !response.ok ||
-      !body ||
       typeof body.id !== 'string'
     ) {
       console.error(
@@ -440,24 +422,36 @@ export async function fetchProviderIdentity(
         },
       )
 
-      const message =
-        body?.error?.message ??
-        'Unable to read Microsoft account identity.'
-
-      throw new Error(message)
+      throw new Error(
+        'Unable to read Microsoft account identity.',
+      )
     }
+
+    const displayName =
+      typeof body.displayName === 'string'
+        ? body.displayName
+        : null
+
+    const mail =
+      typeof body.mail === 'string'
+        ? body.mail
+        : null
+
+    const userPrincipalName =
+      typeof body.userPrincipalName ===
+      'string'
+        ? body.userPrincipalName
+        : null
 
     return {
       id: body.id,
       name:
-        body.displayName ??
-        body.mail ??
-        body.userPrincipalName ??
+        displayName ??
+        mail ??
+        userPrincipalName ??
         'Microsoft account',
       email:
-        body.mail ??
-        body.userPrincipalName ??
-        null,
+        mail ?? userPrincipalName ?? null,
     }
   }
 
@@ -502,27 +496,29 @@ export async function fetchProviderIdentity(
   )
 
   const body =
-    (await readJsonResponse(
-      response,
-    )) as ZoomIdentityResponse | null
+    await readJsonResponse(response)
 
-  console.log(
-    'ZOOM IDENTITY RESPONSE',
-    {
-      status: response.status,
-      ok: response.ok,
-      zoomCode: body?.code ?? null,
-      zoomMessage: body?.message ?? null,
-      hasUserId:
-        typeof body?.id === 'string',
-      hasEmail:
-        typeof body?.email === 'string',
-    },
-  )
+  console.log('ZOOM IDENTITY RESPONSE', {
+    status: response.status,
+    ok: response.ok,
+    zoomCode:
+      typeof body.code === 'number'
+        ? body.code
+        : null,
+    zoomMessage:
+      typeof body.message === 'string'
+        ? body.message
+        : null,
+    hasUserId:
+      typeof body.id === 'string',
+    tokenScope:
+      typeof tokenData.scope === 'string'
+        ? tokenData.scope
+        : null,
+  })
 
   if (
     !response.ok ||
-    !body ||
     typeof body.id !== 'string'
   ) {
     console.error(
@@ -530,11 +526,15 @@ export async function fetchProviderIdentity(
       {
         status: response.status,
         response: body,
+        tokenScope:
+          typeof tokenData.scope === 'string'
+            ? tokenData.scope
+            : null,
       },
     )
 
     const zoomMessage =
-      typeof body?.message === 'string'
+      typeof body.message === 'string'
         ? body.message
         : 'Unable to read Zoom account identity.'
 
@@ -543,27 +543,30 @@ export async function fetchProviderIdentity(
     )
   }
 
-  const fullName = [
-    body.first_name,
-    body.last_name,
-  ]
-    .filter(
-      (value): value is string =>
-        typeof value === 'string' &&
-        value.trim().length > 0,
-    )
-    .join(' ')
-    .trim()
+  const firstName =
+    typeof body.first_name === 'string'
+      ? body.first_name
+      : ''
+
+  const lastName =
+    typeof body.last_name === 'string'
+      ? body.last_name
+      : ''
+
+  const email =
+    typeof body.email === 'string'
+      ? body.email
+      : null
+
+  const fullName =
+    `${firstName} ${lastName}`.trim()
 
   return {
     id: body.id,
     name:
       fullName ||
-      body.email ||
+      email ||
       'Zoom account',
-    email:
-      typeof body.email === 'string'
-        ? body.email
-        : null,
+    email,
   }
 }
