@@ -5,6 +5,7 @@ import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { redirect } from 'next/navigation'
 
 import { requireOrganization, requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import type { Permission } from '@/lib/permissions'
 import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
@@ -576,6 +577,7 @@ export async function createSnippet(formData: FormData) {
 }
 
 export async function createSequence(formData: FormData) {
+  await assertEntitlement('automation.sequences')
   const { membership, supabase, user } = await context()
   const { data, error } = await supabase.from('sequences').insert({
     organization_id: membership.organization_id,

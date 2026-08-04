@@ -97,6 +97,10 @@ export default async function BillingPage({
     typeof query.checkout === 'string'
       ? query.checkout
       : null
+  const requestedFeature =
+    typeof query.feature === 'string'
+      ? query.feature
+      : null
 
   const paymongoPlanCode =
     getPayMongoPlanCode(subscription)
@@ -148,6 +152,16 @@ export default async function BillingPage({
           limits through PayMongo.
         </p>
       </div>
+
+      {requestedFeature ? (
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+          Your current plan does not include{' '}
+          <span className="font-semibold">
+            {requestedFeature}
+          </span>
+          . Choose a plan that includes this feature.
+        </div>
+      ) : null}
 
       {checkoutState === 'success' ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">

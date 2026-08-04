@@ -1,9 +1,11 @@
 import { KeyRound } from 'lucide-react'
+import { assertEntitlement } from '@/lib/entitlements'
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
 import { createApiKey, revokeApiKey } from './actions'
 
 export default async function ApiKeysPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { supabase, organizationId, role } = await requireSettingsContext()
+  await assertEntitlement('api.access', organizationId)
   const query = await searchParams
   const created = typeof query.created === 'string' ? query.created : null
   const { data: keys } = await supabase.from('api_keys').select('id,name,key_prefix,scopes,last_used_at,created_at,revoked_at').eq('organization_id', organizationId).order('created_at', { ascending: false })

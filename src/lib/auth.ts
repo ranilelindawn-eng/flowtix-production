@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation'
 
+import {
+  assertEntitlement,
+  type FeatureEntitlement,
+} from '@/lib/entitlements'
 import { hasPermission, type Permission } from '@/lib/permissions'
 import {
   getCurrentOrganization,
@@ -23,6 +27,28 @@ export async function requirePermission(
 
   if (!hasPermission(organization.role, permission)) {
     redirect('/dashboard')
+  }
+
+  return organization
+}
+
+export async function requireFeature(
+  feature: FeatureEntitlement,
+  permission?: Permission,
+): Promise<CurrentOrganizationMembership> {
+  const organization = permission
+    ? await requirePermission(permission)
+    : await requireOrganization()
+
+  try {
+    await assertEntitlement(
+      feature,
+      organization.organization_id,
+    )
+  } catch {
+    redirect(
+      `/dashboard/billing?feature=${encodeURIComponent(feature)}`,
+    )
   }
 
   return organization

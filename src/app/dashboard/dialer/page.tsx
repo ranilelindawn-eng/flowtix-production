@@ -1,4 +1,4 @@
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 import DialerClient from './DialerClient'
@@ -23,7 +23,10 @@ export default async function DialerPage({
   searchParams,
 }: DialerPageProps) {
   const params = await searchParams
-  const organization = await requirePermission('calls.create')
+  const organization = await requireFeature(
+    'dialer.cloud',
+    'calls.create',
+  )
 
   const contactId = params?.contactId?.trim() ?? ''
   const initialPhoneNumber = params?.phone?.trim() ?? ''

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import {
   generateStructuredAI,
   getAIProviderLabel,
@@ -15,6 +16,7 @@ const MAX_TRANSCRIPT_LENGTH = 50_000
 export async function POST(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.call_analysis', organization.organization_id)
     const body = (await request.json()) as {
       transcript?: unknown
       callId?: unknown
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI analysis failed.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

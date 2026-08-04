@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.chat', organization.organization_id)
     const { id } = await context.params
     const supabase = await createClient()
     const {
@@ -32,13 +34,14 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json({ conversation, messages: messages ?? [] })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load conversation.' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load conversation.' }, { status: isEntitlementError(error) ? 403 : 500 })
   }
 }
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.chat', organization.organization_id)
     const { id } = await context.params
     const supabase = await createClient()
     const {
@@ -62,13 +65,14 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (error) throw new Error(error.message)
     return NextResponse.json({ conversation: data })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to update conversation.' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to update conversation.' }, { status: isEntitlementError(error) ? 403 : 500 })
   }
 }
 
 export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.chat', organization.organization_id)
     const { id } = await context.params
     const supabase = await createClient()
     const {
@@ -85,6 +89,6 @@ export async function DELETE(_request: Request, context: { params: Promise<{ id:
     if (error) throw new Error(error.message)
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to delete conversation.' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to delete conversation.' }, { status: isEntitlementError(error) ? 403 : 500 })
   }
 }

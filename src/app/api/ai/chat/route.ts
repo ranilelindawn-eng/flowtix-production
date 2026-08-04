@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateTextAI, getAIProviderLabel } from '@/lib/ai/provider'
 import { createClient } from '@/lib/supabase/server'
 
@@ -28,6 +29,7 @@ type MessageRow = {
 export async function POST(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.chat', organization.organization_id)
     const supabase = await createClient()
     const {
       data: { user },
@@ -135,7 +137,7 @@ Do not claim access to records you have not been given. When data is insufficien
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI chat failed.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateStructuredAI } from '@/lib/ai/provider'
 import { validateSuggestedTasks, type SuggestedTask } from '@/lib/ai/validation'
 import { createClient } from '@/lib/supabase/server'
@@ -10,6 +11,7 @@ type TaskResult = { tasks: SuggestedTask[] }
 export async function POST(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.tasks', organization.organization_id)
     const input = (await request.json()) as {
       context?: unknown
       contactId?: unknown
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Task generation failed.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

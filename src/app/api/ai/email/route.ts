@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateStructuredAI } from '@/lib/ai/provider'
 import { validateGeneratedEmail, type GeneratedEmail } from '@/lib/ai/validation'
 import { createClient } from '@/lib/supabase/server'
@@ -10,6 +11,7 @@ const ALLOWED_TONES = new Set(['professional', 'friendly', 'concise', 'persuasiv
 export async function POST(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.email', organization.organization_id)
     const input = (await request.json()) as {
       recipient?: unknown
       purpose?: unknown
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Email generation failed.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }
