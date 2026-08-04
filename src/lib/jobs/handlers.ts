@@ -1,4 +1,5 @@
 import { executeCalendarSync } from '@/lib/calendar/sync'
+import { executeIntegrationMaintenance } from '@/lib/integrations/maintenance'
 import { executeCampaignMember } from '@/lib/campaigns/engine'
 import { deliverCommunication } from '@/lib/communications/delivery'
 import type { JobHandler } from '@/lib/jobs/types'
@@ -41,4 +42,15 @@ registerJobHandler('campaign.execute_member', async ({ job, heartbeat }) => {
 registerJobHandler('calendar.sync_event', async ({ job, heartbeat }) => {
   await heartbeat()
   return executeCalendarSync(job.payload)
+})
+
+
+registerJobHandler('integration.refresh', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return executeIntegrationMaintenance(job.payload)
+})
+
+registerJobHandler('integration.health_check', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return executeIntegrationMaintenance(job.payload)
 })
