@@ -125,7 +125,42 @@ type Database = {
     }
 
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      begin_idempotent_request: {
+        Args: {
+          target_org: string
+          operation_scope: string
+          operation_key: string
+          request_fingerprint: string
+          ttl_seconds?: number
+        }
+        Returns: Array<{
+          action: 'acquired' | 'replay' | 'conflict' | 'in_progress'
+          record_id: string
+          response_status: number | null
+          response_body: Record<string, unknown> | null
+        }>
+      }
+      complete_idempotent_request: {
+        Args: {
+          target_record: string
+          result_status: number
+          result_body?: Record<string, unknown>
+          result_resource_type?: string | null
+          result_resource_id?: string | null
+        }
+        Returns: undefined
+      }
+      fail_idempotent_request: {
+        Args: {
+          target_record: string
+          failure_status?: number
+          failure_message?: string | null
+          failure_body?: Record<string, unknown> | null
+        }
+        Returns: undefined
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }
