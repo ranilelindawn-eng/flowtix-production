@@ -1,19 +1,12 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
+import { resolveOwnerAssignment } from '@/lib/ownership'
 import type { Contact, ContactProfile } from '@/types/contact'
 
 export const CONTACTS_PER_PAGE = 12
 
 type ContactStatus = Contact['status']
 
-type OrganizationMembershipRow = {
-  user_id: string | null
-}
-
-type ContactOwnerProfileRow = {
-  id: string
-  full_name: string | null
-}
 
 type ContactFormValues = {
   first_name: string
@@ -26,7 +19,7 @@ type ContactFormValues = {
   mobile: string
   tags: string
   notes: string
-  owner_id: string
+  owner_membership_id: string
 }
 
 type ContactRow = {
@@ -40,6 +33,8 @@ type ContactRow = {
   title: string | null
   status: ContactStatus
   metadata: unknown
+  owner_membership_id: string | null
+  owner?: { user_id?: string | null } | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -167,10 +162,54 @@ function mapContact(row: ContactRow): Contact {
     title: row.title,
     status: row.status,
     metadata: normalizeMetadata(row.metadata),
+    owner_membership_id: row.owner_membership_id,
+    owner_user_id: row.owner?.user_id ?? null,
+    owner_name: null,
     created_by: row.created_by ?? '',
     created_at: row.created_at,
     updated_at: row.updated_at,
   }
+}
+
+async function hydrateContactOwnerNames(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  rows: ContactRow[],
+): Promise<Contact[]> {
+  const contacts = rows.map(mapContact)
+  const ownerUserIds = Array.from(
+    new Set(
+      contacts
+        .map((contact) => contact.owner_user_id)
+        .filter((userId): userId is string => Boolean(userId)),
+    ),
+  )
+
+  if (ownerUserIds.length === 0) {
+    return contacts
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id,full_name')
+    .in('id', ownerUserIds)
+
+  if (error) {
+    throw new Error(`Failed to load contact owner profiles: ${error.message}`)
+  }
+
+  const names = new Map(
+    (data ?? []).map((profile) => [
+      profile.id,
+      profile.full_name?.trim() || 'Unnamed member',
+    ]),
+  )
+
+  return contacts.map((contact) => ({
+    ...contact,
+    owner_name: contact.owner_user_id
+      ? names.get(contact.owner_user_id) ?? 'Unnamed member'
+      : null,
+  }))
 }
 
 async function requireSupabaseClient() {
@@ -261,6 +300,10 @@ export async function getContacts(
         title,
         status,
         metadata,
+        owner_membership_id,
+        owner:organization_members!contacts_owner_membership_id_fkey(
+          user_id
+        ),
         created_by,
         created_at,
         updated_at
@@ -315,8 +358,9 @@ export async function getContacts(
   }
 
   return {
-    contacts: ((data ?? []) as ContactRow[]).map(
-      mapContact,
+    contacts: await hydrateContactOwnerNames(
+      supabase,
+      (data ?? []) as ContactRow[],
     ),
     count: count ?? 0,
   }
@@ -352,6 +396,10 @@ export async function getContactById(
       title,
       status,
       metadata,
+      owner_membership_id,
+      owner:organization_members!contacts_owner_membership_id_fkey(
+        user_id
+      ),
       created_by,
       created_at,
       updated_at
@@ -373,7 +421,12 @@ export async function getContactById(
     return null
   }
 
-  return mapContact(data as ContactRow)
+  const [contact] = await hydrateContactOwnerNames(
+    supabase,
+    [data as ContactRow],
+  )
+
+  return contact ?? null
 }
 
 export async function getContact(
@@ -382,76 +435,48 @@ export async function getContact(
   return getContactById(id)
 }
 
-export async function getContactOwners(): Promise<
-  ContactProfile[]
-> {
-  const supabase = await createServerSupabaseClient()
-
+export async function getContactOwners(): Promise<ContactProfile[]> {
   const organization = await getCurrentOrganization()
 
   if (!organization) {
     return []
   }
 
-  const {
-    data: membershipData,
-    error: membershipError,
-  } = await supabase
-    .from('organization_members')
-    .select('user_id')
-    .eq(
-      'organization_id',
-      organization.organization_id,
-    )
-    .eq('status', 'active')
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase.rpc(
+    'get_current_organization_team_members',
+  )
 
-  if (membershipError) {
-    throw new Error(
-      `Failed to load organization members: ${membershipError.message}`,
-    )
+  if (error) {
+    throw new Error(`Failed to load contact owners: ${error.message}`)
   }
 
-  const memberships =
-    (membershipData ?? []) as OrganizationMembershipRow[]
+  const rows = Array.isArray(data) ? data : []
 
-  const userIds = memberships
-    .map((membership) => membership.user_id)
-    .filter(
-      (userId): userId is string =>
-        typeof userId === 'string' &&
-        userId.length > 0,
-    )
+  return rows.flatMap((row): ContactProfile[] => {
+    if (!row || typeof row !== 'object') return []
+    const value = row as Record<string, unknown>
 
-  if (userIds.length === 0) {
-    return []
-  }
+    if (
+      typeof value.id !== 'string' ||
+      typeof value.user_id !== 'string'
+    ) {
+      return []
+    }
 
-  const {
-    data: profileData,
-    error: profileError,
-  } = await supabase
-    .from('profiles')
-    .select('id, full_name')
-    .in('id', userIds)
-    .order('full_name', {
-      ascending: true,
-      nullsFirst: false,
-    })
+    const fullName =
+      typeof value.full_name === 'string'
+        ? value.full_name.trim()
+        : ''
+    const email =
+      typeof value.email === 'string' ? value.email : ''
 
-  if (profileError) {
-    throw new Error(
-      `Failed to load contact owners: ${profileError.message}`,
-    )
-  }
-
-  const profiles =
-    (profileData ?? []) as ContactOwnerProfileRow[]
-
-  return profiles.map((profile) => ({
-    id: profile.id,
-    full_name:
-      profile.full_name?.trim() || 'Unnamed member',
-  }))
+    return [{
+      id: value.id,
+      user_id: value.user_id,
+      full_name: fullName || email || 'Unnamed member',
+    }]
+  })
 }
 
 export async function createContact(
@@ -477,6 +502,11 @@ export async function createContact(
     throw new Error('Email is required.')
   }
 
+  const owner = await resolveOwnerAssignment(
+    organization,
+    values.owner_membership_id,
+  )
+
   const payload = {
     organization_id: organization.organization_id,
     first_name: firstName,
@@ -490,8 +520,9 @@ export async function createContact(
       mobile: values.mobile.trim() || null,
       tags: normalizeTags(values.tags),
       notes: values.notes.trim() || null,
-      owner_id: values.owner_id.trim() || null,
+      owner_id: owner.ownerUserId,
     },
+    owner_membership_id: owner.ownerMembershipId,
     created_by: user.id,
   }
 
@@ -535,6 +566,11 @@ export async function updateContact(
     throw new Error('Email is required.')
   }
 
+  const owner = await resolveOwnerAssignment(
+    organization,
+    values.owner_membership_id,
+  )
+
   const payload = {
     first_name: firstName,
     last_name: lastName,
@@ -547,8 +583,9 @@ export async function updateContact(
       mobile: values.mobile.trim() || null,
       tags: normalizeTags(values.tags),
       notes: values.notes.trim() || null,
-      owner_id: values.owner_id.trim() || null,
+      owner_id: owner.ownerUserId,
     },
+    owner_membership_id: owner.ownerMembershipId,
     updated_at: new Date().toISOString(),
   }
 
