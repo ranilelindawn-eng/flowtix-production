@@ -35,34 +35,72 @@ async function enqueueCommunication(input: {
   body: string
 }) {
   const client = createServiceClient()
-  const idempotencyKey = `sequence-communication:${input.executionId}`
-  const { data, error } = await client
-    .from('background_jobs')
-    .upsert({
-      organization_id: input.organizationId,
-      queue: 'communications',
-      job_type: 'communications.send',
-      payload: {
-        source: 'sequence',
-        enrollmentId: input.enrollmentId,
-        executionId: input.executionId,
-        stepId: input.stepId,
-        contactId: input.contactId,
+  const { data: message, error: messageError } = await client
+    .from('communication_messages')
+    .upsert(
+      {
+        organization_id: input.organizationId,
+        contact_id: input.contactId,
         channel: input.channel,
+        direction: 'outbound',
         recipient: input.recipient,
         subject: input.subject,
         body: input.body,
+        status: 'queued',
+        source: 'sequence',
+        source_record_id: input.executionId,
       },
-      status: 'queued',
-      priority: 80,
-      scheduled_at: new Date().toISOString(),
-      max_attempts: 5,
-      idempotency_key: idempotencyKey,
-    }, { onConflict: 'organization_id,idempotency_key', ignoreDuplicates: true })
+      {
+        onConflict: 'organization_id,source,source_record_id',
+        ignoreDuplicates: false,
+      },
+    )
+    .select('id,background_job_id')
+    .single()
+
+  if (messageError) {
+    throw new Error(`Unable to create sequence communication: ${messageError.message}`)
+  }
+  if (message.background_job_id) return message.background_job_id
+
+  const idempotencyKey = `sequence-communication:${input.executionId}`
+  const { data: job, error: jobError } = await client
+    .from('background_jobs')
+    .upsert(
+      {
+        organization_id: input.organizationId,
+        queue: 'communications',
+        job_type: 'communications.send',
+        payload: { messageId: message.id },
+        status: 'queued',
+        priority: 80,
+        scheduled_at: new Date().toISOString(),
+        max_attempts: 6,
+        idempotency_key: idempotencyKey,
+      },
+      {
+        onConflict: 'organization_id,idempotency_key',
+        ignoreDuplicates: false,
+      },
+    )
     .select('id')
-    .maybeSingle()
-  if (error) throw new Error(`Unable to dispatch sequence communication: ${error.message}`)
-  return data?.id ?? null
+    .single()
+
+  if (jobError) {
+    throw new Error(`Unable to dispatch sequence communication: ${jobError.message}`)
+  }
+
+  const { error: linkError } = await client
+    .from('communication_messages')
+    .update({ background_job_id: job.id })
+    .eq('id', message.id)
+    .eq('organization_id', input.organizationId)
+
+  if (linkError) {
+    throw new Error(`Unable to link sequence communication job: ${linkError.message}`)
+  }
+
+  return job.id
 }
 
 export async function executeSequenceStep(

@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { redirect } from 'next/navigation'
 
 import { requireOrganization, requirePermission } from '@/lib/auth'
@@ -9,7 +8,7 @@ import { assertEntitlement } from '@/lib/entitlements'
 import type { Permission } from '@/lib/permissions'
 import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
-import { consumeMeteredUsage } from '@/lib/usage-limits'
+import { enqueueJob } from '@/lib/jobs/queue'
 
 const text = (formData: FormData, key: string) => formData.get(key)?.toString().trim() ?? ''
 const optional = (value: string) => value || null
@@ -607,76 +606,73 @@ export async function sendCommunication(formData: FormData) {
   const recipient = text(formData, 'recipient')
   const subject = text(formData, 'subject')
   const body = text(formData, 'body')
-  if (!recipient || !body) throw new Error('Recipient and message are required.')
-  await consumeMeteredUsage(
-    channel === 'email' ? 'emails' : 'sms',
-    1,
-    membership.organization_id,
-    crypto.randomUUID(),
-  )
-  let status = 'failed'
-  let provider = ''
-  let providerMessageId: string | null = null
-  let errorMessage: string | null = null
-  try {
-    if (channel === 'email') {
-      try {
-        const gmail = await sendGmailMessage(membership.organization_id, {
-          to: recipient,
-          subject: subject || 'Message from Flowtix',
-          body,
-        })
-        provider = 'gmail'
-        providerMessageId = gmail.id
-      } catch (gmailError) {
-        const apiKey = process.env.RESEND_API_KEY
-        const from = process.env.RESEND_FROM_EMAIL
-        if (!apiKey || !from) throw gmailError
-        provider = 'resend'
-        const response = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from, to: [recipient], subject: subject || 'Message from Flowtix', html: body.replace(/\n/g, '<br>') }),
-        })
-        const payload = await response.json() as { id?: string; message?: string }
-        if (!response.ok) throw new Error(payload.message || 'Email provider rejected the message.')
-        providerMessageId = payload.id ?? null
-      }
-    } else {
-      provider = 'twilio'
-      const sid = process.env.TWILIO_ACCOUNT_SID
-      const token = process.env.TWILIO_AUTH_TOKEN
-      const from = process.env.TWILIO_PHONE_NUMBER
-      if (!sid || !token || !from) throw new Error('Twilio SMS credentials are required.')
-      const params = new URLSearchParams({ To: recipient, From: from, Body: body })
-      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-        method: 'POST',
-        headers: { Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params,
-      })
-      const payload = await response.json() as { sid?: string; message?: string }
-      if (!response.ok) throw new Error(payload.message || 'SMS provider rejected the message.')
-      providerMessageId = payload.sid ?? null
-    }
-    status = 'sent'
-  } catch (error) {
-    errorMessage = error instanceof Error ? error.message : 'Unknown provider error.'
+
+  if (channel !== 'email' && channel !== 'sms') {
+    throw new Error('Choose a valid communication channel.')
   }
-  const { error: logError } = await supabase.from('communication_messages').insert({
-    organization_id: membership.organization_id,
-    channel,
-    recipient,
-    sender: channel === 'email' ? (provider === 'gmail' ? 'connected-gmail-account' : process.env.RESEND_FROM_EMAIL) : process.env.TWILIO_PHONE_NUMBER,
-    subject: optional(subject),
-    body,
-    provider,
-    provider_message_id: providerMessageId,
-    status,
-    error_message: errorMessage,
-    sent_by: user.id,
-    sent_at: status === 'sent' ? new Date().toISOString() : null,
-  })
-  if (logError) throw new Error(logError.message)
+  if (!recipient || !body) {
+    throw new Error('Recipient and message are required.')
+  }
+  if (channel === 'sms' && !/^\+[1-9]\d{7,14}$/.test(recipient)) {
+    throw new Error('SMS recipients must use E.164 format, for example +15551234567.')
+  }
+
+  const { data: message, error } = await supabase
+    .from('communication_messages')
+    .insert({
+      organization_id: membership.organization_id,
+      channel,
+      direction: 'outbound',
+      recipient,
+      subject: optional(subject),
+      body,
+      status: 'queued',
+      source: 'manual',
+      sent_by: user.id,
+    })
+    .select('id')
+    .single()
+
+  if (error) {
+    throw new Error(`Unable to queue communication: ${error.message}`)
+  }
+
+  try {
+    const job = await enqueueJob({
+      organizationId: membership.organization_id,
+      queue: 'communications',
+      jobType: 'communications.send',
+      payload: { messageId: message.id },
+      priority: 70,
+      maxAttempts: 6,
+      idempotencyKey: `communication:${message.id}`,
+    })
+
+    const { error: linkError } = await supabase
+      .from('communication_messages')
+      .update({ background_job_id: job.id })
+      .eq('id', message.id)
+      .eq('organization_id', membership.organization_id)
+
+    if (linkError) {
+      throw new Error(`Unable to link communication job: ${linkError.message}`)
+    }
+  } catch (queueError) {
+    await supabase
+      .from('communication_messages')
+      .update({
+        status: 'failed',
+        error_message:
+          queueError instanceof Error
+            ? queueError.message
+            : 'Unable to create the delivery job.',
+        last_error_code: 'QUEUE_CREATION_FAILED',
+      })
+      .eq('id', message.id)
+      .eq('organization_id', membership.organization_id)
+    throw queueError
+  }
+
   revalidatePath('/dashboard/communications')
 }
 
