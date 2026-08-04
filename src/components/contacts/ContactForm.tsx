@@ -16,7 +16,12 @@ type ContactFormState = {
   notes: string
   tags: string
   status: typeof statusOptions[number]
-  owner_id: string
+  owner_membership_id: string
+}
+
+export type ContactOwnerOption = {
+  id: string
+  full_name: string
 }
 
 type ContactFormProps = {
@@ -24,9 +29,18 @@ type ContactFormProps = {
   action: (formData: FormData) => Promise<void>
   hiddenId?: string
   submitLabel: string
+  ownerOptions: ContactOwnerOption[]
+  canAssignOthers: boolean
 }
 
-export default function ContactForm({ initialValues = {}, action, hiddenId, submitLabel }: ContactFormProps) {
+export default function ContactForm({
+  initialValues = {},
+  action,
+  hiddenId,
+  submitLabel,
+  ownerOptions,
+  canAssignOthers,
+}: ContactFormProps) {
   const [form, setForm] = useState<ContactFormState>({
     first_name: initialValues.first_name ?? '',
     last_name: initialValues.last_name ?? '',
@@ -38,13 +52,13 @@ export default function ContactForm({ initialValues = {}, action, hiddenId, subm
     notes: initialValues.metadata?.notes ?? '',
     tags: (initialValues.metadata?.tags ?? []).join(', '),
     status: initialValues.status ?? 'active',
-    owner_id: initialValues.metadata?.owner_id ?? '',
+    owner_membership_id: initialValues.owner_membership_id ?? ownerOptions[0]?.id ?? '',
   })
 
   return (
     <form action={action} method="post" className="space-y-6">
       {hiddenId ? <input type="hidden" name="id" value={hiddenId} /> : null}
-      <input type="hidden" name="owner_id" value={form.owner_id} />
+
 
       <div className="grid gap-6 md:grid-cols-2">
         <label className="block">
@@ -141,6 +155,37 @@ export default function ContactForm({ initialValues = {}, action, hiddenId, subm
               </option>
             ))}
           </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Assigned owner</span>
+          <select
+            name="owner_membership_id"
+            value={form.owner_membership_id}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                owner_membership_id: event.target.value,
+              }))
+            }
+            disabled={!canAssignOthers && ownerOptions.length <= 1}
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50 disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            {ownerOptions.map((owner) => (
+              <option
+                key={owner.id}
+                value={owner.id}
+                className="bg-[#07111F] text-white"
+              >
+                {owner.full_name}
+              </option>
+            ))}
+          </select>
+          {!canAssignOthers ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Agents can assign contacts only to themselves.
+            </p>
+          ) : null}
         </label>
       </div>
 

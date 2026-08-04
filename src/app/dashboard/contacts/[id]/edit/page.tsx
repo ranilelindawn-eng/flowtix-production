@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import ContactForm from '@/components/contacts/ContactForm';
 import { updateContact } from '@/app/dashboard/contacts/actions';
 import { getContact } from '@/lib/contacts';
+import { requirePermission } from '@/lib/auth';
+import { getAssignableMembers, canAssignOtherMembers } from '@/lib/ownership';
 
 type EditContactPageProps = {
   params: Promise<{
@@ -15,7 +17,11 @@ export default async function EditContactPage({
   params,
 }: EditContactPageProps) {
   const { id } = await params;
-  const contact = await getContact(id);
+  const membership = await requirePermission('contacts.update');
+  const [contact, owners] = await Promise.all([
+    getContact(id),
+    getAssignableMembers(membership),
+  ]);
 
   if (!contact) {
     notFound();
@@ -75,6 +81,11 @@ export default async function EditContactPage({
           hiddenId={id}
           action={updateContact}
           submitLabel="Save changes"
+          ownerOptions={owners.map((owner) => ({
+            id: owner.membershipId,
+            full_name: owner.name,
+          }))}
+          canAssignOthers={canAssignOtherMembers(membership.role)}
         />
       </section>
     </div>

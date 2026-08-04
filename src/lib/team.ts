@@ -33,12 +33,16 @@ export type TeamInvitation = {
 }
 
 export type CurrentOrganizationMembership = {
+  membership_id: string
   organization_id: string
+  user_id: string
   role: TeamRole
 }
 
 type CurrentMembershipRpcRow = {
+  membership_id: unknown
   organization_id: unknown
+  user_id: unknown
   role: unknown
 }
 
@@ -74,20 +78,28 @@ function parseCurrentMembership(
   }
 
   const row: CurrentMembershipRpcRow = {
+    membership_id: value.membership_id ?? value.id,
     organization_id: value.organization_id,
+    user_id: value.user_id,
     role: value.role,
   }
 
   if (
+    typeof row.membership_id !== 'string' ||
+    row.membership_id.length === 0 ||
     typeof row.organization_id !== 'string' ||
     row.organization_id.length === 0 ||
+    typeof row.user_id !== 'string' ||
+    row.user_id.length === 0 ||
     !isTeamRole(row.role)
   ) {
     return null
   }
 
   return {
+    membership_id: row.membership_id,
     organization_id: row.organization_id,
+    user_id: row.user_id,
     role: row.role,
   }
 }

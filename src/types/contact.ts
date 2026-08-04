@@ -8,6 +8,9 @@ export type Contact = {
   phone: string | null
   title: string | null
   status: 'active' | 'inactive' | 'archived'
+  owner_membership_id: string | null
+  owner_user_id: string | null
+  owner_name: string | null
   metadata: {
     mobile?: string
     tags?: string[]
@@ -22,5 +25,6 @@ export type Contact = {
 
 export type ContactProfile = {
   id: string
+  user_id: string
   full_name: string
 }

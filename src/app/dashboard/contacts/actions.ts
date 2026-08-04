@@ -26,7 +26,7 @@ type ContactValues = {
   mobile: string
   tags: string
   notes: string
-  owner_id: string
+  owner_membership_id: string
 }
 
 type ContactTaskStatus = 'pending' | 'completed' | 'cancelled'
@@ -124,7 +124,7 @@ export async function createContact(formData: FormData) {
     mobile: getString(formData, 'mobile'),
     tags: getString(formData, 'tags'),
     notes: getString(formData, 'notes'),
-    owner_id: getString(formData, 'owner_id'),
+    owner_membership_id: getString(formData, 'owner_membership_id'),
   }
 
   await createContactRecord(values)
@@ -158,7 +158,7 @@ export async function updateContact(formData: FormData) {
     mobile: getString(formData, 'mobile'),
     tags: getString(formData, 'tags'),
     notes: getString(formData, 'notes'),
-    owner_id: getString(formData, 'owner_id'),
+    owner_membership_id: getString(formData, 'owner_membership_id'),
   }
 
   await updateContactRecord(id, values)

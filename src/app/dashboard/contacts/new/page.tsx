@@ -1,8 +1,12 @@
 import Link from 'next/link'
 import ContactForm from '@/components/contacts/ContactForm'
 import { createContact } from '@/app/dashboard/contacts/actions'
+import { requirePermission } from '@/lib/auth'
+import { getAssignableMembers, canAssignOtherMembers } from '@/lib/ownership'
 
-export default function NewContactPage() {
+export default async function NewContactPage() {
+  const membership = await requirePermission('contacts.create')
+  const owners = await getAssignableMembers(membership)
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -22,7 +26,15 @@ export default function NewContactPage() {
       </div>
 
       <div className="rounded-3xl border border-white/10 bg-[#0B1726]/90 p-6 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
-        <ContactForm action={createContact} submitLabel="Create contact" />
+        <ContactForm
+          action={createContact}
+          submitLabel="Create contact"
+          ownerOptions={owners.map((owner) => ({
+            id: owner.membershipId,
+            full_name: owner.name,
+          }))}
+          canAssignOthers={canAssignOtherMembers(membership.role)}
+        />
       </div>
     </div>
   )
