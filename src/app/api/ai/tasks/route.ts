@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
@@ -5,6 +7,7 @@ import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateStructuredAI } from '@/lib/ai/provider'
 import { validateSuggestedTasks, type SuggestedTask } from '@/lib/ai/validation'
 import { createClient } from '@/lib/supabase/server'
+import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 type TaskResult = { tasks: SuggestedTask[] }
 
@@ -33,6 +36,13 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+
+    await consumeMeteredUsage(
+      'ai_requests',
+      1,
+      organization.organization_id,
+      randomUUID(),
+    )
 
     const rawResult = await generateStructuredAI<TaskResult>({
       system:
@@ -72,7 +82,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Task generation failed.' },
-      { status: isEntitlementError(error) ? 403 : 500 },
+      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
     )
   }
 }

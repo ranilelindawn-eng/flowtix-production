@@ -262,7 +262,7 @@ export default async function BillingPage({
             </p>
           ) : null}
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <UsageMeter
               label="Team seats"
               used={usage.members.used}
@@ -286,6 +286,36 @@ export default async function BillingPage({
               used={usage.storage.used}
               limit={usage.storage.limit}
               formatter={formatBytes}
+            />
+
+            <UsageMeter
+              label="AI requests this month"
+              used={usage.aiRequests.used}
+              limit={usage.aiRequests.limit}
+            />
+
+            <UsageMeter
+              label="Emails this month"
+              used={usage.emails.used}
+              limit={usage.emails.limit}
+            />
+
+            <UsageMeter
+              label="SMS this month"
+              used={usage.sms.used}
+              limit={usage.sms.limit}
+            />
+
+            <UsageMeter
+              label="Phone numbers"
+              used={usage.phoneNumbers.used}
+              limit={usage.phoneNumbers.limit}
+            />
+
+            <UsageMeter
+              label="Active API keys"
+              used={usage.apiKeys.used}
+              limit={usage.apiKeys.limit}
             />
           </div>
         </section>

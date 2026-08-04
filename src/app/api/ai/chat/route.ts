@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto'
+
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateTextAI, getAIProviderLabel } from '@/lib/ai/provider'
 import { createClient } from '@/lib/supabase/server'
+import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 const MAX_MESSAGE_LENGTH = 20_000
 const AGENT_PROMPTS: Record<string, string> = {
@@ -50,6 +53,13 @@ export async function POST(request: Request) {
     if (message.length > MAX_MESSAGE_LENGTH) {
       return NextResponse.json({ error: `Message must be ${MAX_MESSAGE_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 })
     }
+
+    await consumeMeteredUsage(
+      'ai_requests',
+      1,
+      organization.organization_id,
+      randomUUID(),
+    )
 
     let conversation: ConversationRow | null = null
     const conversationId = typeof body.conversationId === 'string' ? body.conversationId.trim() : ''
@@ -137,7 +147,7 @@ Do not claim access to records you have not been given. When data is insufficien
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI chat failed.' },
-      { status: isEntitlementError(error) ? 403 : 500 },
+      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
     )
   }
 }

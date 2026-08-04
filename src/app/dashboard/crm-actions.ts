@@ -9,6 +9,7 @@ import { assertEntitlement } from '@/lib/entitlements'
 import type { Permission } from '@/lib/permissions'
 import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
+import { consumeMeteredUsage } from '@/lib/usage-limits'
 
 const text = (formData: FormData, key: string) => formData.get(key)?.toString().trim() ?? ''
 const optional = (value: string) => value || null
@@ -607,6 +608,12 @@ export async function sendCommunication(formData: FormData) {
   const subject = text(formData, 'subject')
   const body = text(formData, 'body')
   if (!recipient || !body) throw new Error('Recipient and message are required.')
+  await consumeMeteredUsage(
+    channel === 'email' ? 'emails' : 'sms',
+    1,
+    membership.organization_id,
+    crypto.randomUUID(),
+  )
   let status = 'failed'
   let provider = ''
   let providerMessageId: string | null = null

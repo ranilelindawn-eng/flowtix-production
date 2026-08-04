@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
@@ -9,6 +11,7 @@ import {
 } from '@/lib/ai/provider'
 import { validateAIAnalysis } from '@/lib/ai/validation'
 import { createClient } from '@/lib/supabase/server'
+import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 const MIN_TRANSCRIPT_LENGTH = 20
 const MAX_TRANSCRIPT_LENGTH = 50_000
@@ -41,6 +44,13 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
+
+    await consumeMeteredUsage(
+      'ai_requests',
+      1,
+      organization.organization_id,
+      randomUUID(),
+    )
 
     const rawResult = await generateStructuredAI<AIAnalysis>({
       system:
@@ -89,7 +99,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI analysis failed.' },
-      { status: isEntitlementError(error) ? 403 : 500 },
+      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
     )
   }
 }

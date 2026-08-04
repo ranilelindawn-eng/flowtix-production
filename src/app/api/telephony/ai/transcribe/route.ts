@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import { NextResponse } from 'next/server'
 
 import {
@@ -7,6 +9,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import { getCurrentOrganization } from '@/lib/team'
+import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 export async function POST(request: Request) {
   try {
@@ -52,6 +55,13 @@ export async function POST(request: Request) {
         { status: 404 },
       )
     }
+
+    await consumeMeteredUsage(
+      'ai_requests',
+      1,
+      organization.organization_id,
+      `transcription:${recordingId}:${randomUUID()}`,
+    )
 
     const config =
       await getOrganizationTwilioConfiguration(
@@ -144,7 +154,7 @@ export async function POST(request: Request) {
             : 'Transcription failed.',
       },
       {
-        status: isEntitlementError(error) ? 403 : 500,
+        status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500,
       },
     )
   }

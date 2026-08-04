@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { assertEntitlement } from '@/lib/entitlements'
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
+import { assertApiKeyCapacity } from '@/lib/usage-limits'
 
 const clean = (fd: FormData, key: string) => String(fd.get(key) ?? '').trim()
 
@@ -11,6 +12,7 @@ export async function createApiKey(formData: FormData) {
   const { supabase, userId, organizationId, role } = await requireSettingsContext()
   await assertEntitlement('api.access', organizationId)
   if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
+  await assertApiKeyCapacity(organizationId)
   const name = clean(formData, 'name')
   if (!name) throw new Error('API key name is required.')
   const scopes = formData.getAll('scopes').map(String).filter(Boolean)
