@@ -1,6 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { createClient } from '@supabase/supabase-js'
 
+import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
 import {
@@ -25,6 +26,7 @@ type CommunicationMessage = {
   status: string
   attempt_count: number
   usage_consumed_at: string | null
+  source: 'manual' | 'sequence' | 'campaign' | 'api' | 'system'
 }
 
 type ProviderResult = {
@@ -354,7 +356,7 @@ export async function deliverCommunication(
   const { data, error } = await client
     .from('communication_messages')
     .select(
-      'id,organization_id,contact_id,channel,recipient,sender,subject,body,provider,provider_message_id,status,attempt_count,usage_consumed_at',
+      'id,organization_id,contact_id,channel,recipient,sender,subject,body,provider,provider_message_id,status,attempt_count,usage_consumed_at,source',
     )
     .eq('id', messageId)
     .maybeSingle()
@@ -377,6 +379,14 @@ export async function deliverCommunication(
   if (message.status === 'cancelled') {
     return { skipped: true, messageId: message.id, status: 'cancelled' }
   }
+
+  await enforceAutomationRules({
+    organizationId: message.organization_id,
+    contactId: message.contact_id,
+    channel: message.channel,
+    source: message.source,
+    recipient: message.recipient,
+  })
 
   await consumeMessageUsage(message)
 

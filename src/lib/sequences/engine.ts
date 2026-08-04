@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
 
 function createServiceClient() {
@@ -201,6 +202,23 @@ export async function executeSequenceStep(
       }).eq('id', execution.id)
     }
   } else {
+    if (step.channel === 'call') {
+      if (!contact.phone) {
+        throw new NonRetryableJobError(
+          'The sequence contact has no phone number.',
+          'MISSING_RECIPIENT',
+        )
+      }
+
+      await enforceAutomationRules({
+        organizationId: enrollment.organization_id,
+        contactId: contact.id,
+        channel: 'call',
+        source: 'sequence',
+        recipient: contact.phone,
+      })
+    }
+
     const contactName = [contact.first_name, contact.last_name].filter(Boolean).join(' ') || contact.email || contact.phone || 'contact'
     const title = step.channel === 'call' ? `Call ${contactName}` : `Follow up with ${contactName}`
     const { error } = await client.from('contact_tasks').insert({

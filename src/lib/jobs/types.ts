@@ -77,3 +77,20 @@ export class NonRetryableJobError extends Error {
     this.code = code
   }
 }
+
+
+export class DeferredJobError extends Error {
+  readonly code: string
+  readonly retryAt: Date
+
+  constructor(
+    message: string,
+    retryAt: Date,
+    code = 'JOB_DEFERRED',
+  ) {
+    super(message)
+    this.name = 'DeferredJobError'
+    this.code = code
+    this.retryAt = retryAt
+  }
+}

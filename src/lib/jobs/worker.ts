@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 
 import { getJobHandler } from '@/lib/jobs/handlers'
 import {
+  DeferredJobError,
   NonRetryableJobError,
   type BackgroundJob,
   type JsonValue,
@@ -56,11 +57,21 @@ function parseJobs(value: unknown): BackgroundJob[] {
 }
 
 function getErrorDetails(error: unknown) {
+  if (error instanceof DeferredJobError) {
+    return {
+      code: error.code,
+      message: error.message,
+      retryable: true,
+      deferredUntil: error.retryAt.toISOString(),
+    }
+  }
+
   if (error instanceof NonRetryableJobError) {
     return {
       code: error.code,
       message: error.message,
       retryable: false,
+      deferredUntil: null,
     }
   }
 
@@ -69,6 +80,7 @@ function getErrorDetails(error: unknown) {
       code: error.name || 'JOB_ERROR',
       message: error.message,
       retryable: true,
+      deferredUntil: null,
     }
   }
 
@@ -76,6 +88,7 @@ function getErrorDetails(error: unknown) {
     code: 'UNKNOWN_JOB_ERROR',
     message: 'The job failed with an unknown error.',
     retryable: true,
+    deferredUntil: null,
   }
 }
 
@@ -245,6 +258,36 @@ export async function processJobs(
       })
     } catch (jobError) {
       const details = getErrorDetails(jobError)
+
+      if (details.deferredUntil) {
+        const deferral = await client.rpc(
+          'defer_background_job',
+          {
+            p_job_id: job.id,
+            p_worker_id: workerId,
+            p_scheduled_at: details.deferredUntil,
+            p_reason_code: details.code,
+            p_reason_message: details.message,
+          },
+        )
+
+        if (deferral.error || deferral.data !== true) {
+          throw new Error(
+            deferral.error?.message ??
+              `Unable to defer job ${job.id}.`,
+          )
+        }
+
+        result.retried += 1
+        result.jobs.push({
+          id: job.id,
+          jobType: job.job_type,
+          status: 'scheduled',
+          error: details.message,
+        })
+        continue
+      }
+
       const failure = await client.rpc('fail_background_job', {
         p_job_id: job.id,
         p_worker_id: workerId,

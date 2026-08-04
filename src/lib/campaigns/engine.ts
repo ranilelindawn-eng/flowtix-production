@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import {
   NonRetryableJobError,
   type JsonValue,
@@ -269,6 +270,14 @@ export async function executeCampaignMember(
       reason: 'Contact phone number is invalid.',
     }
   }
+
+  await enforceAutomationRules({
+    organizationId: member.organization_id,
+    contactId: contact.id,
+    channel: 'call',
+    source: 'campaign',
+    recipient: contact.phone,
+  })
 
   await client
     .from('campaign_member_attempts')
