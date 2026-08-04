@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 import { createComment, deleteCompany, uploadAttachment } from '../../crm-actions'
@@ -13,7 +13,7 @@ export default async function CompanyPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const membership = await requireOrganization()
+  const membership = await requirePermission('companies.view')
   const supabase = await createClient()
 
   const [

@@ -2,6 +2,7 @@ import type {
   Campaign,
   CampaignStatus,
 } from '@/lib/campaigns'
+import type { AssignableMember } from '@/lib/ownership'
 
 type CampaignFormAction = (formData: FormData) => void | Promise<void>
 
@@ -10,6 +11,7 @@ type CampaignFormProps = {
   hiddenId?: string
   action: CampaignFormAction
   submitLabel: string
+  owners: AssignableMember[]
 }
 
 function getInputDate(value: string | null | undefined): string {
@@ -25,6 +27,7 @@ export default function CampaignForm({
   hiddenId,
   action,
   submitLabel,
+  owners,
 }: CampaignFormProps) {
   const status: CampaignStatus =
     initialValues?.status ?? 'draft'
@@ -71,6 +74,32 @@ export default function CampaignForm({
           placeholder="Describe the campaign purpose and target audience."
           className="w-full resize-y rounded-xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
         />
+      </div>
+
+
+      <div>
+        <label
+          htmlFor="owner_membership_id"
+          className="mb-2 block text-sm font-medium text-slate-200"
+        >
+          Assigned owner
+        </label>
+        <select
+          id="owner_membership_id"
+          name="owner_membership_id"
+          defaultValue={
+            initialValues?.owner_membership_id ??
+            owners[0]?.membershipId ??
+            ''
+          }
+          className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 text-sm text-white outline-none transition focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
+        >
+          {owners.map((owner) => (
+            <option key={owner.membershipId} value={owner.membershipId}>
+              {owner.name}{owner.email ? ` — ${owner.email}` : ''}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

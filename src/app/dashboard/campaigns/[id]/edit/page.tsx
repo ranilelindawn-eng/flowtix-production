@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 
 import CampaignForm from '@/components/campaigns/CampaignForm'
 import { getCampaign } from '@/lib/campaigns'
+import { getAssignableMembers } from '@/lib/ownership'
+import { getCurrentOrganization } from '@/lib/team'
 import { updateCampaign } from '@/app/dashboard/campaigns/actions'
 
 type EditCampaignPageProps = {
@@ -16,7 +18,12 @@ export default async function EditCampaignPage({
 }: EditCampaignPageProps) {
   const { id } = await params
 
-  const campaign = await getCampaign(id)
+  const membership = await getCurrentOrganization()
+  if (!membership) throw new Error('Unable to determine the current organization.')
+  const [campaign, owners] = await Promise.all([
+    getCampaign(id),
+    getAssignableMembers(membership),
+  ])
 
   if (!campaign) {
     notFound()
@@ -60,6 +67,7 @@ export default async function EditCampaignPage({
       <div className="rounded-3xl border border-white/10 bg-[#0B1726]/90 p-6 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
         <CampaignForm
           initialValues={campaign}
+          owners={owners}
           hiddenId={campaign.id}
           action={updateCampaign}
           submitLabel="Save changes"

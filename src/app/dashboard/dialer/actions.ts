@@ -291,6 +291,14 @@ export async function saveDialerContactUpdate(input: {
       contact.email ||
       'contact'
 
+    const { data: taskOwnerMembership } = await supabase
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', organization.organization_id)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .maybeSingle()
+
     const { error: taskError } = await supabase.from('contact_tasks').insert({
       organization_id: organization.organization_id,
       contact_id: contact.id,
@@ -301,6 +309,8 @@ export async function saveDialerContactUpdate(input: {
       priority: leadStatus === 'qualified' || leadStatus === 'negotiation'
         ? 'high'
         : 'medium',
+      assigned_to: user.id,
+      owner_membership_id: taskOwnerMembership?.id ?? null,
       created_by: user.id,
       completed_at: null,
     })

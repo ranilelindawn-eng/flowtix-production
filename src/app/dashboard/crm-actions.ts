@@ -4,14 +4,18 @@ import { revalidatePath } from 'next/cache'
 import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { redirect } from 'next/navigation'
 
-import { requireOrganization } from '@/lib/auth'
+import { requireOrganization, requirePermission } from '@/lib/auth'
+import type { Permission } from '@/lib/permissions'
+import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
 
 const text = (formData: FormData, key: string) => formData.get(key)?.toString().trim() ?? ''
 const optional = (value: string) => value || null
 
-async function context() {
-  const membership = await requireOrganization()
+async function context(permission?: Permission) {
+  const membership = permission
+    ? await requirePermission(permission)
+    : await requireOrganization()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Authentication required.')
@@ -19,9 +23,13 @@ async function context() {
 }
 
 export async function createCompany(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('companies.create')
   const name = text(formData, 'name')
   if (!name) throw new Error('Company name is required.')
+  const owner = await resolveOwnerAssignment(
+    membership,
+    text(formData, 'owner_membership_id'),
+  )
   const { data, error } = await supabase.from('companies').insert({
     organization_id: membership.organization_id,
     name,
@@ -35,7 +43,8 @@ export async function createCompany(formData: FormData) {
     country: optional(text(formData, 'country')),
     status: text(formData, 'status') || 'active',
     description: optional(text(formData, 'description')),
-    owner_id: user.id,
+    owner_id: owner.ownerUserId,
+    owner_membership_id: owner.ownerMembershipId,
     created_by: user.id,
   }).select('id').single()
   if (error) throw new Error(error.message)
@@ -44,12 +53,17 @@ export async function createCompany(formData: FormData) {
 }
 
 export async function updateCompany(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('companies.update')
   const companyId = text(formData, 'id')
   const name = text(formData, 'name')
 
   if (!companyId) throw new Error('Company ID is required.')
   if (!name) throw new Error('Company name is required.')
+
+  const owner = await resolveOwnerAssignment(
+    membership,
+    text(formData, 'owner_membership_id'),
+  )
 
   const { data: existingCompany, error: loadError } = await supabase
     .from('companies')
@@ -80,6 +94,8 @@ export async function updateCompany(formData: FormData) {
       country: optional(text(formData, 'country')),
       status: text(formData, 'status') || 'active',
       description: optional(text(formData, 'description')),
+      owner_id: owner.ownerUserId,
+      owner_membership_id: owner.ownerMembershipId,
     })
     .eq('id', companyId)
     .eq('organization_id', membership.organization_id)
@@ -95,7 +111,7 @@ export async function updateCompany(formData: FormData) {
 }
 
 export async function deleteCompany(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('companies.delete')
   const companyId = text(formData, 'id')
 
   if (!companyId) throw new Error('Company ID is required.')
@@ -328,7 +344,7 @@ export async function deletePipeline(formData: FormData) {
 }
 
 export async function createOpportunity(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('opportunities.create')
   const name = text(formData, 'name')
   if (!name) throw new Error('Opportunity name is required.')
   const pipelineId = text(formData, 'pipeline_id')
@@ -338,6 +354,10 @@ export async function createOpportunity(formData: FormData) {
     stageId = data?.id ?? ''
   }
   if (!pipelineId || !stageId) throw new Error('A pipeline and stage are required.')
+  const owner = await resolveOwnerAssignment(
+    membership,
+    text(formData, 'owner_membership_id'),
+  )
   const { error } = await supabase.from('opportunities').insert({
     organization_id: membership.organization_id,
     pipeline_id: pipelineId,
@@ -350,7 +370,8 @@ export async function createOpportunity(formData: FormData) {
     probability: Number(text(formData, 'probability') || '0'),
     expected_close_date: optional(text(formData, 'expected_close_date')),
     description: optional(text(formData, 'description')),
-    owner_id: user.id,
+    owner_id: owner.ownerUserId,
+    owner_membership_id: owner.ownerMembershipId,
     created_by: user.id,
   })
   if (error) throw new Error(error.message)
@@ -358,7 +379,7 @@ export async function createOpportunity(formData: FormData) {
 }
 
 export async function updateOpportunity(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('opportunities.update')
   const opportunityId = text(formData, 'id')
   const pipelineId = text(formData, 'pipeline_id')
   const stageId = text(formData, 'stage_id')
@@ -368,6 +389,11 @@ export async function updateOpportunity(formData: FormData) {
   if (!pipelineId) throw new Error('Pipeline ID is required.')
   if (!stageId) throw new Error('Stage is required.')
   if (!name) throw new Error('Opportunity name is required.')
+
+  const owner = await resolveOwnerAssignment(
+    membership,
+    text(formData, 'owner_membership_id'),
+  )
 
   const { data: opportunity, error: opportunityError } = await supabase
     .from('opportunities')
@@ -424,6 +450,8 @@ export async function updateOpportunity(formData: FormData) {
       probability,
       expected_close_date: optional(text(formData, 'expected_close_date')),
       description: optional(text(formData, 'description')),
+      owner_id: owner.ownerUserId,
+      owner_membership_id: owner.ownerMembershipId,
       updated_at: new Date().toISOString(),
     })
     .eq('id', opportunityId)
@@ -443,7 +471,7 @@ export async function updateOpportunity(formData: FormData) {
 }
 
 export async function moveOpportunityStage(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('opportunities.update')
   const opportunityId = text(formData, 'id')
   const pipelineId = text(formData, 'pipeline_id')
   const stageId = text(formData, 'stage_id')
@@ -488,7 +516,7 @@ export async function moveOpportunityStage(formData: FormData) {
 }
 
 export async function deleteOpportunity(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('opportunities.delete')
   const opportunityId = text(formData, 'id')
   const pipelineId = text(formData, 'pipeline_id')
 

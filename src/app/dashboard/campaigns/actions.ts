@@ -40,6 +40,7 @@ function getCampaignValues(formData: FormData): CampaignFormValues {
     status: getCampaignStatus(formData),
     start_date: getString(formData, 'start_date'),
     end_date: getString(formData, 'end_date'),
+    owner_membership_id: getString(formData, 'owner_membership_id'),
   }
 }
 

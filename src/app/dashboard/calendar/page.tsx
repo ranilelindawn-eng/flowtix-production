@@ -2,11 +2,14 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
+
 import CalendarBoard from '@/components/calendar/CalendarBoard'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization, getTeamMembers } from '@/lib/team'
 
 export default async function CalendarPage() {
+  await requirePermission('calendar.view')
   const supabase = await createClient()
   const { data: claimsData } = await supabase.auth.getClaims()
   const userId = claimsData?.claims?.sub

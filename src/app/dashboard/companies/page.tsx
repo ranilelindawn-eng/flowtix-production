@@ -1,10 +1,10 @@
 import Link from 'next/link'
 import { Building2, Plus, Search } from 'lucide-react'
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<{ search?: string }> }) {
-  const membership = await requireOrganization()
+  const membership = await requirePermission('companies.view')
   const supabase = await createClient()
   const { search = '' } = await searchParams
   let query = supabase.from('companies').select('id,name,industry,domain,phone,email,status,created_at').eq('organization_id', membership.organization_id).order('created_at', { ascending: false })

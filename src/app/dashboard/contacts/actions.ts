@@ -11,6 +11,8 @@ import {
 } from '@/lib/contacts'
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { assertContactCapacity } from '@/lib/usage-limits'
+import { getCurrentOrganization } from '@/lib/team'
+import { resolveOwnerAssignment } from '@/lib/ownership'
 
 const getString = (formData: FormData, key: string) =>
   formData.get(key)?.toString().trim() ?? ''
@@ -248,7 +250,7 @@ export async function createContactNote(formData: FormData) {
 }
 
 export async function createContactTask(formData: FormData) {
-  await requirePermission('contacts.update')
+  await requirePermission('tasks.create')
 
   const contactId = getString(formData, 'contactId')
   const title = getString(formData, 'title')
@@ -301,6 +303,15 @@ export async function createContactTask(formData: FormData) {
     throw new Error('The contact does not have an organization.')
   }
 
+  const membership = await getCurrentOrganization()
+  if (!membership || membership.organization_id !== contact.organization_id) {
+    throw new Error('Unable to resolve the task owner.')
+  }
+  const owner = await resolveOwnerAssignment(
+    membership,
+    getString(formData, 'owner_membership_id'),
+  )
+
   const { error: insertError } = await supabase
     .from('contact_tasks')
     .insert({
@@ -311,6 +322,8 @@ export async function createContactTask(formData: FormData) {
       due_at: dueAt || null,
       status: 'pending',
       priority,
+      assigned_to: owner.ownerUserId,
+      owner_membership_id: owner.ownerMembershipId,
       created_by: user.id,
       completed_at: null,
     })
@@ -323,7 +336,7 @@ export async function createContactTask(formData: FormData) {
 }
 
 export async function completeContactTask(formData: FormData) {
-  await requirePermission('contacts.update')
+  await requirePermission('tasks.update')
 
   const taskId = getString(formData, 'taskId')
   const contactId = getString(formData, 'contactId')
@@ -374,7 +387,7 @@ export async function completeContactTask(formData: FormData) {
 }
 
 export async function updateContactTask(formData: FormData) {
-  await requirePermission('contacts.update')
+  await requirePermission('tasks.update')
 
   const taskId = getString(formData, 'taskId')
   const contactId = getString(formData, 'contactId')
@@ -458,7 +471,7 @@ export async function updateContactTask(formData: FormData) {
 }
 
 export async function deleteContactTask(formData: FormData) {
-  await requirePermission('contacts.update')
+  await requirePermission('tasks.delete')
 
   const taskId = getString(formData, 'taskId')
   const contactId = getString(formData, 'contactId')

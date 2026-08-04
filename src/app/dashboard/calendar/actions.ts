@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 
+import { requirePermission } from '@/lib/auth'
+
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-client'
 import {
   createTeamsMeeting,
@@ -15,6 +17,7 @@ import {
 } from '@/lib/integrations/zoom-client'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
+import { resolveOwnerAssignmentByUserId } from '@/lib/ownership'
 
 const EDIT_ALL_ROLES = new Set(['owner', 'admin'])
 const EDIT_TEAM_ROLES = new Set(['owner', 'admin', 'manager'])
@@ -47,6 +50,7 @@ async function context() {
     userId,
     organizationId: membership.organization_id,
     role: membership.role,
+    membership,
   }
 }
 
@@ -63,7 +67,8 @@ function parseTimes(formData: FormData) {
 }
 
 export async function createCalendarEvent(formData: FormData) {
-  const { supabase, userId, organizationId } = await context()
+  await requirePermission('calendar.create')
+  const { supabase, userId, organizationId, membership } = await context()
   const { start, end } = parseTimes(formData)
   const title = text(formData, 'title')
   const eventType = text(formData, 'event_type') || 'meeting'
@@ -76,6 +81,11 @@ export async function createCalendarEvent(formData: FormData) {
     .filter(Boolean)
 
   if (!title) throw new Error('Event title is required.')
+
+  const owner = await resolveOwnerAssignmentByUserId(
+    membership,
+    optionalId(formData, 'owner_id'),
+  )
 
   let externalMeetingId: string | null = null
   let meetingUrl: string | null = text(formData, 'meeting_url') || null
@@ -146,7 +156,8 @@ export async function createCalendarEvent(formData: FormData) {
     contact_id: optionalId(formData, 'contact_id'),
     company_id: optionalId(formData, 'company_id'),
     opportunity_id: optionalId(formData, 'opportunity_id'),
-    owner_id: optionalId(formData, 'owner_id') ?? userId,
+    owner_id: owner.ownerUserId,
+    owner_membership_id: owner.ownerMembershipId,
     created_by: userId,
     attendee_emails: attendeeEmails,
     metadata: {},
@@ -157,13 +168,14 @@ export async function createCalendarEvent(formData: FormData) {
 }
 
 export async function updateCalendarEvent(formData: FormData) {
-  const { supabase, userId, organizationId, role } = await context()
+  await requirePermission('calendar.update')
+  const { supabase, userId, organizationId, role, membership } = await context()
   const id = text(formData, 'id')
   if (!id) throw new Error('Missing event ID.')
 
   const { data: existing, error: existingError } = await supabase
     .from('calendar_events')
-    .select('created_by,owner_id,external_meeting_id,meeting_provider')
+    .select('created_by,owner_id,owner_membership_id,external_meeting_id,meeting_provider')
     .eq('organization_id', organizationId)
     .eq('id', id)
     .single()
@@ -185,6 +197,11 @@ export async function updateCalendarEvent(formData: FormData) {
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean)
+
+  const owner = await resolveOwnerAssignmentByUserId(
+    membership,
+    optionalId(formData, 'owner_id'),
+  )
 
   if (existing.meeting_provider === 'zoom' && existing.external_meeting_id) {
     await updateZoomMeeting(organizationId, existing.external_meeting_id, {
@@ -218,7 +235,8 @@ export async function updateCalendarEvent(formData: FormData) {
       contact_id: optionalId(formData, 'contact_id'),
       company_id: optionalId(formData, 'company_id'),
       opportunity_id: optionalId(formData, 'opportunity_id'),
-      owner_id: optionalId(formData, 'owner_id') ?? userId,
+      owner_id: owner.ownerUserId,
+      owner_membership_id: owner.ownerMembershipId,
       attendee_emails: attendeeEmails,
       updated_at: new Date().toISOString(),
     })
@@ -230,6 +248,7 @@ export async function updateCalendarEvent(formData: FormData) {
 }
 
 export async function deleteCalendarEvent(formData: FormData) {
+  await requirePermission('calendar.delete')
   const { supabase, userId, organizationId, role } = await context()
   const id = text(formData, 'id')
   if (!id) throw new Error('Missing event ID.')

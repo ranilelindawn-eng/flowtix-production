@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import OwnerSelect from '@/components/ownership/OwnerSelect'
+import { getAssignableMembers } from '@/lib/ownership'
 
 import { updateOpportunity } from '@/app/dashboard/crm-actions'
 
@@ -15,7 +17,7 @@ export default async function EditOpportunityPage({
   params: Promise<{ id: string; opportunityId: string }>
 }) {
   const { id: pipelineId, opportunityId } = await params
-  const membership = await requireOrganization()
+  const membership = await requirePermission('opportunities.update')
   const supabase = await createClient()
 
   const [
@@ -24,6 +26,7 @@ export default async function EditOpportunityPage({
     { data: stages },
     { data: companies },
     { data: contacts },
+    owners,
   ] = await Promise.all([
     supabase
       .from('pipelines')
@@ -34,7 +37,7 @@ export default async function EditOpportunityPage({
     supabase
       .from('opportunities')
       .select(
-        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description',
+        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description,owner_membership_id',
       )
       .eq('organization_id', membership.organization_id)
       .eq('pipeline_id', pipelineId)
@@ -56,6 +59,7 @@ export default async function EditOpportunityPage({
       .select('id,first_name,last_name,email')
       .eq('organization_id', membership.organization_id)
       .order('first_name'),
+    getAssignableMembers(membership),
   ])
 
   if (pipelineError) {
@@ -210,6 +214,12 @@ export default async function EditOpportunityPage({
             className={`${input} mt-2`}
           />
         </label>
+
+        <OwnerSelect
+          members={owners}
+          defaultMembershipId={opportunity.owner_membership_id}
+          className={input}
+        />
 
         <label className="text-sm text-slate-300 md:col-span-2">
           Description

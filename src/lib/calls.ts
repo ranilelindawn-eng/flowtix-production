@@ -1,4 +1,6 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import { getCurrentOrganization } from '@/lib/team'
+import { resolveOwnerAssignment } from '@/lib/ownership'
 
 export const CALLS_PER_PAGE = 12
 
@@ -22,6 +24,7 @@ export type Call = {
   recording_available: boolean
   notes: string | null
   metadata: Record<string, unknown>
+  owner_membership_id: string | null
   created_by: string
   created_at: string
   updated_at: string
@@ -36,6 +39,7 @@ export type CallFormValues = {
   duration_seconds: string
   recording_available: boolean
   notes: string
+  owner_membership_id: string
 }
 
 export type CallFilters = {
@@ -316,6 +320,14 @@ export async function createCall(
 ): Promise<Call> {
   const { supabase, userId, organizationId } =
     await getCallContext()
+  const membership = await getCurrentOrganization()
+  if (!membership || membership.organization_id !== organizationId) {
+    throw new Error('Unable to resolve the call owner.')
+  }
+  const owner = await resolveOwnerAssignment(
+    membership,
+    values.owner_membership_id,
+  )
 
   const { data, error } = await supabase
     .from('calls')
@@ -332,6 +344,7 @@ export async function createCall(
       recording_available: values.recording_available,
       notes: normalizeOptionalText(values.notes),
       metadata: {},
+      owner_membership_id: owner.ownerMembershipId,
       created_by: userId,
     })
     .select('*')
@@ -355,6 +368,14 @@ export async function updateCall(
   }
 
   const { supabase, organizationId } = await getCallContext()
+  const membership = await getCurrentOrganization()
+  if (!membership || membership.organization_id !== organizationId) {
+    throw new Error('Unable to resolve the call owner.')
+  }
+  const owner = await resolveOwnerAssignment(
+    membership,
+    values.owner_membership_id,
+  )
 
   const { data, error } = await supabase
     .from('calls')
@@ -369,6 +390,7 @@ export async function updateCall(
       ),
       recording_available: values.recording_available,
       notes: normalizeOptionalText(values.notes),
+      owner_membership_id: owner.ownerMembershipId,
     })
     .eq('id', normalizedId)
     .eq('organization_id', organizationId)
@@ -455,6 +477,7 @@ export async function createDialerCall(
       duration_seconds: input.durationSeconds,
       recording_available: false,
       notes: normalizeOptionalText(input.notes ?? ''),
+      owner_membership_id: (await getCurrentOrganization())?.membership_id ?? null,
       metadata: {
         phone_number: phoneNumber,
         source: 'dialer',

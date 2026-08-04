@@ -62,6 +62,7 @@ function getCallValues(formData: FormData): CallFormValues {
     duration_seconds: getString(formData, 'duration_seconds'),
     recording_available: getBoolean(formData, 'recording_available'),
     notes: getString(formData, 'notes'),
+    owner_membership_id: getString(formData, 'owner_membership_id'),
   }
 }
 

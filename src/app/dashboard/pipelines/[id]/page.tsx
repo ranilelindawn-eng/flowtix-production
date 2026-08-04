@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { getAssignableMembers } from '@/lib/ownership'
 
 import {
   createOpportunity,
@@ -22,7 +23,7 @@ export default async function PipelineDetailsPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const membership = await requireOrganization()
+  const membership = await requirePermission('opportunities.view')
   const supabase = await createClient()
 
   const [
@@ -31,6 +32,7 @@ export default async function PipelineDetailsPage({
     { data: opportunities, error: opportunitiesError },
     { data: companies },
     { data: contacts },
+    owners,
   ] = await Promise.all([
     supabase
       .from('pipelines')
@@ -62,6 +64,7 @@ export default async function PipelineDetailsPage({
       .select('id,first_name,last_name,email')
       .eq('organization_id', membership.organization_id)
       .order('first_name'),
+    getAssignableMembers(membership),
   ])
 
   if (pipelineError) {
@@ -168,7 +171,7 @@ export default async function PipelineDetailsPage({
 
       <form
         action={createOpportunity}
-        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2 xl:grid-cols-6"
+        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2 xl:grid-cols-7"
       >
         <input type="hidden" name="pipeline_id" value={pipeline.id} />
 
@@ -211,6 +214,15 @@ export default async function PipelineDetailsPage({
             <option key={contact.id} value={contact.id}>
               {`${contact.first_name} ${contact.last_name}`.trim() ||
                 contact.email}
+            </option>
+          ))}
+        </select>
+
+
+        <select name="owner_membership_id" defaultValue={membership.membership_id} className={field}>
+          {owners.map((owner) => (
+            <option key={owner.membershipId} value={owner.membershipId}>
+              {owner.name}
             </option>
           ))}
         </select>

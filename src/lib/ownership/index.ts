@@ -125,3 +125,47 @@ export async function resolveOwnerAssignment(
     ownerUserId: data.user_id,
   }
 }
+
+
+export async function resolveOwnerAssignmentByUserId(
+  membership: CurrentOrganizationMembership,
+  requestedUserId: string | null | undefined,
+): Promise<{
+  ownerMembershipId: string | null
+  ownerUserId: string | null
+}> {
+  const normalized = requestedUserId?.trim() || null
+
+  if (!normalized || normalized === membership.user_id) {
+    return {
+      ownerMembershipId: membership.membership_id,
+      ownerUserId: membership.user_id,
+    }
+  }
+
+  if (!canAssignOtherMembers(membership.role)) {
+    throw new Error('You can only assign records to yourself.')
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organization_members')
+    .select('id,user_id')
+    .eq('organization_id', membership.organization_id)
+    .eq('user_id', normalized)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Failed to validate the assigned owner: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('The assigned owner is not an active member of this organization.')
+  }
+
+  return {
+    ownerMembershipId: data.id,
+    ownerUserId: data.user_id,
+  }
+}

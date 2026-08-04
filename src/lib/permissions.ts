@@ -23,15 +23,31 @@ export type Permission =
   | 'companies.view_own'
   | 'companies.view_all'
   | 'companies.assign'
+  | 'companies.view'
+  | 'companies.create'
+  | 'companies.update'
+  | 'companies.delete'
   | 'opportunities.view_own'
   | 'opportunities.view_all'
   | 'opportunities.assign'
+  | 'opportunities.view'
+  | 'opportunities.create'
+  | 'opportunities.update'
+  | 'opportunities.delete'
   | 'tasks.view_own'
   | 'tasks.view_all'
   | 'tasks.assign'
+  | 'tasks.view'
+  | 'tasks.create'
+  | 'tasks.update'
+  | 'tasks.delete'
   | 'calendar.view_own'
   | 'calendar.view_all'
   | 'calendar.assign'
+  | 'calendar.view'
+  | 'calendar.create'
+  | 'calendar.update'
+  | 'calendar.delete'
   | 'calls.view_own'
   | 'calls.view_all'
   | 'calls.assign'
@@ -93,15 +109,31 @@ const ownerPermissions: readonly Permission[] = [
   'companies.view_own',
   'companies.view_all',
   'companies.assign',
+  'companies.view',
+  'companies.create',
+  'companies.update',
+  'companies.delete',
   'opportunities.view_own',
   'opportunities.view_all',
   'opportunities.assign',
+  'opportunities.view',
+  'opportunities.create',
+  'opportunities.update',
+  'opportunities.delete',
   'tasks.view_own',
   'tasks.view_all',
   'tasks.assign',
+  'tasks.view',
+  'tasks.create',
+  'tasks.update',
+  'tasks.delete',
   'calendar.view_own',
   'calendar.view_all',
   'calendar.assign',
+  'calendar.view',
+  'calendar.create',
+  'calendar.update',
+  'calendar.delete',
   'calls.view_own',
   'calls.view_all',
   'calls.assign',
@@ -173,15 +205,31 @@ const adminPermissions: readonly Permission[] = [
   'companies.view_own',
   'companies.view_all',
   'companies.assign',
+  'companies.view',
+  'companies.create',
+  'companies.update',
+  'companies.delete',
   'opportunities.view_own',
   'opportunities.view_all',
   'opportunities.assign',
+  'opportunities.view',
+  'opportunities.create',
+  'opportunities.update',
+  'opportunities.delete',
   'tasks.view_own',
   'tasks.view_all',
   'tasks.assign',
+  'tasks.view',
+  'tasks.create',
+  'tasks.update',
+  'tasks.delete',
   'calendar.view_own',
   'calendar.view_all',
   'calendar.assign',
+  'calendar.view',
+  'calendar.create',
+  'calendar.update',
+  'calendar.delete',
   'calls.view_own',
   'calls.view_all',
   'calls.assign',
@@ -247,15 +295,31 @@ const managerPermissions: readonly Permission[] = [
   'companies.view_own',
   'companies.view_all',
   'companies.assign',
+  'companies.view',
+  'companies.create',
+  'companies.update',
+  'companies.delete',
   'opportunities.view_own',
   'opportunities.view_all',
   'opportunities.assign',
+  'opportunities.view',
+  'opportunities.create',
+  'opportunities.update',
+  'opportunities.delete',
   'tasks.view_own',
   'tasks.view_all',
   'tasks.assign',
+  'tasks.view',
+  'tasks.create',
+  'tasks.update',
+  'tasks.delete',
   'calendar.view_own',
   'calendar.view_all',
   'calendar.assign',
+  'calendar.view',
+  'calendar.create',
+  'calendar.update',
+  'calendar.delete',
   'calls.view_own',
   'calls.view_all',
   'calls.assign',
@@ -306,9 +370,21 @@ const agentPermissions: readonly Permission[] = [
   'contacts.update',
   'contacts.view_own',
   'companies.view_own',
+  'companies.view',
+  'companies.create',
+  'companies.update',
   'opportunities.view_own',
+  'opportunities.view',
+  'opportunities.create',
+  'opportunities.update',
   'tasks.view_own',
+  'tasks.view',
+  'tasks.create',
+  'tasks.update',
   'calendar.view_own',
+  'calendar.view',
+  'calendar.create',
+  'calendar.update',
   'calls.view_own',
   'campaigns.view_own',
 

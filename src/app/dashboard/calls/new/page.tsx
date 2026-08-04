@@ -2,15 +2,20 @@ import Link from 'next/link'
 
 import { createCall } from '@/app/dashboard/calls/actions'
 import CallForm from '@/components/calls/CallForm'
+import { getAssignableMembers } from '@/lib/ownership'
+import { getCurrentOrganization } from '@/lib/team'
 import {
   getCallCampaigns,
   getCallContacts,
 } from '@/lib/calls'
 
 export default async function NewCallPage() {
-  const [contacts, campaigns] = await Promise.all([
+  const membership = await getCurrentOrganization()
+  if (!membership) throw new Error('Unable to determine the current organization.')
+  const [contacts, campaigns, owners] = await Promise.all([
     getCallContacts(),
     getCallCampaigns(),
+    getAssignableMembers(membership),
   ])
 
   return (
@@ -53,6 +58,7 @@ export default async function NewCallPage() {
         <CallForm
           contacts={contacts}
           campaigns={campaigns}
+          owners={owners}
           action={createCall}
           submitLabel="Create call"
         />

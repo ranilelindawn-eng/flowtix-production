@@ -1,4 +1,6 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import { getCurrentOrganization } from '@/lib/team'
+import { resolveOwnerAssignment } from '@/lib/ownership'
 
 export const CAMPAIGNS_PER_PAGE = 12
 
@@ -16,6 +18,7 @@ export type Campaign = {
   status: CampaignStatus
   start_date: string | null
   end_date: string | null
+  owner_membership_id: string | null
   created_by: string
   created_at: string
   updated_at: string
@@ -27,6 +30,7 @@ export type CampaignFormValues = {
   status: CampaignStatus
   start_date: string
   end_date: string
+  owner_membership_id: string
 }
 
 export type CampaignFilters = {
@@ -222,6 +226,14 @@ export async function createCampaign(
 ): Promise<Campaign> {
   const { supabase, userId, organizationId } =
     await getCampaignContext()
+  const membership = await getCurrentOrganization()
+  if (!membership || membership.organization_id !== organizationId) {
+    throw new Error('Unable to resolve the campaign owner.')
+  }
+  const owner = await resolveOwnerAssignment(
+    membership,
+    values.owner_membership_id,
+  )
 
   const name = values.name.trim()
 
@@ -251,6 +263,7 @@ export async function createCampaign(
       status: values.status,
       start_date: startDate,
       end_date: endDate,
+      owner_membership_id: owner.ownerMembershipId,
       created_by: userId,
     })
     .select('*')
@@ -275,6 +288,14 @@ export async function updateCampaign(
 
   const { supabase, organizationId } =
     await getCampaignContext()
+  const membership = await getCurrentOrganization()
+  if (!membership || membership.organization_id !== organizationId) {
+    throw new Error('Unable to resolve the campaign owner.')
+  }
+  const owner = await resolveOwnerAssignment(
+    membership,
+    values.owner_membership_id,
+  )
 
   const name = values.name.trim()
 
@@ -303,6 +324,7 @@ export async function updateCampaign(
       status: values.status,
       start_date: startDate,
       end_date: endDate,
+      owner_membership_id: owner.ownerMembershipId,
     })
     .eq('id', normalizedId)
     .eq('organization_id', organizationId)

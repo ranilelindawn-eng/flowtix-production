@@ -1,8 +1,10 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import OwnerSelect from '@/components/ownership/OwnerSelect'
+import { getAssignableMembers } from '@/lib/ownership'
 
 import { updateCompany } from '../../../crm-actions'
 
@@ -15,13 +17,13 @@ export default async function EditCompanyPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const membership = await requireOrganization()
+  const membership = await requirePermission('companies.update')
   const supabase = await createClient()
 
   const { data: company, error } = await supabase
     .from('companies')
     .select(
-      'id,name,domain,industry,email,phone,website,status,address,city,country,description',
+      'id,name,domain,industry,email,phone,website,status,address,city,country,description,owner_membership_id',
     )
     .eq('organization_id', membership.organization_id)
     .eq('id', id)
@@ -32,6 +34,8 @@ export default async function EditCompanyPage({
   }
 
   if (!company) notFound()
+
+  const owners = await getAssignableMembers(membership)
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -71,6 +75,12 @@ export default async function EditCompanyPage({
             className={`${input} mt-2`}
           />
         </label>
+
+        <OwnerSelect
+          members={owners}
+          defaultMembershipId={company.owner_membership_id}
+          className={input}
+        />
 
         <label className="text-sm text-slate-300">
           Domain

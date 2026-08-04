@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation'
 
 import { updateCall } from '@/app/dashboard/calls/actions'
 import CallForm from '@/components/calls/CallForm'
+import { getAssignableMembers } from '@/lib/ownership'
+import { getCurrentOrganization } from '@/lib/team'
 import {
   getCall,
   getCallCampaigns,
@@ -20,10 +22,13 @@ export default async function EditCallPage({
 }: EditCallPageProps) {
   const { id } = await params
 
-  const [call, contacts, campaigns] = await Promise.all([
+  const membership = await getCurrentOrganization()
+  if (!membership) throw new Error('Unable to determine the current organization.')
+  const [call, contacts, campaigns, owners] = await Promise.all([
     getCall(id),
     getCallContacts(),
     getCallCampaigns(),
+    getAssignableMembers(membership),
   ])
 
   if (!call) {
@@ -82,6 +87,7 @@ export default async function EditCallPage({
         <CallForm
           contacts={contacts}
           campaigns={campaigns}
+          owners={owners}
           initialValues={call}
           hiddenId={id}
           action={updateCall}
