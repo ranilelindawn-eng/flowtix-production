@@ -42,6 +42,8 @@ export type Permission =
   | 'webhooks.view'
   | 'webhooks.manage'
   | 'audit_logs.view'
+  | 'jobs.view'
+  | 'jobs.manage'
 
 const ownerPermissions: readonly Permission[] = [
   'organization.view',
@@ -100,6 +102,9 @@ const ownerPermissions: readonly Permission[] = [
   'webhooks.manage',
 
   'audit_logs.view',
+
+  'jobs.view',
+  'jobs.manage',
 ]
 
 const adminPermissions: readonly Permission[] = [
@@ -156,6 +161,9 @@ const adminPermissions: readonly Permission[] = [
   'webhooks.manage',
 
   'audit_logs.view',
+
+  'jobs.view',
+  'jobs.manage',
 ]
 
 const managerPermissions: readonly Permission[] = [

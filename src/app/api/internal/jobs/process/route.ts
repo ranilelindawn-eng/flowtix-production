@@ -1,9 +1,8 @@
-import { randomUUID, timingSafeEqual } from 'crypto'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 
 import { processJobs } from '@/lib/jobs/worker'
 
-export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
@@ -27,15 +26,9 @@ function isAuthorized(request: Request) {
   }
 
   const authorization = request.headers.get('authorization')
-  const bearer = authorization?.startsWith('Bearer ')
+  const supplied = authorization?.startsWith('Bearer ')
     ? authorization.slice('Bearer '.length).trim()
     : ''
-
-  const vercelCronSecret = request.headers
-    .get('x-vercel-cron-signature')
-    ?.trim()
-
-  const supplied = bearer || vercelCronSecret || ''
 
   return Boolean(supplied) && secureEqual(supplied, expected)
 }
@@ -54,7 +47,48 @@ function parseQueues(value: unknown) {
   return queues.length > 0 ? queues : undefined
 }
 
-export async function POST(request: Request) {
+async function readOptions(request: Request) {
+  if (request.method === 'GET') {
+    const url = new URL(request.url)
+    const queues = url.searchParams
+      .getAll('queue')
+      .map((queue) => queue.trim())
+      .filter(Boolean)
+
+    return {
+      workerId: url.searchParams.get('workerId') ?? undefined,
+      queues: queues.length > 0 ? queues : undefined,
+      limit: Number(url.searchParams.get('limit') ?? 10),
+      leaseSeconds: Number(
+        url.searchParams.get('leaseSeconds') ?? 120,
+      ),
+    }
+  }
+
+  const body = (await request.json().catch(() => ({}))) as {
+    workerId?: unknown
+    queues?: unknown
+    limit?: unknown
+    leaseSeconds?: unknown
+  }
+
+  return {
+    workerId:
+      typeof body.workerId === 'string' ? body.workerId : undefined,
+    queues: parseQueues(body.queues),
+    limit:
+      typeof body.limit === 'number' && Number.isFinite(body.limit)
+        ? body.limit
+        : 10,
+    leaseSeconds:
+      typeof body.leaseSeconds === 'number' &&
+      Number.isFinite(body.leaseSeconds)
+        ? body.leaseSeconds
+        : 120,
+  }
+}
+
+async function handleProcess(request: Request) {
   try {
     if (!isAuthorized(request)) {
       return NextResponse.json(
@@ -63,34 +97,18 @@ export async function POST(request: Request) {
       )
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
-      workerId?: unknown
-      queues?: unknown
-      limit?: unknown
-      leaseSeconds?: unknown
-    }
-
-    const workerId =
-      typeof body.workerId === 'string' && body.workerId.trim()
-        ? body.workerId.trim().slice(0, 200)
-        : `vercel-${randomUUID()}`
-
-    const limit =
-      typeof body.limit === 'number' && Number.isFinite(body.limit)
-        ? body.limit
-        : 10
-
-    const leaseSeconds =
-      typeof body.leaseSeconds === 'number' &&
-      Number.isFinite(body.leaseSeconds)
-        ? body.leaseSeconds
-        : 120
+    const options = await readOptions(request)
+    const workerId = options.workerId?.trim()
+      ? options.workerId.trim().slice(0, 200)
+      : `vercel-${randomUUID()}`
 
     const result = await processJobs({
       workerId,
-      queues: parseQueues(body.queues),
-      limit,
-      leaseSeconds,
+      queues: options.queues,
+      limit: Number.isFinite(options.limit) ? options.limit : 10,
+      leaseSeconds: Number.isFinite(options.leaseSeconds)
+        ? options.leaseSeconds
+        : 120,
     })
 
     return NextResponse.json({
@@ -112,4 +130,12 @@ export async function POST(request: Request) {
       { status: 500 },
     )
   }
+}
+
+export async function GET(request: Request) {
+  return handleProcess(request)
+}
+
+export async function POST(request: Request) {
+  return handleProcess(request)
 }

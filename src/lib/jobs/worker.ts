@@ -87,6 +87,8 @@ export type ProcessJobsOptions = {
 }
 
 export type ProcessJobsResult = {
+  recovered: number
+  recoveredDeadLettered: number
   claimed: number
   completed: number
   retried: number
@@ -121,6 +123,25 @@ export async function processJobs(
   )
 
   const client = createWorkerClient()
+
+  const recovery = await client.rpc(
+    'recover_stale_background_jobs',
+  )
+
+  if (recovery.error) {
+    throw new Error(
+      `Unable to recover stale jobs: ${recovery.error.message}`,
+    )
+  }
+
+  const recoveryRow = Array.isArray(recovery.data)
+    ? recovery.data[0] ?? null
+    : recovery.data
+  const recovered = Number(recoveryRow?.recovered ?? 0)
+  const recoveredDeadLettered = Number(
+    recoveryRow?.dead_lettered ?? 0,
+  )
+
   const { data, error } = await client.rpc(
     'claim_background_jobs',
     {
@@ -137,6 +158,10 @@ export async function processJobs(
 
   const jobs = parseJobs(data)
   const result: ProcessJobsResult = {
+    recovered: Number.isFinite(recovered) ? recovered : 0,
+    recoveredDeadLettered: Number.isFinite(recoveredDeadLettered)
+      ? recoveredDeadLettered
+      : 0,
     claimed: jobs.length,
     completed: 0,
     retried: 0,
