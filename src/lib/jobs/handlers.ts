@@ -1,3 +1,4 @@
+import { executeCalendarSync } from '@/lib/calendar/sync'
 import { executeCampaignMember } from '@/lib/campaigns/engine'
 import { deliverCommunication } from '@/lib/communications/delivery'
 import type { JobHandler } from '@/lib/jobs/types'
@@ -34,4 +35,10 @@ registerJobHandler('communications.send', async ({ job, heartbeat }) => {
 registerJobHandler('campaign.execute_member', async ({ job, heartbeat }) => {
   await heartbeat()
   return executeCampaignMember(job.payload)
+})
+
+
+registerJobHandler('calendar.sync_event', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return executeCalendarSync(job.payload)
 })
