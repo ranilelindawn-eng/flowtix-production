@@ -1,11 +1,10 @@
-import { randomUUID } from 'node:crypto'
-
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateStructuredAI } from '@/lib/ai/provider'
 import { validateGeneratedEmail, type GeneratedEmail } from '@/lib/ai/validation'
+import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
 import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
@@ -39,7 +38,7 @@ export async function POST(request: Request) {
       'ai_requests',
       1,
       organization.organization_id,
-      randomUUID(),
+      deriveWindowedIdempotencyKey('ai.email', { recipient, purpose, context, tone, contactId }, 120),
     )
 
     const rawResult = await generateStructuredAI<GeneratedEmail>({

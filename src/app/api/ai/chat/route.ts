@@ -1,10 +1,9 @@
-import { randomUUID } from 'node:crypto'
-
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { generateTextAI, getAIProviderLabel } from '@/lib/ai/provider'
+import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
 import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
       'ai_requests',
       1,
       organization.organization_id,
-      randomUUID(),
+      deriveWindowedIdempotencyKey('ai.chat', { conversationId: body.conversationId, message, agentKey }, 120),
     )
 
     let conversation: ConversationRow | null = null

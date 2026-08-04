@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  beginIdempotentOperation,
+  completeIdempotentOperation,
+  failIdempotentOperation,
+  idempotencyErrorStatus,
+  type IdempotencyHandle,
+} from '@/lib/idempotency'
 import { getCurrentOrganization } from '@/lib/team'
 
 const plans = {
@@ -40,6 +47,8 @@ const getAppUrl = () => {
 }
 
 export async function POST(request: Request) {
+  let idempotency: IdempotencyHandle | null = null
+
   try {
     const secretKey =
       process.env.PAYMONGO_SECRET_KEY?.trim()
@@ -101,6 +110,25 @@ export async function POST(request: Request) {
 
     const plan = plans[selectedPlan as PlanName]
     const appUrl = getAppUrl()
+
+    idempotency = await beginIdempotentOperation({
+      organizationId: organization.organization_id,
+      scope: 'billing.paymongo.checkout',
+      payload: { planCode: plan.code, amount: plan.amount },
+      key: formData.get('idempotency_key')?.toString() || null,
+      ttlSeconds: 3_600,
+      fallbackWindowSeconds: 600,
+    })
+
+    if (idempotency.replay) {
+      const checkoutUrl = idempotency.replay.body.checkoutUrl
+      if (typeof checkoutUrl === 'string' && checkoutUrl) {
+        return NextResponse.redirect(checkoutUrl, 303)
+      }
+      return NextResponse.json(idempotency.replay.body, {
+        status: idempotency.replay.status,
+      })
+    }
 
     const response = await fetch(
       'https://api.paymongo.com/v1/checkout_sessions',
@@ -232,8 +260,17 @@ export async function POST(request: Request) {
       )
     }
 
+    await completeIdempotentOperation(
+      idempotency,
+      303,
+      { checkoutUrl, checkoutId, planCode: plan.code },
+      { type: 'paymongo_checkout', id: checkoutId },
+    )
+
     return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {
+    const status = idempotencyErrorStatus(error) ?? 500
+    await failIdempotentOperation(idempotency, error, status)
     console.error('PAYMONGO CHECKOUT ERROR:', error)
 
     return NextResponse.json(
@@ -244,7 +281,7 @@ export async function POST(request: Request) {
             : 'Server error.',
       },
       {
-        status: 500,
+        status: idempotencyErrorStatus(error) ?? 500,
       },
     )
   }

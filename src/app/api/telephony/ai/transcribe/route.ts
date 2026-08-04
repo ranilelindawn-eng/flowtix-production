@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto'
-
 import { NextResponse } from 'next/server'
 
 import {
@@ -60,7 +58,7 @@ export async function POST(request: Request) {
       'ai_requests',
       1,
       organization.organization_id,
-      `transcription:${recordingId}:${randomUUID()}`,
+      `transcription:${recordingId}`,
     )
 
     const config =

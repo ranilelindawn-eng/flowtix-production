@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto'
-
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
@@ -10,6 +8,7 @@ import {
   type AIAnalysis,
 } from '@/lib/ai/provider'
 import { validateAIAnalysis } from '@/lib/ai/validation'
+import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
 import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
       'ai_requests',
       1,
       organization.organization_id,
-      randomUUID(),
+      deriveWindowedIdempotencyKey('ai.call_analysis', { transcript, callId, contactId }, 300),
     )
 
     const rawResult = await generateStructuredAI<AIAnalysis>({
