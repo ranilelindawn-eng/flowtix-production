@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { assertAutomationEnabled, isAutomationPaused } from '@/lib/automation/operations'
 import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import {
   NonRetryableJobError,
@@ -97,6 +98,8 @@ export async function executeCampaignMember(
       'CAMPAIGN_MEMBER_NOT_FOUND',
     )
   }
+
+  await assertAutomationEnabled(member.organization_id, 'campaigns')
 
   if (
     member.campaign_id !== campaignId ||
@@ -385,6 +388,31 @@ export async function scheduleCampaignMembers(input?: {
   leaseSeconds?: number
 }) {
   const client = createServiceClient()
+
+  if (input?.campaignId?.trim()) {
+    const { data: campaign } = await client
+      .from('campaigns')
+      .select('organization_id')
+      .eq('id', input.campaignId.trim())
+      .maybeSingle()
+
+    if (campaign?.organization_id) {
+      const state = await isAutomationPaused(
+        campaign.organization_id,
+        'campaigns',
+      )
+
+      if (state.paused) {
+        return {
+          scheduled: 0,
+          skipped: 0,
+          released: 0,
+          exhausted: 0,
+          paused: true,
+        }
+      }
+    }
+  }
 
   const recovery = await client.rpc(
     'recover_expired_campaign_reservations',

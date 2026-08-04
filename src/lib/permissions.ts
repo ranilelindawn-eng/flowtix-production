@@ -81,6 +81,8 @@ export type Permission =
   | 'audit_logs.view'
   | 'jobs.view'
   | 'jobs.manage'
+  | 'automation.view'
+  | 'automation.manage'
 
 const ownerPermissions: readonly Permission[] = [
   'organization.view',
@@ -179,6 +181,8 @@ const ownerPermissions: readonly Permission[] = [
 
   'jobs.view',
   'jobs.manage',
+  'automation.view',
+  'automation.manage',
 ]
 
 const adminPermissions: readonly Permission[] = [
@@ -275,6 +279,8 @@ const adminPermissions: readonly Permission[] = [
 
   'jobs.view',
   'jobs.manage',
+  'automation.view',
+  'automation.manage',
 ]
 
 const managerPermissions: readonly Permission[] = [
@@ -353,6 +359,8 @@ const managerPermissions: readonly Permission[] = [
   'settings.view',
 
   'audit_logs.view',
+
+  'automation.view',
 ]
 
 

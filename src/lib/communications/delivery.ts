@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { createHmac } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 
+import { assertAutomationEnabled } from '@/lib/automation/operations'
 import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
@@ -467,6 +468,11 @@ export async function deliverCommunication(
   if (message.status === 'cancelled') {
     return { skipped: true, messageId: message.id, status: 'cancelled' }
   }
+
+  await assertAutomationEnabled(
+    message.organization_id,
+    'communications',
+  )
 
   await enforceAutomationRules({
     organizationId: message.organization_id,

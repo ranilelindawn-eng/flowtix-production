@@ -7,6 +7,7 @@ import {
   CreditCard,
   KeyRound,
   ListChecks,
+  Workflow,
   Plug,
   Shield,
   Smartphone,
@@ -57,6 +58,12 @@ const links = [
     href: '/dashboard/settings/security',
     label: 'Security',
     icon: Shield,
+  },
+  {
+    href: '/dashboard/settings/automation',
+    label: 'Automation',
+    icon: Workflow,
+    permission: 'automation.view' as const,
   },
   {
     href: '/dashboard/settings/jobs',

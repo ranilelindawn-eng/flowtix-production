@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
+import { assertAutomationEnabled } from '@/lib/automation/operations'
 import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
 
@@ -119,6 +120,7 @@ export async function executeSequenceStep(
     .maybeSingle()
   if (enrollmentError) throw new Error(enrollmentError.message)
   if (!enrollment) throw new NonRetryableJobError('Sequence enrollment no longer exists.', 'ENROLLMENT_NOT_FOUND')
+  await assertAutomationEnabled(enrollment.organization_id, 'sequences')
   if (enrollment.status !== 'active') return { skipped: true, reason: `Enrollment is ${enrollment.status}.` }
 
   const { data: sequence, error: sequenceError } = await client
