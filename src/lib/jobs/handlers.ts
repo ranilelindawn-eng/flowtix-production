@@ -1,3 +1,4 @@
+import { executeCampaignMember } from '@/lib/campaigns/engine'
 import { deliverCommunication } from '@/lib/communications/delivery'
 import type { JobHandler } from '@/lib/jobs/types'
 import { executeSequenceStep } from '@/lib/sequences/engine'
@@ -28,4 +29,9 @@ registerJobHandler('sequence.execute_step', async ({ job, heartbeat }) => {
 registerJobHandler('communications.send', async ({ job, heartbeat }) => {
   await heartbeat()
   return deliverCommunication(job.payload)
+})
+
+registerJobHandler('campaign.execute_member', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return executeCampaignMember(job.payload)
 })

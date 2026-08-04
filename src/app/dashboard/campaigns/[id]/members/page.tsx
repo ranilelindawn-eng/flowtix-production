@@ -29,6 +29,7 @@ import {
   type CampaignStatus,
 } from '@/lib/campaigns'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
+import { queueCampaignMembersAction } from './actions'
 
 type CampaignMembersPageProps = {
   params: Promise<{
@@ -438,6 +439,22 @@ export default async function CampaignMembersPage({
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
+            {currentCampaign.status === 'active' ? (
+              <form action={queueCampaignMembersAction}>
+                <input
+                  type="hidden"
+                  name="campaignId"
+                  value={currentCampaign.id}
+                />
+                <button
+                  type="submit"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:border-emerald-500/30 hover:bg-emerald-500/15 hover:text-emerald-200"
+                >
+                  Queue next 25
+                </button>
+              </form>
+            ) : null}
+
             <Link
               href={`/dashboard/dialer?campaign=${currentCampaign.id}`}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-2.5 text-sm font-semibold text-cyan-300 transition hover:border-cyan-500/30 hover:bg-cyan-500/15 hover:text-cyan-200"
