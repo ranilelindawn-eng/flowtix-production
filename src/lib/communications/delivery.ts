@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { createHmac } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 
 import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
@@ -244,6 +245,68 @@ async function getSmsSender(
   return normalizeE164(sender.phone_number, 'SMS sender')
 }
 
+
+function communicationWebhookSecret() {
+  const secret =
+    process.env.COMMUNICATION_WEBHOOK_SECRET?.trim() ||
+    process.env.INTERNAL_JOB_WORKER_SECRET?.trim()
+
+  if (!secret) {
+    throw new ProviderRequestError(
+      'COMMUNICATION_WEBHOOK_SECRET or INTERNAL_JOB_WORKER_SECRET is required.',
+      {
+        retryable: false,
+        code: 'COMMUNICATION_WEBHOOK_SECRET_MISSING',
+      },
+    )
+  }
+
+  return secret
+}
+
+function siteUrl() {
+  const configured =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXT_PUBLIC_APP_URL?.trim()
+
+  if (!configured) {
+    throw new ProviderRequestError(
+      'NEXT_PUBLIC_SITE_URL is required for delivery callbacks.',
+      {
+        retryable: false,
+        code: 'SITE_URL_MISSING',
+      },
+    )
+  }
+
+  return configured.replace(/\/$/, '')
+}
+
+function deliveryCallbackToken(
+  provider: ConfiguredTelephonyProviderName,
+  messageId: string,
+) {
+  return createHmac('sha256', communicationWebhookSecret())
+    .update(`${provider}:${messageId}`)
+    .digest('base64url')
+}
+
+function deliveryCallbackUrl(
+  provider: ConfiguredTelephonyProviderName,
+  messageId: string,
+) {
+  const url = new URL(
+    `/api/webhooks/communications/${provider}`,
+    siteUrl(),
+  )
+  url.searchParams.set('messageId', messageId)
+  url.searchParams.set(
+    'token',
+    deliveryCallbackToken(provider, messageId),
+  )
+  return url.toString()
+}
+
 async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
   const recipient = normalizeE164(message.recipient, 'SMS recipient')
   const provider = await getOrganizationActiveTelephonyProvider(message.organization_id)
@@ -252,6 +315,10 @@ async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
     provider,
   )
   const sender = await getSmsSender(message.organization_id, provider)
+  const statusCallback = deliveryCallbackUrl(
+    provider,
+    message.id,
+  )
 
   if (provider === 'twilio') {
     const accountSid = requiredCredential(connection.credentials.accountSid, 'Twilio Account SID')
@@ -264,7 +331,12 @@ async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
           Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: recipient, From: sender, Body: message.body }),
+        body: new URLSearchParams({
+          To: recipient,
+          From: sender,
+          Body: message.body,
+          StatusCallback: statusCallback,
+        }),
         cache: 'no-store',
       },
     )
@@ -284,7 +356,12 @@ async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from: sender, to: recipient, text: message.body }),
+      body: JSON.stringify({
+        from: sender,
+        to: recipient,
+        text: message.body,
+        webhook_url: statusCallback,
+      }),
       cache: 'no-store',
     })
     const payload = await assertProviderResponse(response, 'Telnyx rejected the SMS message.')
@@ -311,7 +388,12 @@ async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
           Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ To: recipient, From: sender, Body: message.body }),
+        body: new URLSearchParams({
+          To: recipient,
+          From: sender,
+          Body: message.body,
+          StatusCallback: statusCallback,
+        }),
         cache: 'no-store',
       },
     )
@@ -333,7 +415,13 @@ async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
         Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ src: sender, dst: recipient, text: message.body }),
+      body: JSON.stringify({
+        src: sender,
+        dst: recipient,
+        text: message.body,
+        url: statusCallback,
+        method: 'POST',
+      }),
       cache: 'no-store',
     },
   )
