@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { transcribeAI } from '@/lib/ai/service'
+
 import {
   assertEntitlement,
   isEntitlementError,
@@ -15,7 +17,6 @@ export async function POST(request: Request) {
       recordingId?: string
     }
     const organization = await getCurrentOrganization()
-    const apiKey = process.env.OPENAI_API_KEY?.trim()
 
     if (!organization || !recordingId) {
       return NextResponse.json(
@@ -28,13 +29,6 @@ export async function POST(request: Request) {
       'ai.transcription',
       organization.organization_id,
     )
-
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'OPENAI_API_KEY is not configured.' },
-        { status: 503 },
-      )
-    }
 
     const supabase = await createClient()
     const { data: recording } = await supabase
@@ -84,43 +78,9 @@ export async function POST(request: Request) {
     }
 
     const audio = await audioResponse.blob()
-    const form = new FormData()
-    form.set(
-      'file',
-      new File([audio], 'call.mp3', {
-        type: 'audio/mpeg',
-      }),
-    )
-    form.set(
-      'model',
-      process.env.OPENAI_TRANSCRIPTION_MODEL ||
-        'gpt-4o-mini-transcribe',
-    )
-    form.set('response_format', 'json')
-
-    const transcriptionResponse = await fetch(
-      'https://api.openai.com/v1/audio/transcriptions',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: form,
-      },
-    )
-
-    if (!transcriptionResponse.ok) {
-      return NextResponse.json(
-        { error: await transcriptionResponse.text() },
-        { status: 502 },
-      )
-    }
-
-    const result =
-      (await transcriptionResponse.json()) as {
-        text?: string
-        language?: string
-      }
+    const result = await transcribeAI({
+      file: new File([audio], 'call.mp3', { type: 'audio/mpeg' }),
+    })
     const { data: claims } =
       await supabase.auth.getClaims()
 
@@ -130,9 +90,9 @@ export async function POST(request: Request) {
           organization.organization_id,
         call_id: recording.call_id,
         recording_id: recording.id,
-        provider: 'openai',
+        provider: result.provider,
         language: result.language ?? 'en',
-        content: result.text ?? '',
+        content: result.text,
         status: 'completed',
         created_by: claims?.claims?.sub,
       },
@@ -141,7 +101,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      transcript: result.text ?? '',
+      transcript: result.text,
     })
   } catch (error) {
     return NextResponse.json(
