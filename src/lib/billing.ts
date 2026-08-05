@@ -15,7 +15,8 @@ export type SubscriptionPlan = {
   name: string
   description: string | null
   monthly_price_cents: number
-  stripe_price_id: string | null
+  billing_provider: 'paymongo' | 'legacy_stripe'
+  provider_price_code: string | null
   paymongo_price_code: string | null
   max_members: number | null
   max_contacts: number | null
@@ -31,8 +32,11 @@ export type OrganizationSubscription = {
   id: string
   organization_id: string
   plan_id: string
-  stripe_customer_id: string | null
-  stripe_subscription_id: string | null
+  billing_provider: 'paymongo' | 'legacy_stripe'
+  provider_customer_id: string | null
+  provider_subscription_id: string | null
+  provider_checkout_id: string | null
+  provider_payment_id: string | null
   paymongo_checkout_id: string | null
   paymongo_payment_id: string | null
   paymongo_plan_code: PlanCode | null
@@ -40,6 +44,8 @@ export type OrganizationSubscription = {
   current_period_start: string | null
   current_period_end: string | null
   cancel_at_period_end: boolean
+  last_billing_event_at: string | null
+  billing_metadata: Record<string, unknown>
   plan: SubscriptionPlan | null
 }
 

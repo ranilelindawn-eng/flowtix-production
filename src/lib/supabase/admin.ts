@@ -3,6 +3,14 @@ import {
   type SupabaseClient,
 } from '@supabase/supabase-js'
 
+type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 type ContactInquiryRow = {
   id: string
   name: string
@@ -31,8 +39,6 @@ type ContactInquiryInsert = {
   created_at?: string
 }
 
-type ContactInquiryUpdate = Partial<ContactInquiryInsert>
-
 type OrganizationMemberRow = {
   id: string
   organization_id: string
@@ -47,15 +53,36 @@ type OrganizationSubscriptionRow = {
   organization_id: string
   plan_id: string
   status: string
+  billing_provider: string
   paymongo_checkout_id: string | null
   paymongo_plan_code: string | null
   paymongo_payment_id: string | null
+  provider_customer_id: string | null
+  provider_subscription_id: string | null
+  provider_checkout_id: string | null
+  provider_payment_id: string | null
+  last_billing_event_at: string | null
+  billing_metadata: Json
 }
 
 type SubscriptionPlanRow = {
   id: string
   code: string
   name: string
+  billing_provider: string
+  provider_price_code: string | null
+}
+
+type BillingPaymentEventRow = {
+  id: string
+  organization_id: string | null
+  provider: string
+  provider_event_id: string
+  event_type: string
+  status: string
+  payload: Json
+  received_at: string
+  processed_at: string | null
 }
 
 type Database = {
@@ -71,15 +98,9 @@ type Database = {
           status?: string | null
           created_at?: string
         }
-        Update: {
-          organization_id?: string
-          user_id?: string
-          role?: string
-          status?: string | null
-        }
+        Update: Partial<OrganizationMemberRow>
         Relationships: []
       }
-
       organization_subscriptions: {
         Row: OrganizationSubscriptionRow
         Insert: {
@@ -87,43 +108,49 @@ type Database = {
           organization_id: string
           plan_id: string
           status?: string
+          billing_provider?: string
           paymongo_checkout_id?: string | null
           paymongo_plan_code?: string | null
           paymongo_payment_id?: string | null
+          provider_customer_id?: string | null
+          provider_subscription_id?: string | null
+          provider_checkout_id?: string | null
+          provider_payment_id?: string | null
+          last_billing_event_at?: string | null
+          billing_metadata?: Json
         }
-        Update: {
-          organization_id?: string
-          plan_id?: string
-          status?: string
-          paymongo_checkout_id?: string | null
-          paymongo_plan_code?: string | null
-          paymongo_payment_id?: string | null
-        }
+        Update: Partial<OrganizationSubscriptionRow>
         Relationships: []
       }
-
       subscription_plans: {
         Row: SubscriptionPlanRow
         Insert: {
           id?: string
           code: string
           name: string
+          billing_provider?: string
+          provider_price_code?: string | null
         }
-        Update: {
-          code?: string
-          name?: string
-        }
+        Update: Partial<SubscriptionPlanRow>
         Relationships: []
       }
-
+      billing_payment_events: {
+        Row: BillingPaymentEventRow
+        Insert: Omit<BillingPaymentEventRow, 'id' | 'received_at' | 'processed_at'> & {
+          id?: string
+          received_at?: string
+          processed_at?: string | null
+        }
+        Update: Partial<BillingPaymentEventRow>
+        Relationships: []
+      }
       contact_inquiries: {
         Row: ContactInquiryRow
         Insert: ContactInquiryInsert
-        Update: ContactInquiryUpdate
+        Update: Partial<ContactInquiryInsert>
         Relationships: []
       }
     }
-
     Views: Record<string, never>
     Functions: {
       begin_idempotent_request: {
@@ -160,6 +187,22 @@ type Database = {
         }
         Returns: undefined
       }
+      process_paymongo_webhook_event: {
+        Args: {
+          p_event_id: string
+          p_event_type: string
+          p_livemode: boolean | null
+          p_signature_timestamp: string
+          p_resource_type: string | null
+          p_resource_id: string | null
+          p_organization_id: string | null
+          p_checkout_id: string | null
+          p_payment_id: string | null
+          p_plan_code: string | null
+          p_payload: Json
+        }
+        Returns: Record<string, unknown>
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
@@ -169,30 +212,21 @@ type Database = {
 let adminClient: SupabaseClient<Database> | undefined
 
 export function createAdminClient(): SupabaseClient<Database> {
-  if (adminClient) {
-    return adminClient
-  }
+  if (adminClient) return adminClient
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 
   if (!url || !serviceRoleKey) {
-    throw new Error(
-      'Missing Supabase service-role configuration.',
-    )
+    throw new Error('Missing Supabase service-role configuration.')
   }
 
-  adminClient = createClient<Database>(
-    url,
-    serviceRoleKey,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+  adminClient = createClient<Database>(url, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
     },
-  )
+  })
 
   return adminClient
 }

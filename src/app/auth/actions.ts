@@ -2,6 +2,8 @@
 
 import { redirect } from 'next/navigation'
 
+import { createPayMongoCheckoutSession } from '@/lib/paymongo/client'
+import { payMongoPlans } from '@/lib/paymongo/plans'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -15,35 +17,6 @@ const allowedPlans = [
 ] as const
 
 type Plan = (typeof allowedPlans)[number]
-
-type PayMongoPlan = {
-  code: 'starter' | 'pro' | 'business' | 'enterprise'
-  amount: number
-  name: string
-}
-
-const payMongoPlans: Record<Plan, PayMongoPlan> = {
-  starter: {
-    code: 'starter',
-    amount: 170000,
-    name: 'Flowtix Starter',
-  },
-  professional: {
-    code: 'pro',
-    amount: 460000,
-    name: 'Flowtix Professional',
-  },
-  business: {
-    code: 'business',
-    amount: 1150000,
-    name: 'Flowtix Business',
-  },
-  enterprise: {
-    code: 'enterprise',
-    amount: 2900000,
-    name: 'Flowtix Enterprise',
-  },
-}
 
 const createAuthClient = async () => {
   const supabase = await createServerSupabaseClient()
@@ -181,15 +154,6 @@ async function createSignupCheckout({
   siteUrl: string
   hasSession: boolean
 }) {
-  const secretKey =
-    process.env.PAYMONGO_SECRET_KEY?.trim()
-
-  if (!secretKey) {
-    throw new Error(
-      'Missing PAYMONGO_SECRET_KEY in .env.local.',
-    )
-  }
-
   const selectedPlan = payMongoPlans[plan]
 
   const successUrl = hasSession
@@ -198,98 +162,39 @@ async function createSignupCheckout({
         '/dashboard',
       )}`
 
-  const response = await fetch(
-    'https://api.paymongo.com/v1/checkout_sessions',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization:
-          'Basic ' +
-          Buffer.from(`${secretKey}:`).toString('base64'),
+  const { checkoutId, checkoutUrl } =
+    await createPayMongoCheckoutSession({
+      amount: selectedPlan.amount,
+      name: selectedPlan.name,
+      description: `${selectedPlan.name} monthly subscription`,
+      customerEmail: email,
+      metadata: {
+        organization_id: organizationId,
+        supabase_user_id: userId,
+        plan_code: selectedPlan.code,
+        signup_plan: plan,
+        billing_provider: 'paymongo',
       },
-      body: JSON.stringify({
-        data: {
-          attributes: {
-            line_items: [
-              {
-                currency: 'PHP',
-                amount: selectedPlan.amount,
-                name: selectedPlan.name,
-                quantity: 1,
-                description: `${selectedPlan.name} monthly subscription`,
-              },
-            ],
-            payment_method_types: [
-              'card',
-              'gcash',
-              'paymaya',
-            ],
-            customer_email: email,
-            send_email_receipt: true,
-            show_description: true,
-            show_line_items: true,
-            metadata: {
-              organization_id: organizationId,
-              supabase_user_id: userId,
-              plan_code: selectedPlan.code,
-              signup_plan: plan,
-            },
-            success_url: successUrl,
-            cancel_url:
-              `${siteUrl}/pricing?checkout=cancelled`,
-          },
-        },
-      }),
-      cache: 'no-store',
-    },
-  )
-
-  const result = (await response.json()) as {
-    data?: {
-      id?: string
-      attributes?: {
-        checkout_url?: string
-      }
-    }
-    errors?: Array<{
-      code?: string
-      detail?: string
-    }>
-  }
-
-  if (!response.ok) {
-    const message =
-      result.errors
-        ?.map((error) => error.detail ?? error.code)
-        .filter(Boolean)
-        .join(', ') || 'PayMongo checkout creation failed.'
-
-    throw new Error(message)
-  }
-
-  const checkoutId = result.data?.id
-  const checkoutUrl =
-    result.data?.attributes?.checkout_url
-
-  if (!checkoutId || !checkoutUrl) {
-    throw new Error(
-      'PayMongo did not return a valid checkout session.',
-    )
-  }
+      successUrl,
+      cancelUrl: `${siteUrl}/pricing?checkout=cancelled`,
+    })
 
   const admin = createAdminClient()
-
-  const {
-    data: updatedSubscription,
-    error: updateError,
-  } = await admin
+  const { data: updatedSubscription, error: updateError } = await admin
     .from('organization_subscriptions')
     .update({
+      billing_provider: 'paymongo',
       paymongo_checkout_id: checkoutId,
       paymongo_plan_code: selectedPlan.code,
       paymongo_payment_id: null,
+      provider_checkout_id: checkoutId,
+      provider_payment_id: null,
       status: 'pending',
+      billing_metadata: {
+        checkout_created_at: new Date().toISOString(),
+        requested_plan_code: selectedPlan.code,
+        signup_checkout: true,
+      },
     })
     .eq('organization_id', organizationId)
     .select('id')
@@ -309,6 +214,7 @@ async function createSignupCheckout({
 
   return checkoutUrl
 }
+
 
 export async function signIn(formData: FormData) {
   const email = getString(formData, 'email')

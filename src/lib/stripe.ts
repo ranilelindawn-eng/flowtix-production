@@ -1,17 +1,9 @@
-import Stripe from 'stripe'
+import 'server-only'
 
-let stripe: Stripe | null = null
-
-export function getStripe() {
-  const secretKey = process.env.STRIPE_SECRET_KEY
-
-  if (!secretKey) {
-    throw new Error('Missing STRIPE_SECRET_KEY environment variable.')
-  }
-
-  if (!stripe) {
-    stripe = new Stripe(secretKey)
-  }
-
-  return stripe
+/**
+ * @deprecated Stripe billing was retired from Flowtix.
+ * Active billing is implemented through PayMongo.
+ */
+export function getStripe(): never {
+  throw new Error('Stripe billing has been retired. Use PayMongo.')
 }
