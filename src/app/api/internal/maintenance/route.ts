@@ -72,10 +72,18 @@ async function handleMaintenance(request: Request) {
     }
 
     const result = Array.isArray(data) ? data[0] ?? null : data
+    const [{ data: expiredLeases, error: leaseError }, { data: expiredReservations, error: reservationError }] = await Promise.all([
+      client.rpc('expire_call_ownership_leases', { target_organization: null, target_call: null }),
+      client.rpc('expire_call_queue_reservations', { target_organization: null, batch_size: 100 }),
+    ])
+    if (leaseError) throw new Error(`Unable to expire ownership leases: ${leaseError.message}`)
+    if (reservationError) throw new Error(`Unable to expire queue reservations: ${reservationError.message}`)
 
     return NextResponse.json({
       ok: true,
       processedAt: new Date().toISOString(),
+      expiredOwnershipLeases: Number(expiredLeases ?? 0),
+      expiredQueueReservations: Number(expiredReservations ?? 0),
       recovered:
         result && typeof result.recovered === 'number'
           ? result.recovered

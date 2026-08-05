@@ -9,8 +9,11 @@ export async function POST(request: Request) {
   const organization = await getCurrentOrganization()
   if (!organization || !body.callId || !body.action) return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   const supabase = await createClient()
-  const { data: call } = await supabase.from('calls').select('provider_call_sid, provider_child_call_sid').eq('organization_id', organization.organization_id).or(`id.eq.${body.callId},provider_call_sid.eq.${body.callId},provider_child_call_sid.eq.${body.callId}`).maybeSingle()
+  const { data: call } = await supabase.from('calls').select('provider_call_sid, provider_child_call_sid, owner_user_id').eq('organization_id', organization.organization_id).or(`id.eq.${body.callId},provider_call_sid.eq.${body.callId},provider_child_call_sid.eq.${body.callId}`).maybeSingle()
   if (!call) return NextResponse.json({ error: 'Call not found.' }, { status: 404 })
+  if (call.owner_user_id && call.owner_user_id !== organization.user_id && organization.role === 'agent') {
+    return NextResponse.json({ error: 'Only the call owner or a manager can control this call.' }, { status: 403 })
+  }
   const config = await getOrganizationTwilioConfiguration(organization.organization_id)
   const client = twilio(config.accountSid, config.authToken)
   const sid = call.provider_child_call_sid ?? call.provider_call_sid

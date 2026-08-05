@@ -86,10 +86,22 @@ export async function POST(request: Request) {
     updated_at: new Date().toISOString(),
   }
   if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    update.ownership_status = 'released'
+    update.ownership_expires_at = null
     update.ended_at = new Date().toISOString()
     update.duration_seconds = Number.isFinite(duration) ? duration : 0
   }
   await admin.from('calls').update(update).eq('id', callId).eq('organization_id', organizationId)
+
+  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    await admin.rpc('finalize_call_ownership', {
+      target_organization: organizationId,
+      target_call: callId,
+      target_reason: providerStatus || status,
+    }).then(({ error }) => {
+      if (error) console.error('Unable to finalize call ownership:', error)
+    })
+  }
 
   if (userId && (status === 'completed' || status === 'failed' || status === 'cancelled')) {
     await setAgentCallActivity({ organizationId, userId, state: 'wrap_up', callId, wrapUpSeconds: 30 }).catch((error) => {
