@@ -20,10 +20,13 @@ export type TelephonyCallDirection = 'outbound' | 'inbound'
 export type TelephonyCallStatus =
   | 'idle' | 'validating' | 'queued' | 'initiating' | 'ringing'
   | 'connected' | 'on-hold' | 'completed' | 'failed' | 'cancelled'
-export type TelephonyCallControl = 'mute' | 'unmute' | 'hold' | 'resume' | 'hangup' | 'send-dtmf'
+export type TelephonyCallControl =
+  | 'mute' | 'unmute' | 'hold' | 'resume' | 'hangup' | 'send-dtmf'
+  | 'blind-transfer' | 'warm-transfer' | 'conference' | 'monitor' | 'whisper' | 'barge'
 export type TelephonyProviderCapability =
   | 'outbound-calling' | 'inbound-calling' | 'call-recording' | 'dtmf'
-  | 'mute' | 'hold' | 'conference' | 'webhooks' | 'number-management'
+  | 'mute' | 'hold' | 'conference' | 'blind-transfer' | 'warm-transfer'
+  | 'supervisor-monitoring' | 'whisper' | 'barge' | 'webhooks' | 'number-management'
 
 export type TelephonyProviderConfiguration = {
   provider: TelephonyProviderName
