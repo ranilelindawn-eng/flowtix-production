@@ -20,6 +20,7 @@ import {
   Mail,
   MessageSquareText,
   Phone,
+  PhoneCall,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -219,6 +220,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/sales-analytics',
     permission: 'reports.view',
     icon: BadgeDollarSign,
+  },
+  {
+    id: 'call-analytics',
+    label: 'Call Analytics',
+    href: '/dashboard/call-analytics',
+    permission: 'reports.view',
+    icon: PhoneCall,
   },
   {
     id: 'ai-workspace',
