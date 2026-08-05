@@ -27,7 +27,7 @@ export default async function CalendarPage() {
     organizationResult,
     integrationsResult,
   ] = await Promise.all([
-    supabase.from('calendar_events').select('*').eq('organization_id', organizationId).order('starts_at'),
+    supabase.from('calendar_events').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('starts_at'),
     supabase.from('contacts').select('id,first_name,last_name,email').eq('organization_id', organizationId).order('first_name').limit(500),
     supabase.from('companies').select('id,name').eq('organization_id', organizationId).order('name').limit(500),
     supabase.from('opportunities').select('id,name').eq('organization_id', organizationId).order('name').limit(500),

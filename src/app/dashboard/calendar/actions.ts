@@ -34,6 +34,11 @@ function bool(formData: FormData, key: string) {
   return formData.get(key) === 'on' || formData.get(key) === 'true'
 }
 
+function reminderMinutes(formData: FormData) {
+  const values = formData.getAll('reminder_minutes').map(Number)
+  return Array.from(new Set(values.filter((value) => [0, 5, 10, 15, 30, 60, 120, 1440].includes(value))))
+}
+
 async function context() {
   const supabase = await createClient()
   const { data: claimsData, error } = await supabase.auth.getClaims()
@@ -183,6 +188,13 @@ export async function createCalendarEvent(
       owner_membership_id: owner.ownerMembershipId,
       created_by: userId,
       attendee_emails: attendeeEmails,
+      visibility: text(formData, 'visibility') || 'organization',
+      color: text(formData, 'color') || '#3b82f6',
+      recurrence_rule: text(formData, 'recurrence_rule') || null,
+      recurrence_series_id: text(formData, 'recurrence_rule') ? crypto.randomUUID() : null,
+      reminder_minutes: reminderMinutes(formData),
+      attendee_response_required: bool(formData, 'attendee_response_required'),
+      custom_fields: {},
       metadata: {},
       calendar_sync_provider: syncGoogle
         ? 'google-calendar'
@@ -335,6 +347,12 @@ export async function updateCalendarEvent(
       owner_id: owner.ownerUserId,
       owner_membership_id: owner.ownerMembershipId,
       attendee_emails: attendeeEmails,
+      visibility: text(formData, 'visibility') || 'organization',
+      color: text(formData, 'color') || '#3b82f6',
+      recurrence_rule: text(formData, 'recurrence_rule') || null,
+      reminder_minutes: reminderMinutes(formData),
+      attendee_response_required: bool(formData, 'attendee_response_required'),
+      cancellation_reason: text(formData, 'cancellation_reason') || null,
       calendar_sync_revision: revision,
       calendar_sync_status: shouldSync ? 'pending' : 'disabled',
       calendar_sync_error: null,

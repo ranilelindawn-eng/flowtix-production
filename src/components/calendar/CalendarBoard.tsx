@@ -50,6 +50,14 @@ type CalendarEvent = {
   owner_id: string | null
   created_by: string
   attendee_emails: string[]
+  visibility: 'private' | 'team' | 'organization'
+  color: string
+  recurrence_rule: string | null
+  reminder_minutes: number[]
+  attendee_response_required: boolean
+  cancellation_reason: string | null
+  completed_at: string | null
+  event_version: number
 }
 
 type Props = {
@@ -667,6 +675,61 @@ export default function CalendarBoard({
                 </select>
               </label>
 
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-300">Visibility</span>
+                <select
+                  name="visibility"
+                  defaultValue={selected?.visibility ?? 'organization'}
+                  className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
+                >
+                  <option value="organization">Organization</option>
+                  <option value="team">Team</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-300">Calendar color</span>
+                <input
+                  type="color"
+                  name="color"
+                  defaultValue={selected?.color ?? '#3b82f6'}
+                  className="h-12 w-full rounded-2xl border border-white/10 bg-[#07111F] px-3 py-2"
+                />
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-300">Recurrence</span>
+                <select
+                  name="recurrence_rule"
+                  defaultValue={selected?.recurrence_rule ?? ''}
+                  className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
+                >
+                  <option value="">Does not repeat</option>
+                  <option value="FREQ=DAILY">Daily</option>
+                  <option value="FREQ=WEEKLY">Weekly</option>
+                  <option value="FREQ=MONTHLY">Monthly</option>
+                  <option value="FREQ=YEARLY">Yearly</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="mb-2 block text-sm font-medium text-slate-300">Reminder</span>
+                <select
+                  name="reminder_minutes"
+                  defaultValue={String(selected?.reminder_minutes?.[0] ?? 15)}
+                  className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
+                >
+                  <option value="0">At event time</option>
+                  <option value="5">5 minutes before</option>
+                  <option value="10">10 minutes before</option>
+                  <option value="15">15 minutes before</option>
+                  <option value="30">30 minutes before</option>
+                  <option value="60">1 hour before</option>
+                  <option value="1440">1 day before</option>
+                </select>
+              </label>
+
               {!selected && (
                 <label>
                   <span className="mb-2 block text-sm font-medium text-slate-300">
@@ -909,6 +972,27 @@ export default function CalendarBoard({
                   </div>
                 )}
               </div>
+
+              <label className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-300">
+                <input
+                  type="checkbox"
+                  name="attendee_response_required"
+                  defaultChecked={selected?.attendee_response_required ?? true}
+                  className="h-4 w-4"
+                />
+                Request attendee responses
+              </label>
+
+              {selected?.status === 'cancelled' && (
+                <label className="md:col-span-2">
+                  <span className="mb-2 block text-sm font-medium text-slate-300">Cancellation reason</span>
+                  <input
+                    name="cancellation_reason"
+                    defaultValue={selected.cancellation_reason ?? ''}
+                    className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
+                  />
+                </label>
+              )}
 
               <label className="md:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-slate-300">
