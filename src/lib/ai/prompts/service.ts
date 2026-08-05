@@ -43,7 +43,16 @@ export async function generatePromptText(
 
   return {
     content: result.content,
-    metadata: { promptKey: prompt.key, promptVersion: prompt.version },
+    metadata: {
+      promptKey: prompt.key,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      requestId: result.requestId,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      latencyMs: result.latencyMs,
+    },
   }
 }
 
@@ -69,6 +78,15 @@ export async function generatePromptStructured<T>(
 
   return {
     value: extractJson(result.content) as T,
-    metadata: { promptKey: prompt.key, promptVersion: prompt.version },
+    metadata: {
+      promptKey: prompt.key,
+      promptVersion: prompt.version,
+      provider: result.provider,
+      model: result.model,
+      requestId: result.requestId,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
+      latencyMs: result.latencyMs,
+    },
   }
 }

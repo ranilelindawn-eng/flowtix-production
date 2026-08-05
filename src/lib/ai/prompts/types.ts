@@ -40,6 +40,12 @@ export type RenderedAIPrompt = {
 export type AIPromptExecutionMetadata = {
   promptKey: AIPromptKey
   promptVersion: number
+  provider: string
+  model: string
+  requestId: string | null
+  inputTokens: number | null
+  outputTokens: number | null
+  latencyMs: number
 }
 
 export type PromptTextInput = {

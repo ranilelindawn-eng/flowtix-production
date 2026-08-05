@@ -17,7 +17,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     const { data: conversation, error: conversationError } = await supabase
       .from('ai_conversations')
-      .select('id,title,agent_key,created_at,updated_at')
+      .select('id,title,agent_key,created_at,updated_at,memory_version,memory_updated_at,context_message_limit,context_character_limit')
       .eq('id', id)
       .eq('organization_id', organization.organization_id)
       .eq('created_by', user.id)
@@ -27,7 +27,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     const { data: messages, error: messagesError } = await supabase
       .from('ai_messages')
-      .select('id,role,content,created_at')
+      .select('id,role,content,sequence_number,token_estimate,created_at')
       .eq('conversation_id', id)
       .order('created_at', { ascending: true })
     if (messagesError) throw new Error(messagesError.message)

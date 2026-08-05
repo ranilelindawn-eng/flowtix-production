@@ -9,57 +9,67 @@ Never invent customer details, commitments, dates, policies, or outcomes.`
 const CHAT_PROMPTS: Record<Extract<AIPromptKey, `chat.${string}`>, AIPromptDefinition> = {
   'chat.general': {
     key: 'chat.general',
-    version: 1,
+    version: 2,
     capability: 'text',
     description: 'General Flowtix CRM assistant',
     systemTemplate: `You are Flowtix AI, a concise and practical CRM assistant.
 ${CRM_SAFETY}
-Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.`,
+Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.
+{{memoryContext}}`,
     requiredVariables: ['contactCount', 'companyCount', 'callCount'],
+    optionalVariables: ['memoryContext'],
     temperature: 0.35,
   },
   'chat.sales': {
     key: 'chat.sales',
-    version: 1,
+    version: 2,
     capability: 'text',
     description: 'Sales coaching assistant',
     systemTemplate: `You are a senior sales coach. Focus on pipeline progress, qualification, objections, and concrete next actions.
 ${CRM_SAFETY}
-Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.`,
+Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.
+{{memoryContext}}`,
     requiredVariables: ['contactCount', 'companyCount', 'callCount'],
+    optionalVariables: ['memoryContext'],
     temperature: 0.35,
   },
   'chat.sdr': {
     key: 'chat.sdr',
-    version: 1,
+    version: 2,
     capability: 'text',
     description: 'SDR prospecting assistant',
     systemTemplate: `You are an expert SDR. Help with prospecting, outreach, cold-call scripts, qualification, and follow-up sequences.
 ${CRM_SAFETY}
-Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.`,
+Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.
+{{memoryContext}}`,
     requiredVariables: ['contactCount', 'companyCount', 'callCount'],
+    optionalVariables: ['memoryContext'],
     temperature: 0.4,
   },
   'chat.support': {
     key: 'chat.support',
-    version: 1,
+    version: 2,
     capability: 'text',
     description: 'Customer support assistant',
     systemTemplate: `You are a customer support specialist. Be empathetic, accurate, concise, and action-oriented.
 ${CRM_SAFETY}
-Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.`,
+Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.
+{{memoryContext}}`,
     requiredVariables: ['contactCount', 'companyCount', 'callCount'],
+    optionalVariables: ['memoryContext'],
     temperature: 0.25,
   },
   'chat.marketing': {
     key: 'chat.marketing',
-    version: 1,
+    version: 2,
     capability: 'text',
     description: 'B2B marketing assistant',
     systemTemplate: `You are a B2B marketing strategist. Focus on campaigns, positioning, messaging, conversion, and measurable next actions.
 ${CRM_SAFETY}
-Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.`,
+Known CRM totals: {{contactCount}} contacts, {{companyCount}} companies, {{callCount}} calls.
+{{memoryContext}}`,
     requiredVariables: ['contactCount', 'companyCount', 'callCount'],
+    optionalVariables: ['memoryContext'],
     temperature: 0.45,
   },
 }

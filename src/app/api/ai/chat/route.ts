@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
-import { getAIProviderLabel } from '@/lib/ai/provider'
+import { buildConversationContext } from '@/lib/ai/memory/service'
 import { generatePromptText, type AIPromptKey } from '@/lib/ai/prompts'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
@@ -24,19 +24,12 @@ type ConversationRow = {
   updated_at: string
 }
 
-type MessageRow = {
-  role: 'user' | 'assistant'
-  content: string
-}
-
 export async function POST(request: Request) {
   try {
     const organization = await requireOrganization()
     await assertEntitlement('ai.chat', organization.organization_id)
     const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 })
 
@@ -98,34 +91,31 @@ export async function POST(request: Request) {
       created_by: user.id,
       role: 'user',
       content: message,
+      metadata: { source: 'chat_api' },
     })
     if (userMessageError) throw new Error(userMessageError.message)
 
-    const [{ count: contactCount }, { count: companyCount }, { count: callCount }, { data: history, error: historyError }] = await Promise.all([
+    const [{ count: contactCount }, { count: companyCount }, { count: callCount }, context] = await Promise.all([
       supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('organization_id', organization.organization_id),
       supabase.from('companies').select('id', { count: 'exact', head: true }).eq('organization_id', organization.organization_id),
       supabase.from('calls').select('id', { count: 'exact', head: true }).eq('organization_id', organization.organization_id),
-      supabase
-        .from('ai_messages')
-        .select('role,content')
-        .eq('conversation_id', conversation.id)
-        .order('created_at', { ascending: false })
-        .limit(20),
+      buildConversationContext(supabase, {
+        conversationId: conversation.id,
+        organizationId: organization.organization_id,
+        userId: user.id,
+      }),
     ])
-    if (historyError) throw new Error(historyError.message)
 
-    const chronological = ((history ?? []) as MessageRow[]).reverse()
     const generated = await generatePromptText({
       promptKey: AGENT_PROMPT_KEYS[conversation.agent_key] ?? 'chat.general',
       variables: {
         contactCount: contactCount ?? 0,
         companyCount: companyCount ?? 0,
         callCount: callCount ?? 0,
+        memoryContext: context.memoryContext,
       },
-      messages: chronological,
+      messages: context.messages,
     })
-    const reply = generated.content
-    const model = getAIProviderLabel()
 
     const { data: assistantMessage, error: assistantMessageError } = await supabase
       .from('ai_messages')
@@ -134,20 +124,40 @@ export async function POST(request: Request) {
         organization_id: organization.organization_id,
         created_by: user.id,
         role: 'assistant',
-        content: reply,
-        provider: 'openai-compatible',
-        model,
+        content: generated.content,
+        provider: generated.metadata.provider,
+        model: generated.metadata.model,
+        prompt_key: generated.metadata.promptKey,
+        prompt_version: generated.metadata.promptVersion,
+        provider_request_id: generated.metadata.requestId,
+        input_tokens: generated.metadata.inputTokens,
+        output_tokens: generated.metadata.outputTokens,
+        latency_ms: generated.metadata.latencyMs,
+        metadata: {
+          includedMessageCount: context.includedMessageCount,
+          includedMemoryCount: context.includedMemoryCount,
+          estimatedContextTokens: context.estimatedTokens,
+          contextLastSequence: context.lastSequence,
+        },
       })
       .select('id,role,content,created_at')
       .single()
     if (assistantMessageError) throw new Error(assistantMessageError.message)
 
+    const updatedAt = new Date().toISOString()
     await supabase
       .from('ai_conversations')
-      .update({ updated_at: new Date().toISOString(), agent_key: conversation.agent_key })
+      .update({ updated_at: updatedAt, agent_key: conversation.agent_key })
       .eq('id', conversation.id)
 
-    return NextResponse.json({ conversation, message: assistantMessage })
+    return NextResponse.json({
+      conversation: { ...conversation, updated_at: updatedAt },
+      message: assistantMessage,
+      context: {
+        includedMessageCount: context.includedMessageCount,
+        includedMemoryCount: context.includedMemoryCount,
+      },
+    })
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI chat failed.' },
