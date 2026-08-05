@@ -1,9 +1,20 @@
 export type InboundRouteType = 'ring_group' | 'queue' | 'organization_fallback'
-export type InboundRoutingStrategy = 'simultaneous' | 'sequential'
+export type InboundRoutingStrategy =
+  | 'simultaneous'
+  | 'sequential'
+  | 'round_robin'
+  | 'least_recently_called'
+  | 'longest_idle'
+  | 'weighted'
 
 export type RoutingTarget = {
-  userId: string
+  kind: 'user' | 'number'
+  userId: string | null
+  phoneNumber: string | null
   priority: number
+  weight: number
+  tier: number
+  sourceRingGroupId: string | null
 }
 
 export type InboundRoutingPlan = {

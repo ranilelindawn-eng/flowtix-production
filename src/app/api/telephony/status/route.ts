@@ -16,6 +16,7 @@ export async function POST(request: Request) {
   const routingAttemptId = url.searchParams.get('routingAttemptId')
   const organizationId = url.searchParams.get('organizationId')
   const userId = url.searchParams.get('userId')
+  const sourceRingGroupId = url.searchParams.get('sourceRingGroupId')
   if (!organizationId) return new Response('Forbidden', { status: 403 })
 
   const config = await getOrganizationTwilioConfiguration(organizationId)
@@ -38,6 +39,15 @@ export async function POST(request: Request) {
     if (claimError) console.error('Inbound answer ownership claim failed:', claimError)
     if (claimed === false) {
       return new Response('OK')
+    }
+    if (sourceRingGroupId) {
+      await admin.rpc('mark_ring_group_member_answered', {
+        target_organization: organizationId,
+        target_ring_group: sourceRingGroupId,
+        target_user: userId,
+      }).then(({ error }) => {
+        if (error) console.error('Unable to update ring-group answer statistics:', error)
+      })
     }
   }
 

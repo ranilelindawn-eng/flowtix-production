@@ -3,7 +3,39 @@ import twilio from 'twilio'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import { createInboundRoute } from '@/lib/telephony/routing/engine'
+import type { RoutingTarget } from '@/lib/telephony/routing/types'
 import { parseTwilioForm, twimlResponse, validateTwilioWebhook } from '@/lib/telephony/validation'
+
+type DialTargetWriter = {
+  client(options: { statusCallback: string; statusCallbackMethod: 'POST' }, identity: string): unknown
+  number(phoneNumber: string): unknown
+}
+
+function appendDialTarget(input: {
+  dial: DialTargetWriter
+  target: RoutingTarget
+  callbackBase: string
+  callbackQuery: URLSearchParams
+}) {
+  if (input.target.kind === 'number' && input.target.phoneNumber) {
+    input.dial.number(input.target.phoneNumber)
+    return
+  }
+  if (!input.target.userId) return
+
+  const targetQuery = new URLSearchParams(input.callbackQuery)
+  targetQuery.set('userId', input.target.userId)
+  if (input.target.sourceRingGroupId) {
+    targetQuery.set('sourceRingGroupId', input.target.sourceRingGroupId)
+  }
+  input.dial.client(
+    {
+      statusCallback: `${input.callbackBase}/status?${targetQuery.toString()}`,
+      statusCallbackMethod: 'POST',
+    },
+    `cf_${input.target.userId.replace(/-/g, '')}`,
+  )
+}
 
 export async function POST(request: Request) {
   const form = await parseTwilioForm(request)
@@ -76,25 +108,45 @@ export async function POST(request: Request) {
     routingAttemptId: route.routingAttemptId,
     organizationId: ownedNumber.organization_id,
   })
-  const dial = response.dial({
-    timeout: route.timeoutSeconds,
-    answerOnBridge: true,
-    record: 'record-from-answer-dual',
-    recordingStatusCallback: `${callbackBase}/recording?organizationId=${encodeURIComponent(ownedNumber.organization_id)}`,
-    recordingStatusCallbackMethod: 'POST',
-  })
+  const overflowTimeout =
+    typeof route.metadata.overflowTimeoutSeconds === 'number'
+      ? route.metadata.overflowTimeoutSeconds
+      : route.timeoutSeconds
+  const tiers = new Map<number, RoutingTarget[]>()
+  for (const target of route.targets) {
+    const tierTargets = tiers.get(target.tier) ?? []
+    tierTargets.push(target)
+    tiers.set(target.tier, tierTargets)
+  }
 
-  for (const target of route.targets.slice(0, 10)) {
-    const targetQuery = new URLSearchParams(callbackQuery)
-    targetQuery.set('userId', target.userId)
-    dial.client(
-      {
-        statusCallback: `${callbackBase}/status?${targetQuery.toString()}`,
-        statusCallbackMethod: 'POST',
-      },
-      `cf_${target.userId.replace(/-/g, '')}`,
-    )
-    if (route.strategy === 'sequential') break
+  for (const [tier, tierTargets] of Array.from(tiers.entries()).sort(
+    ([left], [right]) => left - right,
+  )) {
+    const simultaneous = tier === 0 && route.strategy === 'simultaneous'
+    if (simultaneous) {
+      const dial = response.dial({
+        timeout: route.timeoutSeconds,
+        answerOnBridge: true,
+        record: 'record-from-answer-dual',
+        recordingStatusCallback: `${callbackBase}/recording?organizationId=${encodeURIComponent(ownedNumber.organization_id)}`,
+        recordingStatusCallbackMethod: 'POST',
+      })
+      for (const target of tierTargets.slice(0, 10)) {
+        appendDialTarget({ dial, target, callbackBase, callbackQuery })
+      }
+      continue
+    }
+
+    for (const target of tierTargets) {
+      const dial = response.dial({
+        timeout: tier === 0 ? route.timeoutSeconds : overflowTimeout,
+        answerOnBridge: true,
+        record: 'record-from-answer-dual',
+        recordingStatusCallback: `${callbackBase}/recording?organizationId=${encodeURIComponent(ownedNumber.organization_id)}`,
+        recordingStatusCallbackMethod: 'POST',
+      })
+      appendDialTarget({ dial, target, callbackBase, callbackQuery })
+    }
   }
 
   return twimlResponse(response.toString())
