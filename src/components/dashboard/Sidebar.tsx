@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Sparkles,
   Tags,
+  Target,
   TextQuote,
   Users,
   UsersRound,
@@ -204,6 +205,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/reports',
     permission: 'reports.view',
     icon: BarChart3,
+  },
+  {
+    id: 'kpis',
+    label: 'KPI Engine',
+    href: '/dashboard/kpis',
+    permission: 'reports.view',
+    icon: Target,
   },
   {
     id: 'ai-workspace',
