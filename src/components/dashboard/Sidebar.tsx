@@ -29,6 +29,7 @@ import {
   TextQuote,
   Users,
   UsersRound,
+  UserRoundCheck,
   Zap,
 } from 'lucide-react'
 
@@ -227,6 +228,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/call-analytics',
     permission: 'reports.view',
     icon: PhoneCall,
+  },
+  {
+    id: 'agent-analytics',
+    label: 'Agent Analytics',
+    href: '/dashboard/agent-analytics',
+    permission: 'reports.view',
+    icon: UserRoundCheck,
   },
   {
     id: 'ai-workspace',
