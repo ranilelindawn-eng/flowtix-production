@@ -29,6 +29,16 @@ type ContactValues = {
   tags: string
   notes: string
   owner_membership_id: string
+  preferred_name: string
+  lifecycle_stage: 'lead' | 'marketing_qualified' | 'sales_qualified' | 'opportunity' | 'customer' | 'evangelist' | 'inactive'
+  source: string
+  lead_score: string
+  timezone: string
+  locale: string
+  do_not_email: string
+  do_not_sms: string
+  do_not_call: string
+  next_follow_up_at: string
 }
 
 type ContactTaskStatus = 'pending' | 'completed' | 'cancelled'
@@ -127,6 +137,16 @@ export async function createContact(formData: FormData) {
     tags: getString(formData, 'tags'),
     notes: getString(formData, 'notes'),
     owner_membership_id: getString(formData, 'owner_membership_id'),
+    preferred_name: getString(formData, 'preferred_name'),
+    lifecycle_stage: (getString(formData, 'lifecycle_stage') || 'lead') as ContactValues['lifecycle_stage'],
+    source: getString(formData, 'source') || 'manual',
+    lead_score: getString(formData, 'lead_score') || '0',
+    timezone: getString(formData, 'timezone'),
+    locale: getString(formData, 'locale'),
+    do_not_email: getString(formData, 'do_not_email'),
+    do_not_sms: getString(formData, 'do_not_sms'),
+    do_not_call: getString(formData, 'do_not_call'),
+    next_follow_up_at: getString(formData, 'next_follow_up_at'),
   }
 
   await createContactRecord(values)
@@ -161,6 +181,16 @@ export async function updateContact(formData: FormData) {
     tags: getString(formData, 'tags'),
     notes: getString(formData, 'notes'),
     owner_membership_id: getString(formData, 'owner_membership_id'),
+    preferred_name: getString(formData, 'preferred_name'),
+    lifecycle_stage: (getString(formData, 'lifecycle_stage') || 'lead') as ContactValues['lifecycle_stage'],
+    source: getString(formData, 'source') || 'manual',
+    lead_score: getString(formData, 'lead_score') || '0',
+    timezone: getString(formData, 'timezone'),
+    locale: getString(formData, 'locale'),
+    do_not_email: getString(formData, 'do_not_email'),
+    do_not_sms: getString(formData, 'do_not_sms'),
+    do_not_call: getString(formData, 'do_not_call'),
+    next_follow_up_at: getString(formData, 'next_follow_up_at'),
   }
 
   await updateContactRecord(id, values)

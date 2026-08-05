@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { Contact } from '@/types/contact'
+import type { Contact, ContactLifecycleStage } from '@/types/contact'
 
 const statusOptions = ['active', 'inactive', 'archived'] as const
 
@@ -17,6 +17,16 @@ type ContactFormState = {
   tags: string
   status: typeof statusOptions[number]
   owner_membership_id: string
+  preferred_name: string
+  lifecycle_stage: ContactLifecycleStage
+  source: string
+  lead_score: string
+  timezone: string
+  locale: string
+  do_not_email: boolean
+  do_not_sms: boolean
+  do_not_call: boolean
+  next_follow_up_at: string
 }
 
 export type ContactOwnerOption = {
@@ -53,6 +63,18 @@ export default function ContactForm({
     tags: (initialValues.metadata?.tags ?? []).join(', '),
     status: initialValues.status ?? 'active',
     owner_membership_id: initialValues.owner_membership_id ?? ownerOptions[0]?.id ?? '',
+    preferred_name: initialValues.preferred_name ?? '',
+    lifecycle_stage: initialValues.lifecycle_stage ?? 'lead',
+    source: initialValues.source ?? 'manual',
+    lead_score: String(initialValues.lead_score ?? 0),
+    timezone: initialValues.timezone ?? '',
+    locale: initialValues.locale ?? '',
+    do_not_email: initialValues.do_not_email ?? false,
+    do_not_sms: initialValues.do_not_sms ?? false,
+    do_not_call: initialValues.do_not_call ?? false,
+    next_follow_up_at: initialValues.next_follow_up_at
+      ? new Date(initialValues.next_follow_up_at).toISOString().slice(0, 16)
+      : '',
   })
 
   return (
@@ -157,6 +179,102 @@ export default function ContactForm({
           </select>
         </label>
 
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Preferred name</span>
+          <input
+            name="preferred_name"
+            value={form.preferred_name}
+            onChange={(event) => setForm((previous) => ({ ...previous, preferred_name: event.target.value }))}
+            type="text"
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Lifecycle stage</span>
+          <select
+            name="lifecycle_stage"
+            value={form.lifecycle_stage}
+            onChange={(event) => setForm((previous) => ({ ...previous, lifecycle_stage: event.target.value as ContactLifecycleStage }))}
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          >
+            {[
+              ['lead', 'Lead'],
+              ['marketing_qualified', 'Marketing qualified'],
+              ['sales_qualified', 'Sales qualified'],
+              ['opportunity', 'Opportunity'],
+              ['customer', 'Customer'],
+              ['evangelist', 'Evangelist'],
+              ['inactive', 'Inactive'],
+            ].map(([value, label]) => (
+              <option key={value} value={value} className="bg-[#07111F] text-white">
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Source</span>
+          <input
+            name="source"
+            value={form.source}
+            onChange={(event) => setForm((previous) => ({ ...previous, source: event.target.value }))}
+            type="text"
+            placeholder="manual, website, referral, campaign"
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Lead score</span>
+          <input
+            name="lead_score"
+            value={form.lead_score}
+            onChange={(event) => setForm((previous) => ({ ...previous, lead_score: event.target.value }))}
+            type="number"
+            min={0}
+            max={100}
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Timezone</span>
+          <input
+            name="timezone"
+            value={form.timezone}
+            onChange={(event) => setForm((previous) => ({ ...previous, timezone: event.target.value }))}
+            type="text"
+            placeholder="Asia/Manila"
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Locale</span>
+          <input
+            name="locale"
+            value={form.locale}
+            onChange={(event) => setForm((previous) => ({ ...previous, locale: event.target.value }))}
+            type="text"
+            placeholder="en-PH"
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-sm text-slate-300">Next follow-up</span>
+          <input
+            name="next_follow_up_at"
+            value={form.next_follow_up_at}
+            onChange={(event) => setForm((previous) => ({ ...previous, next_follow_up_at: event.target.value }))}
+            type="datetime-local"
+            className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+          />
+        </label>
+
         <label className="block">
           <span className="text-sm text-slate-300">Assigned owner</span>
           <select
@@ -188,6 +306,35 @@ export default function ContactForm({
           ) : null}
         </label>
       </div>
+
+
+      <fieldset className="rounded-3xl border border-white/10 bg-white/[0.02] p-5">
+        <legend className="px-2 text-sm font-semibold text-white">Communication restrictions</legend>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {[
+            ['do_not_email', 'Do not email'],
+            ['do_not_sms', 'Do not SMS'],
+            ['do_not_call', 'Do not call'],
+          ].map(([field, label]) => (
+            <label key={field} className="flex items-center gap-3 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                name={field}
+                value="true"
+                checked={form[field as 'do_not_email' | 'do_not_sms' | 'do_not_call']}
+                onChange={(event) =>
+                  setForm((previous) => ({
+                    ...previous,
+                    [field]: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 rounded border-white/20 bg-[#07111F]"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <label className="block">
         <span className="text-sm text-slate-300">Tags</span>

@@ -5,6 +5,9 @@ import {
   Mail,
   Phone,
   UserRound,
+  ShieldAlert,
+  Gauge,
+  Globe2,
 } from 'lucide-react'
 
 import type { Contact } from '@/types/contact'
@@ -122,6 +125,34 @@ export default function ContactProfileCard({
           icon={<Briefcase className="h-5 w-5" />}
           label="Job Title"
           value={contact.title || '—'}
+        />
+
+        <Row
+          icon={<UserRound className="h-5 w-5" />}
+          label="Preferred Name"
+          value={contact.preferred_name || '—'}
+        />
+
+        <Row
+          icon={<Gauge className="h-5 w-5" />}
+          label="Lifecycle / Lead Score"
+          value={`${contact.lifecycle_stage.replaceAll('_', ' ')} · ${contact.lead_score}/100`}
+        />
+
+        <Row
+          icon={<Globe2 className="h-5 w-5" />}
+          label="Source / Timezone"
+          value={`${contact.source || 'manual'}${contact.timezone ? ` · ${contact.timezone}` : ''}`}
+        />
+
+        <Row
+          icon={<ShieldAlert className="h-5 w-5" />}
+          label="Communication Restrictions"
+          value={[
+            contact.do_not_email ? 'Email' : null,
+            contact.do_not_sms ? 'SMS' : null,
+            contact.do_not_call ? 'Calls' : null,
+          ].filter(Boolean).join(', ') || 'None'}
         />
 
         <Row

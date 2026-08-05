@@ -1,7 +1,7 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 import { resolveOwnerAssignment } from '@/lib/ownership'
-import type { Contact, ContactProfile } from '@/types/contact'
+import type { Contact, ContactDuplicate, ContactLifecycleStage, ContactProfile } from '@/types/contact'
 
 export const CONTACTS_PER_PAGE = 12
 
@@ -20,6 +20,16 @@ type ContactFormValues = {
   tags: string
   notes: string
   owner_membership_id: string
+  preferred_name: string
+  lifecycle_stage: ContactLifecycleStage
+  source: string
+  lead_score: string
+  timezone: string
+  locale: string
+  do_not_email: string
+  do_not_sms: string
+  do_not_call: string
+  next_follow_up_at: string
 }
 
 type ContactRow = {
@@ -32,6 +42,19 @@ type ContactRow = {
   phone: string | null
   title: string | null
   status: ContactStatus
+  preferred_name: string | null
+  lifecycle_stage: ContactLifecycleStage
+  source: string
+  lead_score: number
+  timezone: string | null
+  locale: string | null
+  do_not_email: boolean
+  do_not_sms: boolean
+  do_not_call: boolean
+  last_contacted_at: string | null
+  next_follow_up_at: string | null
+  custom_fields: unknown
+  merged_into_contact_id: string | null
   metadata: unknown
   owner_membership_id: string | null
   owner?: { user_id?: string | null } | null
@@ -161,6 +184,24 @@ function mapContact(row: ContactRow): Contact {
     phone: row.phone,
     title: row.title,
     status: row.status,
+    preferred_name: row.preferred_name,
+    lifecycle_stage: row.lifecycle_stage,
+    source: row.source,
+    lead_score: row.lead_score,
+    timezone: row.timezone,
+    locale: row.locale,
+    do_not_email: row.do_not_email,
+    do_not_sms: row.do_not_sms,
+    do_not_call: row.do_not_call,
+    last_contacted_at: row.last_contacted_at,
+    next_follow_up_at: row.next_follow_up_at,
+    custom_fields:
+      row.custom_fields &&
+      typeof row.custom_fields === 'object' &&
+      !Array.isArray(row.custom_fields)
+        ? row.custom_fields as Record<string, unknown>
+        : {},
+    merged_into_contact_id: row.merged_into_contact_id,
     metadata: normalizeMetadata(row.metadata),
     owner_membership_id: row.owner_membership_id,
     owner_user_id: row.owner?.user_id ?? null,
@@ -299,6 +340,19 @@ export async function getContacts(
         phone,
         title,
         status,
+        preferred_name,
+        lifecycle_stage,
+        source,
+        lead_score,
+        timezone,
+        locale,
+        do_not_email,
+        do_not_sms,
+        do_not_call,
+        last_contacted_at,
+        next_follow_up_at,
+        custom_fields,
+        merged_into_contact_id,
         metadata,
         owner_membership_id,
         owner:organization_members!contacts_owner_membership_id_fkey(
@@ -316,6 +370,7 @@ export async function getContacts(
       'organization_id',
       organization.organization_id,
     )
+    .is('merged_into_contact_id', null)
 
   if (normalizedSearch) {
     const searchPattern = `%${normalizedSearch}%`
@@ -395,6 +450,19 @@ export async function getContactById(
       phone,
       title,
       status,
+      preferred_name,
+      lifecycle_stage,
+      source,
+      lead_score,
+      timezone,
+      locale,
+      do_not_email,
+      do_not_sms,
+      do_not_call,
+      last_contacted_at,
+      next_follow_up_at,
+      custom_fields,
+      merged_into_contact_id,
       metadata,
       owner_membership_id,
       owner:organization_members!contacts_owner_membership_id_fkey(
@@ -516,6 +584,16 @@ export async function createContact(
     phone: values.phone.trim() || null,
     title: values.job_title.trim() || null,
     status: normalizeStatus(values.status),
+    preferred_name: values.preferred_name.trim() || null,
+    lifecycle_stage: values.lifecycle_stage,
+    source: values.source.trim() || 'manual',
+    lead_score: Math.min(100, Math.max(0, Number.parseInt(values.lead_score, 10) || 0)),
+    timezone: values.timezone.trim() || null,
+    locale: values.locale.trim() || null,
+    do_not_email: values.do_not_email === 'true',
+    do_not_sms: values.do_not_sms === 'true',
+    do_not_call: values.do_not_call === 'true',
+    next_follow_up_at: values.next_follow_up_at || null,
     metadata: {
       mobile: values.mobile.trim() || null,
       tags: normalizeTags(values.tags),
@@ -579,6 +657,16 @@ export async function updateContact(
     phone: values.phone.trim() || null,
     title: values.job_title.trim() || null,
     status: normalizeStatus(values.status),
+    preferred_name: values.preferred_name.trim() || null,
+    lifecycle_stage: values.lifecycle_stage,
+    source: values.source.trim() || 'manual',
+    lead_score: Math.min(100, Math.max(0, Number.parseInt(values.lead_score, 10) || 0)),
+    timezone: values.timezone.trim() || null,
+    locale: values.locale.trim() || null,
+    do_not_email: values.do_not_email === 'true',
+    do_not_sms: values.do_not_sms === 'true',
+    do_not_call: values.do_not_call === 'true',
+    next_follow_up_at: values.next_follow_up_at || null,
     metadata: {
       mobile: values.mobile.trim() || null,
       tags: normalizeTags(values.tags),
@@ -649,4 +737,40 @@ export async function deleteContact(
       'Contact not found or you do not have permission to delete it.',
     )
   }
+}
+
+export async function findContactDuplicates(input: {
+  contactId?: string
+  email?: string
+  phone?: string
+}): Promise<ContactDuplicate[]> {
+  const { supabase, organization } = await requireOrganization()
+
+  const { data, error } = await supabase.rpc('find_contact_duplicates', {
+    p_organization_id: organization.organization_id,
+    p_contact_id: input.contactId?.trim() || null,
+    p_email: input.email?.trim() || null,
+    p_phone: input.phone?.trim() || null,
+  })
+
+  if (error) {
+    throw new Error(`Failed to find contact duplicates: ${error.message}`)
+  }
+
+  return (Array.isArray(data) ? data : []).flatMap((row): ContactDuplicate[] => {
+    if (!row || typeof row !== 'object') return []
+    const value = row as Record<string, unknown>
+    if (typeof value.contact_id !== 'string') return []
+
+    return [{
+      contact_id: value.contact_id,
+      first_name: typeof value.first_name === 'string' ? value.first_name : null,
+      last_name: typeof value.last_name === 'string' ? value.last_name : null,
+      email: typeof value.email === 'string' ? value.email : null,
+      phone: typeof value.phone === 'string' ? value.phone : null,
+      match_reasons: Array.isArray(value.match_reasons)
+        ? value.match_reasons.filter((reason): reason is string => typeof reason === 'string')
+        : [],
+    }]
+  })
 }
