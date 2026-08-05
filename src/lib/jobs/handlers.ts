@@ -54,3 +54,9 @@ registerJobHandler('integration.health_check', async ({ job, heartbeat }) => {
   await heartbeat()
   return executeIntegrationMaintenance(job.payload)
 })
+
+registerJobHandler('exports.generate', async ({ job, heartbeat }) => {
+  await heartbeat()
+  const { processExport } = await import('@/lib/exports/processor')
+  return processExport(job.payload)
+})

@@ -211,6 +211,13 @@ const navItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
+    id: 'exports',
+    label: 'Exports',
+    href: '/dashboard/exports',
+    permission: 'reports.export',
+    icon: FolderOpen,
+  },
+  {
     id: 'reports',
     label: 'Reports',
     href: '/dashboard/reports',

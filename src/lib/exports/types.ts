@@ -1,0 +1,9 @@
+export const EXPORT_FORMATS = ['csv', 'excel', 'pdf'] as const
+export const EXPORT_RESOURCES = ['contacts','companies','opportunities','calls','campaigns','tasks','activities'] as const
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]
+export type ExportResource = (typeof EXPORT_RESOURCES)[number]
+export type ExportStatus = 'queued'|'processing'|'completed'|'failed'|'cancelled'
+export type ExportJobRecord = {id:string;organizationId:string;resource:ExportResource;format:ExportFormat;status:ExportStatus;fileName:string|null;rowCount:number;fileSizeBytes:number;createdAt:string;completedAt:string|null;expiresAt:string|null;errorMessage:string|null;createdBy:string}
+export type ExportScheduleRecord = {id:string;organizationId:string;name:string;resource:ExportResource;format:ExportFormat;frequency:'daily'|'weekly'|'monthly';timezone:string;nextRunAt:string;isActive:boolean;filters:Record<string,unknown>;createdAt:string;updatedAt:string}
+export type CreateExportInput = {resource:ExportResource;format:ExportFormat;filters?:Record<string,unknown>}
+export type CreateExportScheduleInput = CreateExportInput & {name:string;frequency:'daily'|'weekly'|'monthly';timezone?:string;nextRunAt:string;isActive?:boolean}
