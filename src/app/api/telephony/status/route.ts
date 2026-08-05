@@ -1,6 +1,7 @@
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import { setAgentCallActivity } from '@/lib/telephony/presence/service'
+import { completeQueueReservation, releaseQueueReservation } from '@/lib/telephony/queues/service'
 import { parseTwilioForm, validateTwilioWebhook } from '@/lib/telephony/validation'
 
 const statusMap: Record<string, string> = {
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
   const organizationId = url.searchParams.get('organizationId')
   const userId = url.searchParams.get('userId')
   const sourceRingGroupId = url.searchParams.get('sourceRingGroupId')
+  const queueReservationId = url.searchParams.get('queueReservationId')
   if (!organizationId) return new Response('Forbidden', { status: 403 })
 
   const config = await getOrganizationTwilioConfiguration(organizationId)
@@ -49,6 +51,27 @@ export async function POST(request: Request) {
         if (error) console.error('Unable to update ring-group answer statistics:', error)
       })
     }
+  }
+
+  if (queueReservationId && status === 'connected') {
+    await completeQueueReservation({
+      organizationId,
+      reservationId: queueReservationId,
+      providerChildCallId,
+    }).catch((error) => {
+      console.error('Unable to complete queue reservation:', error)
+    })
+  }
+
+  if (queueReservationId && (status === 'failed' || status === 'cancelled')) {
+    await releaseQueueReservation({
+      organizationId,
+      reservationId: queueReservationId,
+      reason: providerStatus || status,
+      requeue: true,
+    }).catch((error) => {
+      console.error('Unable to requeue failed reservation:', error)
+    })
   }
 
   if (userId && status === 'connected') {

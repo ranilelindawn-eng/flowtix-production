@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
+import { enqueueInboundCall } from '@/lib/telephony/queues/service'
 import type {
   CreatedInboundRoute,
   InboundRoutingPlan,
@@ -367,7 +368,7 @@ export async function buildInboundRoutingPlan(input: {
     const [{ data: queue, error: queueError }, { data: members, error: memberError }] = await Promise.all([
       admin
         .from('call_queues')
-        .select('id, name, max_wait_seconds')
+        .select('id, name, max_wait_seconds, max_size, priority_mode, overflow_queue_id, overflow_number, announce_position, announce_estimated_wait')
         .eq('organization_id', input.organizationId)
         .eq('id', phoneNumber.queue_id)
         .eq('is_active', true)
@@ -384,17 +385,9 @@ export async function buildInboundRoutingPlan(input: {
       throw new Error(queueError?.message ?? memberError?.message ?? 'Unable to load call queue.')
     }
     if (queue) {
-      const targets = ((members ?? []) as Array<{ user_id: string; priority: number | null }>)
+      const eligibleQueueUserIds = ((members ?? []) as Array<{ user_id: string; priority: number | null }>)
         .filter((member) => activeUsers.has(member.user_id))
-        .map((member) => ({
-          kind: 'user' as const,
-          userId: member.user_id,
-          phoneNumber: null,
-          priority: member.priority ?? 0,
-          weight: 1,
-          tier: 0,
-          sourceRingGroupId: null,
-        }))
+        .map((member) => member.user_id)
       return {
         organizationId: input.organizationId,
         phoneNumberId: phoneNumber.id,
@@ -402,9 +395,19 @@ export async function buildInboundRoutingPlan(input: {
         queueId: queue.id,
         routeType: 'queue',
         strategy: 'sequential',
-        timeoutSeconds: Math.min(queue.max_wait_seconds, 120),
-        targets,
-        metadata: { phoneNumberName: phoneNumber.friendly_name, queueName: queue.name },
+        timeoutSeconds: Math.min(queue.max_wait_seconds, 3600),
+        targets: [],
+        metadata: {
+          phoneNumberName: phoneNumber.friendly_name,
+          queueName: queue.name,
+          queueMaxSize: queue.max_size,
+          queuePriorityMode: queue.priority_mode,
+          overflowQueueId: queue.overflow_queue_id,
+          overflowNumber: queue.overflow_number,
+          announcePosition: queue.announce_position,
+          announceEstimatedWait: queue.announce_estimated_wait,
+          eligibleQueueUserIds,
+        },
       }
     }
   }
@@ -480,6 +483,11 @@ export async function createInboundRoute(input: {
           : 25,
       targets: storedTargets,
       metadata: existingRoute.metadata ?? {},
+      queueEntryId:
+        typeof existingRoute.metadata?.queueEntryId === 'string'
+          ? existingRoute.metadata.queueEntryId
+          : null,
+      queueAccepted: existingRoute.route_type === 'queue',
       duplicate: true,
     }
   }
@@ -512,7 +520,7 @@ export async function createInboundRoute(input: {
     throw new Error(`Unable to create inbound call: ${callError?.message ?? 'No call returned.'}`)
   }
 
-  const attemptStatus = plan.targets.length ? 'routing' : 'no_agents'
+  const attemptStatus = plan.routeType === 'queue' ? 'queued' : plan.targets.length ? 'routing' : 'no_agents'
   const attemptMetadata = {
     ...plan.metadata,
     timeoutSeconds: plan.timeoutSeconds,
@@ -535,7 +543,10 @@ export async function createInboundRoute(input: {
         .filter((target) => target.kind === 'user' && target.userId)
         .map((target) => target.userId),
       metadata: attemptMetadata,
-      failure_reason: plan.targets.length ? null : 'No active routing members were available.',
+      failure_reason:
+        plan.routeType === 'queue' || plan.targets.length
+          ? null
+          : 'No active routing members were available.',
     })
     .select('id')
     .single()
@@ -544,6 +555,34 @@ export async function createInboundRoute(input: {
     throw new Error(
       `Unable to create routing attempt: ${attemptError?.message ?? 'No attempt returned.'}`,
     )
+  }
+
+  let queueEntryId: string | null = null
+  let queueAccepted = plan.routeType !== 'queue'
+  if (plan.routeType === 'queue' && plan.queueId) {
+    const queued = await enqueueInboundCall({
+      organizationId: input.organizationId,
+      queueId: plan.queueId,
+      callId: call.id,
+      routingAttemptId: attempt.id,
+      provider: input.provider,
+      providerCallId: input.providerCallId,
+      metadata: plan.metadata,
+    })
+    queueEntryId = queued.entryId
+    queueAccepted = queued.accepted
+    Object.assign(attemptMetadata, {
+      queueEntryId,
+      queuePosition: queued.position,
+      estimatedWaitSeconds: queued.estimatedWaitSeconds,
+      maxWaitSeconds: queued.maxWaitSeconds,
+      announcePosition: queued.announcePosition,
+      announceEstimatedWait: queued.announceEstimatedWait,
+      overflowQueueId: queued.overflowQueueId,
+      overflowNumber: queued.overflowNumber,
+      queueAccepted,
+      queueRejectionReason: queued.reason,
+    })
   }
 
   const routedByGroup = new Map<string, string[]>()
@@ -557,8 +596,25 @@ export async function createInboundRoute(input: {
   await Promise.all([
     admin
       .from('calls')
-      .update({ routing_attempt_id: attempt.id })
+      .update({
+        routing_attempt_id: attempt.id,
+        routing_status:
+          plan.routeType === 'queue' ? (queueAccepted ? 'queued' : 'overflow') : attemptStatus,
+        routing_metadata: attemptMetadata,
+      })
       .eq('id', call.id)
+      .eq('organization_id', input.organizationId),
+    admin
+      .from('call_routing_attempts')
+      .update({
+        status: plan.routeType === 'queue' ? (queueAccepted ? 'queued' : 'overflow') : attemptStatus,
+        metadata: attemptMetadata,
+        failure_reason:
+          plan.routeType === 'queue' && !queueAccepted
+            ? 'Queue capacity was reached.'
+            : null,
+      })
+      .eq('id', attempt.id)
       .eq('organization_id', input.organizationId),
     admin.from('call_routing_history').insert({
       organization_id: input.organizationId,
@@ -584,5 +640,13 @@ export async function createInboundRoute(input: {
     ),
   ])
 
-  return { ...plan, callId: call.id, routingAttemptId: attempt.id, duplicate: false }
+  return {
+    ...plan,
+    callId: call.id,
+    routingAttemptId: attempt.id,
+    queueEntryId,
+    queueAccepted,
+    metadata: attemptMetadata,
+    duplicate: false,
+  }
 }

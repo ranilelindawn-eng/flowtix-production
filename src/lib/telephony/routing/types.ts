@@ -32,5 +32,7 @@ export type InboundRoutingPlan = {
 export type CreatedInboundRoute = InboundRoutingPlan & {
   callId: string
   routingAttemptId: string
+  queueEntryId: string | null
+  queueAccepted: boolean
   duplicate: boolean
 }

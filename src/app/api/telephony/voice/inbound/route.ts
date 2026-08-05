@@ -96,13 +96,49 @@ export async function POST(request: Request) {
     return twimlResponse(response.toString())
   }
 
+  const callbackBase = `${config.publicUrl}/api/telephony`
+
+  if (route.routeType === 'queue' && route.queueId) {
+    if (!route.queueAccepted) {
+      const overflowNumber =
+        typeof route.metadata.overflowNumber === 'string'
+          ? route.metadata.overflowNumber.trim()
+          : ''
+      if (overflowNumber) {
+        response.dial({ timeout: 25, answerOnBridge: true }, overflowNumber)
+      } else {
+        response.say('The call queue is currently full. Please try again later.')
+        response.hangup()
+      }
+      return twimlResponse(response.toString())
+    }
+
+    const queueName = `flowtix_${ownedNumber.organization_id.replace(/-/g, '')}_${route.queueId.replace(/-/g, '')}`
+    const queueQuery = new URLSearchParams({
+      organizationId: ownedNumber.organization_id,
+      callId: route.callId,
+      routingAttemptId: route.routingAttemptId,
+      queueId: route.queueId,
+    })
+    if (route.queueEntryId) queueQuery.set('queueEntryId', route.queueEntryId)
+    response.enqueue(
+      {
+        waitUrl: `${callbackBase}/queue/wait?${queueQuery.toString()}`,
+        waitUrlMethod: 'POST',
+        action: `${callbackBase}/queue/action?${queueQuery.toString()}`,
+        method: 'POST',
+      },
+      queueName,
+    )
+    return twimlResponse(response.toString())
+  }
+
   if (route.targets.length === 0) {
     response.say('No agents are currently available. Please try again later.')
     response.hangup()
     return twimlResponse(response.toString())
   }
 
-  const callbackBase = `${config.publicUrl}/api/telephony`
   const callbackQuery = new URLSearchParams({
     callId: route.callId,
     routingAttemptId: route.routingAttemptId,
