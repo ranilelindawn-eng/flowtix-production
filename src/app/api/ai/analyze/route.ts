@@ -2,11 +2,8 @@ import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
-import {
-  generateStructuredAI,
-  getAIProviderLabel,
-  type AIAnalysis,
-} from '@/lib/ai/provider'
+import { getAIProviderLabel, type AIAnalysis } from '@/lib/ai/provider'
+import { generatePromptStructured } from '@/lib/ai/prompts'
 import { validateAIAnalysis } from '@/lib/ai/validation'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
@@ -51,24 +48,11 @@ export async function POST(request: Request) {
       deriveWindowedIdempotencyKey('ai.call_analysis', { transcript, callId, contactId }, 300),
     )
 
-    const rawResult = await generateStructuredAI<AIAnalysis>({
-      system:
-        'You are a senior sales-call analyst. Be factual, practical, concise, and never invent details absent from the transcript.',
-      prompt: `Analyze this sales or support call transcript:\n\n${transcript}`,
-      schemaDescription: {
-        summary: 'string',
-        followUp: 'string',
-        sentiment: 'positive|neutral|negative|mixed',
-        sentimentScore: 'number from -1 to 1',
-        callScore: 'integer 0 to 100',
-        objections: [{ objection: 'string', response: 'recommended response' }],
-        actionItems: ['string'],
-        keywords: ['string'],
-        coaching: ['string'],
-        nextBestAction: 'string',
-      },
+    const generated = await generatePromptStructured<AIAnalysis>({
+      promptKey: 'call.analysis',
+      variables: { transcript },
     })
-    const result = validateAIAnalysis(rawResult)
+    const result = validateAIAnalysis(generated.value)
 
     const supabase = await createClient()
     const { data, error } = await supabase

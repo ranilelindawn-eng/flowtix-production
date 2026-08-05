@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
-import { generateStructuredAI } from '@/lib/ai/provider'
+import { generatePromptStructured } from '@/lib/ai/prompts'
 import { validateSuggestedTasks, type SuggestedTask } from '@/lib/ai/validation'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
@@ -43,22 +43,11 @@ export async function POST(request: Request) {
       deriveWindowedIdempotencyKey('ai.tasks', { context, contactId, callId }, 120),
     )
 
-    const rawResult = await generateStructuredAI<TaskResult>({
-      system:
-        'Suggest concrete CRM follow-up tasks based only on the supplied context. Do not invent commitments or dates.',
-      prompt: context,
-      schemaDescription: {
-        tasks: [
-          {
-            title: 'string',
-            description: 'string',
-            priority: 'low|medium|high',
-            dueInDays: 'integer 0 to 30',
-          },
-        ],
-      },
+    const generated = await generatePromptStructured<TaskResult>({
+      promptKey: 'tasks.suggest',
+      variables: { context },
     })
-    const tasks = validateSuggestedTasks(rawResult)
+    const tasks = validateSuggestedTasks(generated.value)
 
     if (tasks.length === 0) {
       return NextResponse.json({ error: 'The AI did not return any usable tasks.' }, { status: 422 })

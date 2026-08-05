@@ -2,18 +2,19 @@ import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
-import { generateTextAI, getAIProviderLabel } from '@/lib/ai/provider'
+import { getAIProviderLabel } from '@/lib/ai/provider'
+import { generatePromptText, type AIPromptKey } from '@/lib/ai/prompts'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
 import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 const MAX_MESSAGE_LENGTH = 20_000
-const AGENT_PROMPTS: Record<string, string> = {
-  general: 'You are Flowtix AI, a concise and practical CRM assistant.',
-  sales: 'You are a senior sales coach. Focus on pipeline progress, qualification, objections, and next actions.',
-  sdr: 'You are an expert SDR. Help with prospecting, outreach, cold-call scripts, and follow-up sequences.',
-  support: 'You are a customer support specialist. Be empathetic, accurate, and action-oriented.',
-  marketing: 'You are a B2B marketing strategist. Focus on campaigns, positioning, messaging, and conversion.',
+const AGENT_PROMPT_KEYS: Record<string, AIPromptKey> = {
+  general: 'chat.general',
+  sales: 'chat.sales',
+  sdr: 'chat.sdr',
+  support: 'chat.support',
+  marketing: 'chat.marketing',
 }
 
 type ConversationRow = {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
     }
     const message = typeof body.message === 'string' ? body.message.trim() : ''
     const requestedAgent = typeof body.agentKey === 'string' ? body.agentKey.trim() : 'general'
-    const agentKey = AGENT_PROMPTS[requestedAgent] ? requestedAgent : 'general'
+    const agentKey = AGENT_PROMPT_KEYS[requestedAgent] ? requestedAgent : 'general'
 
     if (!message) return NextResponse.json({ error: 'Message is required.' }, { status: 400 })
     if (message.length > MAX_MESSAGE_LENGTH) {
@@ -114,12 +115,16 @@ export async function POST(request: Request) {
     if (historyError) throw new Error(historyError.message)
 
     const chronological = ((history ?? []) as MessageRow[]).reverse()
-    const system = `${AGENT_PROMPTS[conversation.agent_key] ?? AGENT_PROMPTS.general}
-You are operating inside one tenant-isolated Flowtix workspace.
-Known CRM totals: ${contactCount ?? 0} contacts, ${companyCount ?? 0} companies, ${callCount ?? 0} calls.
-Do not claim access to records you have not been given. When data is insufficient, say what is missing. Never invent customer details.`
-
-    const reply = await generateTextAI({ system, messages: chronological })
+    const generated = await generatePromptText({
+      promptKey: AGENT_PROMPT_KEYS[conversation.agent_key] ?? 'chat.general',
+      variables: {
+        contactCount: contactCount ?? 0,
+        companyCount: companyCount ?? 0,
+        callCount: callCount ?? 0,
+      },
+      messages: chronological,
+    })
+    const reply = generated.content
     const model = getAIProviderLabel()
 
     const { data: assistantMessage, error: assistantMessageError } = await supabase

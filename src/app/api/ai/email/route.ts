@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
-import { generateStructuredAI } from '@/lib/ai/provider'
+import { generatePromptStructured } from '@/lib/ai/prompts'
 import { validateGeneratedEmail, type GeneratedEmail } from '@/lib/ai/validation'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
@@ -41,13 +41,16 @@ export async function POST(request: Request) {
       deriveWindowedIdempotencyKey('ai.email', { recipient, purpose, context, tone, contactId }, 120),
     )
 
-    const rawResult = await generateStructuredAI<GeneratedEmail>({
-      system:
-        'Write professional, natural business emails. Do not make unsupported promises. Return a plain-text body, not HTML.',
-      prompt: `Recipient: ${recipient || 'Customer'}\nPurpose: ${purpose}\nTone: ${tone}\nContext: ${context || 'No extra context'}`,
-      schemaDescription: { subject: 'string', body: 'string' },
+    const generated = await generatePromptStructured<GeneratedEmail>({
+      promptKey: 'email.generate',
+      variables: {
+        recipient: recipient || 'Customer',
+        purpose,
+        tone,
+        context: context || 'No extra context',
+      },
     })
-    const result = validateGeneratedEmail(rawResult)
+    const result = validateGeneratedEmail(generated.value)
 
     const supabase = await createClient()
     const { data, error } = await supabase
