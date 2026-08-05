@@ -192,6 +192,38 @@ export async function consumeMeteredUsage(
 
   const resolvedOrganizationId = await resolveOrganizationId(organizationId)
   const supabase = await createClient()
+
+  if (metric === 'ai_requests') {
+    const key = idempotencyKey?.trim() || `ai:${crypto.randomUUID()}`
+    const feature = key.split(':').slice(0, 3).join('.').replace(/^ai\./, '') || 'unknown'
+    const { data: reservation, error: reservationError } = await supabase.rpc('reserve_ai_usage', {
+      target_org: resolvedOrganizationId,
+      usage_feature: feature,
+      usage_idempotency_key: key,
+      estimated_input: 0,
+      estimated_output: 0,
+      reservation_seconds: 900,
+    })
+    if (reservationError) {
+      if (reservationError.message.includes('AI_') || reservationError.message.includes('USAGE_LIMIT_REACHED')) {
+        const snapshot = await loadUsageSnapshot(resolvedOrganizationId)
+        const bucket = snapshot.aiRequests
+        throw new UsageLimitError(metric, bucket.used, bucket.limit ?? bucket.used, reservationError.message)
+      }
+      throw new Error(`Unable to consume ${metric} usage: ${reservationError.message}`)
+    }
+    const reservationRow = reservation as { id?: string } | null
+    if (reservationRow?.id) {
+      const { error: finalizeError } = await supabase.rpc('finalize_ai_usage', {
+        reservation_id: reservationRow.id, result_status: 'completed', result_provider: null, result_model: null,
+        actual_input_tokens: null, actual_output_tokens: null, result_cost_micros: null, result_request_id: null,
+        result_latency_ms: null, result_error_code: null, result_error_message: null, result_metadata: { source: 'legacy_metered_usage' },
+      })
+      if (finalizeError) throw new Error(`Unable to finalize ${metric} usage: ${finalizeError.message}`)
+    }
+    return { metric, used: 0, limit_value: null, remaining: null }
+  }
+
   const { data, error } = await supabase.rpc('consume_organization_usage', {
     target_org: resolvedOrganizationId,
     usage_metric: metric,
@@ -202,11 +234,9 @@ export async function consumeMeteredUsage(
   if (error) {
     if (error.message.includes('USAGE_LIMIT_REACHED')) {
       const snapshot = await loadUsageSnapshot(resolvedOrganizationId)
-      const bucket = metric === 'ai_requests'
-        ? snapshot.aiRequests
-        : metric === 'emails'
-          ? snapshot.emails
-          : snapshot.sms
+      const bucket = metric === 'emails'
+        ? snapshot.emails
+        : snapshot.sms
       if (bucket.limit !== null) throw new UsageLimitError(metric, bucket.used, bucket.limit)
     }
     throw new Error(`Unable to consume ${metric} usage: ${error.message}`)
