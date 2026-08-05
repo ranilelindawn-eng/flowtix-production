@@ -17,6 +17,7 @@ import {
   GitBranch,
   Home,
   ListOrdered,
+  LayoutDashboard,
   LockKeyhole,
   Mail,
   MessageSquareText,
@@ -201,6 +202,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/transcripts',
     permission: 'transcripts.view',
     icon: Briefcase,
+  },
+  {
+    id: 'dashboards',
+    label: 'Dashboards',
+    href: '/dashboard/dashboards',
+    permission: 'reports.view',
+    icon: LayoutDashboard,
   },
   {
     id: 'reports',
