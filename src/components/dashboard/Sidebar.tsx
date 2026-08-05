@@ -8,6 +8,7 @@ import {
   BadgeDollarSign,
   BarChart3,
   Briefcase,
+  BrainCircuit,
   Building2,
   CalendarDays,
   Clock3,
@@ -242,6 +243,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/campaign-analytics',
     permission: 'reports.view',
     icon: Sparkles,
+  },
+  {
+    id: 'ai-analytics',
+    label: 'AI Analytics',
+    href: '/dashboard/ai-analytics',
+    permission: 'reports.view',
+    icon: BrainCircuit,
   },
   {
     id: 'ai-workspace',

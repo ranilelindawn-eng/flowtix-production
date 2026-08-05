@@ -1,0 +1,4 @@
+import { NextResponse } from 'next/server'
+import { collectAIAnalyticsSnapshot, getAIAnalyticsOverview, normalizeAIAnalyticsPeriod } from '@/lib/analytics/ai'
+export async function GET(request:Request){const period=normalizeAIAnalyticsPeriod(new URL(request.url).searchParams.get('period')??undefined);try{return NextResponse.json(await getAIAnalyticsOverview(period))}catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Unable to load AI analytics.'},{status:500})}}
+export async function POST(request:Request){try{const body=(await request.json().catch(()=>({}))) as {period?:string};return NextResponse.json({snapshot:await collectAIAnalyticsSnapshot(normalizeAIAnalyticsPeriod(body.period))},{status:201})}catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Unable to collect AI analytics.'},{status:500})}}
