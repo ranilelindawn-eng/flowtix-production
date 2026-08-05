@@ -18,6 +18,17 @@ export type Summary = {
   action_items: string | null
   sentiment: string | null
   provider: string
+  model?: string | null
+  prompt_key?: string | null
+  prompt_version?: number | null
+  provider_request_id?: string | null
+  input_tokens?: number | null
+  output_tokens?: number | null
+  latency_ms?: number | null
+  generation_status?: 'completed' | 'failed' | 'manual'
+  generation_key?: string | null
+  generated_at?: string | null
+  metadata?: Record<string, unknown>
   created_by: string
   created_at: string
   updated_at: string

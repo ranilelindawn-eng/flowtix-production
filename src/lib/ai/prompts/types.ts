@@ -9,6 +9,7 @@ export type AIPromptKey =
   | 'call.analysis'
   | 'email.generate'
   | 'tasks.suggest'
+  | 'summary.transcript'
 
 export type AIPromptVariableValue = string | number | boolean | null | undefined
 export type AIPromptVariables = Record<string, AIPromptVariableValue>

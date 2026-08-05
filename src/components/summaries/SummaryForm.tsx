@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useFormStatus } from 'react-dom'
 
@@ -64,6 +65,9 @@ export default function SummaryForm({
   summary,
 }: SummaryFormProps) {
   const editing = Boolean(summary)
+  const router = useRouter()
+  const [generating, setGenerating] = useState(false)
+  const [generationError, setGenerationError] = useState<string | null>(null)
 
   const [transcriptId, setTranscriptId] = useState(
     summary?.transcript_id ?? ''
@@ -90,6 +94,36 @@ export default function SummaryForm({
   const action = editing
     ? updateSummary
     : createSummary
+
+  async function generateWithAI() {
+    if (!transcriptId || generating) return
+
+    setGenerationError(null)
+    setGenerating(true)
+
+    try {
+      const response = await fetch('/api/ai/summaries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcriptId, title }),
+      })
+      const payload = (await response.json()) as {
+        error?: string
+        summary?: { id?: string }
+      }
+
+      if (!response.ok || !payload.summary?.id) {
+        throw new Error(payload.error || 'AI summary generation failed.')
+      }
+
+      router.push(`/dashboard/summaries/${payload.summary.id}`)
+      router.refresh()
+    } catch (error) {
+      setGenerationError(error instanceof Error ? error.message : 'AI summary generation failed.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <form action={action} className="space-y-6">
@@ -246,7 +280,24 @@ export default function SummaryForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
+      {generationError ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {generationError}
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap justify-end gap-3">
+        {!editing ? (
+          <button
+            type="button"
+            disabled={!transcriptId || generating}
+            onClick={generateWithAI}
+            className="rounded-xl border border-blue-500/40 bg-blue-500/10 px-5 py-2.5 font-semibold text-blue-200 hover:bg-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {generating ? 'Generating with AI...' : 'Generate with AI'}
+          </button>
+        ) : null}
+
         <Link
           href={
             editing
