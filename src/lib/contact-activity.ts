@@ -1,6 +1,7 @@
 import type { ContactCall } from '@/lib/contact-calls'
 import type { ContactNote } from '@/lib/contact-notes'
 import type { ContactTask } from '@/lib/contact-tasks'
+import type { CrmActivity } from '@/lib/activities'
 
 export type ContactActivity =
   | {
@@ -21,11 +22,18 @@ export type ContactActivity =
       occurredAt: string
       task: ContactTask
     }
+  | {
+      id: string
+      type: 'activity'
+      occurredAt: string
+      activity: CrmActivity
+    }
 
 type GetContactActivityInput = {
   calls: ContactCall[]
   notes: ContactNote[]
   tasks: ContactTask[]
+  crmActivities?: CrmActivity[]
 }
 
 function timestamp(value: string | null): number {
@@ -40,6 +48,7 @@ export function getContactActivity({
   calls,
   notes,
   tasks,
+  crmActivities = [],
 }: GetContactActivityInput): ContactActivity[] {
   const activities: ContactActivity[] = [
     ...calls.map((call) => ({
@@ -54,6 +63,13 @@ export function getContactActivity({
       type: 'note' as const,
       occurredAt: note.created_at,
       note,
+    })),
+
+    ...crmActivities.map((activity) => ({
+      id: `activity-${activity.id}`,
+      type: 'activity' as const,
+      occurredAt: activity.occurred_at,
+      activity,
     })),
 
     ...tasks.map((task) => ({

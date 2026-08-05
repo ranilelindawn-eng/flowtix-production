@@ -7,6 +7,7 @@ import ContactQuickActions from '@/components/contacts/ContactQuickActions'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import { requirePermission } from '@/lib/auth'
 import { getContactActivity } from '@/lib/contact-activity'
+import { getActivities } from '@/lib/activities'
 import { getContactCalls } from '@/lib/contact-calls'
 import { getContactNotes } from '@/lib/contact-notes'
 import { getContactTasks } from '@/lib/contact-tasks'
@@ -21,15 +22,16 @@ type ContactPageProps = {
 export default async function ContactPage({
   params,
 }: ContactPageProps) {
-  await requirePermission('contacts.view')
+  const organization = await requirePermission('contacts.view')
 
   const { id } = await params
 
-  const [contact, calls, notes, tasks] = await Promise.all([
+  const [contact, calls, notes, tasks, crmActivities] = await Promise.all([
     getContact(id),
     getContactCalls(id),
     getContactNotes(id),
     getContactTasks(id),
+    getActivities({ organizationId: organization.organization_id, contactId: id, limit: 100 }),
   ])
 
   if (!contact) {
@@ -40,6 +42,7 @@ export default async function ContactPage({
     calls,
     notes,
     tasks,
+    crmActivities,
   })
 
   return (

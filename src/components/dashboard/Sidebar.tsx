@@ -87,6 +87,13 @@ const navItems: NavItem[] = [
     icon: ListOrdered,
   },
   {
+    id: 'activities',
+    label: 'Activities',
+    href: '/dashboard/activities',
+    permission: 'contacts.view',
+    icon: Activity,
+  },
+  {
     id: 'calendar',
     label: 'Calendar',
     href: '/dashboard/calendar',

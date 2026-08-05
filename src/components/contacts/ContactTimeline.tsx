@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  Activity,
   LoaderCircle,
   Phone,
   RotateCcw,
@@ -20,6 +21,7 @@ import {
 import type { ContactActivity } from '@/lib/contact-activity'
 import { formatCallDurationLabel } from '@/lib/formatters'
 
+import AddActivityDialog from '@/components/activities/AddActivityDialog'
 import AddNoteDialog from './AddNoteDialog'
 import AddTaskDialog from './AddTaskDialog'
 import EditTaskDialog from './EditTaskDialog'
@@ -138,6 +140,7 @@ export default function ContactTimeline({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <AddActivityDialog contactId={contactId} />
           <AddTaskDialog contactId={contactId} />
           <AddNoteDialog contactId={contactId} />
         </div>
@@ -215,6 +218,22 @@ export default function ContactTimeline({
                         )}
                       </span>
                     </div>
+                  </div>
+                </article>
+              )
+            }
+
+            if (activity.type === 'activity') {
+              const item = activity.activity
+              return (
+                <article key={activity.id} className="relative flex gap-4 py-5">
+                  {!isLast ? <div className="absolute bottom-0 left-[21px] top-12 w-px bg-white/10" /> : null}
+                  <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-violet-400/15 bg-violet-400/[0.08] text-violet-300"><Activity className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-white">{item.subject}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{item.activity_type.replaceAll('_', ' ')}</span><span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getStatusClasses(item.status)}`}>{item.status.replaceAll('_', ' ')}</span></div>
+                    {item.body ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">{item.body}</p> : null}
+                    {item.outcome ? <p className="mt-2 text-sm text-slate-400"><span className="font-medium text-slate-300">Outcome:</span> {item.outcome}</p> : null}
+                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt)} · {item.direction}</p>
                   </div>
                 </article>
               )
