@@ -250,16 +250,28 @@ export async function createPipeline(formData: FormData) {
     organization_id: membership.organization_id,
     name,
     description: optional(text(formData, 'description')),
+    pipeline_type: text(formData, 'pipeline_type') || 'sales',
+    currency_code: (text(formData, 'currency_code') || 'USD').toUpperCase(),
+    stale_after_days: text(formData, 'stale_after_days') ? Number(text(formData, 'stale_after_days')) : null,
     created_by: user.id,
   }).select('id').single()
   if (error) throw new Error(error.message)
-  const names = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Won']
-  const { error: stageError } = await supabase.from('pipeline_stages').insert(names.map((stage, index) => ({
+  const stages = [
+    { name: 'New', probability: 10, stage_type: 'open', color: '#2563eb' },
+    { name: 'Qualified', probability: 25, stage_type: 'open', color: '#0891b2' },
+    { name: 'Proposal', probability: 50, stage_type: 'open', color: '#7c3aed' },
+    { name: 'Negotiation', probability: 75, stage_type: 'open', color: '#d97706' },
+    { name: 'Won', probability: 100, stage_type: 'won', color: '#16a34a' },
+    { name: 'Lost', probability: 0, stage_type: 'lost', color: '#dc2626' },
+  ]
+  const { error: stageError } = await supabase.from('pipeline_stages').insert(stages.map((stage, index) => ({
     organization_id: membership.organization_id,
     pipeline_id: pipeline.id,
-    name: stage,
+    name: stage.name,
     position: index + 1,
-    probability: [10, 25, 50, 75, 100][index],
+    probability: stage.probability,
+    stage_type: stage.stage_type,
+    color: stage.color,
   })))
   if (stageError) throw new Error(stageError.message)
   revalidatePath('/dashboard/pipelines')
@@ -293,6 +305,12 @@ export async function updatePipeline(formData: FormData) {
     .update({
       name,
       description: optional(text(formData, 'description')),
+      pipeline_type: text(formData, 'pipeline_type') || 'sales',
+      status: text(formData, 'status') || 'active',
+      currency_code: (text(formData, 'currency_code') || 'USD').toUpperCase(),
+      default_probability_mode: text(formData, 'default_probability_mode') || 'stage',
+      stage_aging_enabled: formData.get('stage_aging_enabled') === 'on',
+      stale_after_days: text(formData, 'stale_after_days') ? Number(text(formData, 'stale_after_days')) : null,
     })
     .eq('id', pipelineId)
     .eq('organization_id', membership.organization_id)
@@ -305,6 +323,49 @@ export async function updatePipeline(formData: FormData) {
   revalidatePath(`/dashboard/pipelines/${pipelineId}`)
   revalidatePath(`/dashboard/pipelines/${pipelineId}/edit`)
   redirect(`/dashboard/pipelines/${pipelineId}`)
+}
+
+
+export async function upsertPipelineStage(formData: FormData) {
+  const { membership, supabase } = await context('opportunities.update')
+  const pipelineId = text(formData, 'pipeline_id')
+  const stageId = text(formData, 'stage_id')
+  const name = text(formData, 'name')
+  if (!pipelineId || !name) throw new Error('Pipeline and stage name are required.')
+
+  const payload = {
+    organization_id: membership.organization_id,
+    pipeline_id: pipelineId,
+    name,
+    description: optional(text(formData, 'description')),
+    position: Number(text(formData, 'position') || 1),
+    probability: Number(text(formData, 'probability') || 0),
+    stage_type: text(formData, 'stage_type') || 'open',
+    color: text(formData, 'color') || '#2563eb',
+    target_days: text(formData, 'target_days') ? Number(text(formData, 'target_days')) : null,
+    is_active: formData.get('is_active') === 'on',
+  }
+  const query = stageId
+    ? supabase.from('pipeline_stages').update(payload).eq('id', stageId).eq('organization_id', membership.organization_id)
+    : supabase.from('pipeline_stages').insert(payload)
+  const { error } = await query
+  if (error) throw new Error(error.message)
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+  revalidatePath(`/dashboard/pipelines/${pipelineId}/edit`)
+}
+
+export async function archivePipelineStage(formData: FormData) {
+  const { membership, supabase } = await context('opportunities.update')
+  const pipelineId = text(formData, 'pipeline_id')
+  const stageId = text(formData, 'stage_id')
+  if (!pipelineId || !stageId) throw new Error('Pipeline and stage are required.')
+  const { count, error: countError } = await supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('organization_id', membership.organization_id).eq('stage_id', stageId)
+  if (countError) throw new Error(countError.message)
+  if ((count ?? 0) > 0) throw new Error('Move opportunities out of this stage before archiving it.')
+  const { error } = await supabase.from('pipeline_stages').update({ is_active: false }).eq('id', stageId).eq('organization_id', membership.organization_id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/dashboard/pipelines/${pipelineId}`)
+  revalidatePath(`/dashboard/pipelines/${pipelineId}/edit`)
 }
 
 export async function deletePipeline(formData: FormData) {

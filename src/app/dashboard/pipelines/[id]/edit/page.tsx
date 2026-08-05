@@ -1,98 +1,15 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-
-import { updatePipeline } from '../../../crm-actions'
-
-const input =
-  'min-h-11 w-full rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
-
-export default async function EditPipelinePage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const membership = await requireOrganization()
-  const supabase = await createClient()
-
-  const { data: pipeline, error } = await supabase
-    .from('pipelines')
-    .select('id,name,description')
-    .eq('organization_id', membership.organization_id)
-    .eq('id', id)
-    .maybeSingle()
-
-  if (error) {
-    throw new Error(`Failed to load pipeline: ${error.message}`)
-  }
-
-  if (!pipeline) notFound()
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link
-          href={`/dashboard/pipelines/${id}`}
-          className="text-sm font-medium text-cyan-400 hover:text-cyan-300"
-        >
-          ← Pipeline details
-        </Link>
-
-        <p className="mt-4 text-sm uppercase tracking-[.24em] text-cyan-400">
-          Revenue workspace
-        </p>
-
-        <h1 className="mt-2 text-3xl font-semibold text-white">
-          Edit pipeline
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-400">
-          Update this pipeline’s name and description.
-        </p>
-      </div>
-
-      <form
-        action={updatePipeline}
-        className="space-y-5 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-6"
-      >
-        <input type="hidden" name="id" value={pipeline.id} />
-
-        <label className="block text-sm text-slate-300">
-          Pipeline name
-          <input
-            required
-            name="name"
-            defaultValue={pipeline.name}
-            className={`${input} mt-2`}
-          />
-        </label>
-
-        <label className="block text-sm text-slate-300">
-          Description
-          <textarea
-            name="description"
-            rows={5}
-            defaultValue={pipeline.description ?? ''}
-            className={`${input} mt-2 py-3`}
-          />
-        </label>
-
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Link
-            href={`/dashboard/pipelines/${id}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/5"
-          >
-            Cancel
-          </Link>
-
-          <button className="min-h-11 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white transition hover:bg-blue-500">
-            Save changes
-          </button>
-        </div>
-      </form>
-    </div>
-  )
-}
+import { updatePipeline, upsertPipelineStage } from '../../../crm-actions'
+const input='min-h-11 w-full rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
+export default async function EditPipelinePage({params}:{params:Promise<{id:string}>}){const {id}=await params;const membership=await requirePermission('opportunities.update');const supabase=await createClient();const [{data:pipeline,error},{data:stages}]=await Promise.all([
+ supabase.from('pipelines').select('id,name,description,pipeline_type,status,currency_code,default_probability_mode,stage_aging_enabled,stale_after_days,is_default').eq('organization_id',membership.organization_id).eq('id',id).maybeSingle(),
+ supabase.from('pipeline_stages').select('id,name,description,position,probability,stage_type,color,target_days,is_active,is_locked').eq('organization_id',membership.organization_id).eq('pipeline_id',id).order('position')])
+ if(error) throw new Error(error.message);if(!pipeline) notFound()
+ return <div className="mx-auto max-w-5xl space-y-6"><div><Link href={`/dashboard/pipelines/${id}`} className="text-sm font-medium text-cyan-400">← Pipeline details</Link><p className="mt-4 text-sm uppercase tracking-[.24em] text-cyan-400">Revenue workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Edit pipeline</h1></div>
+ <form action={updatePipeline} className="grid gap-5 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-6 md:grid-cols-2"><input type="hidden" name="id" value={pipeline.id}/><label className="text-sm text-slate-300">Pipeline name<input required name="name" defaultValue={pipeline.name} className={`${input} mt-2`}/></label><label className="text-sm text-slate-300">Pipeline type<select name="pipeline_type" defaultValue={pipeline.pipeline_type} className={`${input} mt-2`}><option value="sales">Sales</option><option value="renewal">Renewal</option><option value="expansion">Expansion</option><option value="partner">Partner</option><option value="custom">Custom</option></select></label><label className="text-sm text-slate-300">Status<select name="status" defaultValue={pipeline.status} className={`${input} mt-2`}><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></label><label className="text-sm text-slate-300">Currency<input name="currency_code" maxLength={3} defaultValue={pipeline.currency_code} className={`${input} mt-2`}/></label><label className="text-sm text-slate-300">Probability mode<select name="default_probability_mode" defaultValue={pipeline.default_probability_mode} className={`${input} mt-2`}><option value="stage">Use stage probability</option><option value="manual">Manual opportunity probability</option></select></label><label className="text-sm text-slate-300">Stale after days<input type="number" min="1" name="stale_after_days" defaultValue={pipeline.stale_after_days??''} className={`${input} mt-2`}/></label><label className="flex items-center gap-3 text-sm text-slate-300"><input type="checkbox" name="stage_aging_enabled" defaultChecked={pipeline.stage_aging_enabled}/>Enable stage aging</label><label className="md:col-span-2 text-sm text-slate-300">Description<textarea name="description" rows={4} defaultValue={pipeline.description??''} className={`${input} mt-2 py-3`}/></label><div className="md:col-span-2 flex justify-end gap-3"><Link href={`/dashboard/pipelines/${id}`} className="inline-flex min-h-11 items-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200">Cancel</Link><button className="min-h-11 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white">Save changes</button></div></form>
+ <section className="space-y-4"><div><h2 className="text-xl font-semibold text-white">Pipeline stages</h2><p className="text-sm text-slate-400">Control order, probability, terminal behavior, colors, and target aging.</p></div>{stages?.map(stage=><form key={stage.id} action={upsertPipelineStage} className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-4 md:grid-cols-4 xl:grid-cols-8"><input type="hidden" name="pipeline_id" value={id}/><input type="hidden" name="stage_id" value={stage.id}/><input name="name" defaultValue={stage.name} className={input}/><select name="stage_type" defaultValue={stage.stage_type} className={input}><option value="open">Open</option><option value="won">Won</option><option value="lost">Lost</option></select><input type="number" name="position" min="1" defaultValue={stage.position} className={input}/><input type="number" name="probability" min="0" max="100" defaultValue={stage.probability} className={input}/><input type="number" name="target_days" min="1" placeholder="Target days" defaultValue={stage.target_days??''} className={input}/><input type="color" name="color" defaultValue={stage.color} className={`${input} p-2`}/><label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" name="is_active" defaultChecked={stage.is_active}/>Active</label><button className="rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white">Save stage</button></form>)}
+ <form action={upsertPipelineStage} className="grid gap-3 rounded-2xl border border-dashed border-white/10 p-4 md:grid-cols-4 xl:grid-cols-8"><input type="hidden" name="pipeline_id" value={id}/><input required name="name" placeholder="New stage" className={input}/><select name="stage_type" className={input}><option value="open">Open</option><option value="won">Won</option><option value="lost">Lost</option></select><input type="number" name="position" min="1" defaultValue={(stages?.length??0)+1} className={input}/><input type="number" name="probability" min="0" max="100" defaultValue="0" className={input}/><input type="number" name="target_days" min="1" placeholder="Target days" className={input}/><input type="color" name="color" defaultValue="#2563eb" className={`${input} p-2`}/><label className="flex items-center gap-2 text-sm text-slate-300"><input type="checkbox" name="is_active" defaultChecked/>Active</label><button className="rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white">Add stage</button></form></section>
+ </div>}

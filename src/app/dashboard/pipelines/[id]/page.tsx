@@ -36,15 +36,16 @@ export default async function PipelineDetailsPage({
   ] = await Promise.all([
     supabase
       .from('pipelines')
-      .select('id,name,description,created_at')
+      .select('id,name,description,pipeline_type,status,currency_code,stage_aging_enabled,stale_after_days,created_at')
       .eq('organization_id', membership.organization_id)
       .eq('id', id)
       .maybeSingle(),
     supabase
       .from('pipeline_stages')
-      .select('id,pipeline_id,name,position,probability')
+      .select('id,pipeline_id,name,position,probability,stage_type,color,target_days,is_active')
       .eq('organization_id', membership.organization_id)
       .eq('pipeline_id', id)
+      .eq('is_active', true)
       .order('position'),
     supabase
       .from('opportunities')
@@ -123,6 +124,7 @@ export default async function PipelineDetailsPage({
           <p className="mt-2 text-sm text-slate-400">
             {pipeline.description || 'No pipeline description yet.'}
           </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-cyan-400/10 px-2 py-1 text-cyan-300">{pipeline.pipeline_type}</span><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{pipeline.status}</span>{pipeline.stage_aging_enabled && <span className="rounded-full bg-amber-400/10 px-2 py-1 text-amber-300">Aging {pipeline.stale_after_days ? `· ${pipeline.stale_after_days} days` : 'enabled'}</span>}</div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -257,7 +259,7 @@ export default async function PipelineDetailsPage({
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="font-semibold text-white">{stage.name}</h2>
+                  <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color }} /><h2 className="font-semibold text-white">{stage.name}</h2></div>
                   <p className="text-xs text-slate-500">
                     {deals.length} {deals.length === 1 ? 'deal' : 'deals'} · $
                     {stageValue.toLocaleString('en-US')}
@@ -265,7 +267,7 @@ export default async function PipelineDetailsPage({
                 </div>
 
                 <span className="rounded-full bg-white/5 px-2 py-1 text-xs text-slate-300">
-                  {stage.probability}%
+                  {stage.stage_type === 'won' ? 'Won' : stage.stage_type === 'lost' ? 'Lost' : `${stage.probability}%`}
                 </span>
               </div>
 
