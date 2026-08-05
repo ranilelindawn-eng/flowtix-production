@@ -11,6 +11,7 @@ export type AIPromptKey =
   | 'tasks.suggest'
   | 'summary.transcript'
   | 'sentiment.analyze'
+  | 'coaching.call'
 
 export type AIPromptVariableValue = string | number | boolean | null | undefined
 export type AIPromptVariables = Record<string, AIPromptVariableValue>
