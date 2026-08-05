@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Send,
   StopCircle,
+  UserRoundCheck,
 } from 'lucide-react'
 
 import {
@@ -111,6 +112,9 @@ type CallState =
   | 'ended'
 
 type SaveState = 'idle' | 'saving' | 'success' | 'error'
+type AgentAvailability = 'available' | 'away' | 'offline' | 'dnd'
+type AgentActivityState = 'idle' | 'ringing' | 'busy' | 'wrap_up'
+type PresenceSnapshot = { availability: AgentAvailability; activityState: AgentActivityState; onlineDeviceCount: number; wrapUpUntil: string | null; routable: boolean }
 
 const keyRows = [
   ['1', '2', '3'],
@@ -193,6 +197,9 @@ export default function DialerClient({
   const [transferTarget, setTransferTarget] = useState('')
   const [incomingFrom, setIncomingFrom] = useState('')
   const [tokenPayload, setTokenPayload] = useState<TokenPayload | null>(null)
+  const [availability, setAvailability] = useState<AgentAvailability>('available')
+  const [presence, setPresence] = useState<PresenceSnapshot | null>(null)
+  const deviceKeyRef = useRef('')
 
   const [callOutcome, setCallOutcome] = useState('connected')
   const [leadStatus, setLeadStatus] = useState('contacted')
@@ -319,6 +326,42 @@ export default function DialerClient({
     }
   }, [])
 
+  const updatePresence = useCallback(async (payload: Record<string, unknown>) => {
+    const response = await fetch('/api/telephony/presence', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    })
+    const result = await response.json() as PresenceSnapshot & { error?: string }
+    if (!response.ok) throw new Error(result.error ?? 'Unable to update presence.')
+    setPresence(result)
+    setAvailability(result.availability)
+    return result
+  }, [])
+
+  const sendDeviceHeartbeat = useCallback(async (status: 'online' | 'offline' | 'error') => {
+    if (!deviceKeyRef.current) return
+    await updatePresence({
+      action: 'heartbeat',
+      deviceKey: deviceKeyRef.current,
+      status,
+      provider: selectedProvider,
+      providerIdentity: null,
+      supportsInbound: true,
+      metadata: { userAgent: navigator.userAgent },
+    })
+  }, [selectedProvider, updatePresence])
+
+  const changeAvailability = useCallback(async (next: AgentAvailability) => {
+    setAvailability(next)
+    try {
+      await updatePresence({ action: 'availability', availability: next })
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Unable to update availability.')
+    }
+  }, [updatePresence])
+
   const fetchToken = useCallback(async (provider: 'twilio' | 'telnyx'): Promise<TokenPayload> => {
     const response = await fetch(`/api/telephony/token?provider=${provider}`, {
       cache: 'no-store',
@@ -409,11 +452,16 @@ export default function DialerClient({
       device.on('registered', () => {
         setDeviceState('ready')
         setMessage('Softphone ready for inbound and outbound calls.')
+        void sendDeviceHeartbeat('online')
       })
-      device.on('unregistered', () => setDeviceState('offline'))
+      device.on('unregistered', () => {
+        setDeviceState('offline')
+        void sendDeviceHeartbeat('offline')
+      })
       device.on('error', (error: Error) => {
         setDeviceState('error')
         setMessage(error.message)
+        void sendDeviceHeartbeat('error')
       })
       device.on('incoming', (call: Call) => {
         setIncomingFrom(call.parameters.From ?? 'Unknown caller')
@@ -439,19 +487,58 @@ export default function DialerClient({
           : 'Unable to connect the softphone.',
       )
     }
-  }, [attachCallEvents, fetchToken, handleTelnyxNotification, selectedProvider])
+  }, [attachCallEvents, fetchToken, handleTelnyxNotification, selectedProvider, sendDeviceHeartbeat])
 
   useEffect(() => {
+    const stored = window.localStorage.getItem('flowtix-agent-device-key')
+    const deviceKey = stored || window.crypto.randomUUID()
+    deviceKeyRef.current = deviceKey
+    if (!stored) window.localStorage.setItem('flowtix-agent-device-key', deviceKey)
+
     const connectTimer = window.setTimeout(() => {
       void connectDevice()
     }, 0)
 
     return () => {
       window.clearTimeout(connectTimer)
+      void sendDeviceHeartbeat('offline')
       void deviceRef.current?.destroy()
       telnyxClientRef.current?.disconnect?.()
     }
-  }, [connectDevice])
+  }, [connectDevice, sendDeviceHeartbeat])
+
+  useEffect(() => {
+    if (deviceState !== 'ready') return
+    void sendDeviceHeartbeat('online')
+    const heartbeatTimer = window.setInterval(() => {
+      void sendDeviceHeartbeat('online')
+    }, 25_000)
+    return () => window.clearInterval(heartbeatTimer)
+  }, [deviceState, sendDeviceHeartbeat])
+
+  useEffect(() => {
+    if (!tokenPayload) return
+
+    const activity: AgentActivityState = ['connecting', 'ringing', 'incoming'].includes(
+      callState,
+    )
+      ? 'ringing'
+      : callState === 'connected'
+        ? 'busy'
+        : callState === 'ended'
+          ? 'wrap_up'
+          : 'idle'
+
+    const presenceTimer = window.setTimeout(() => {
+      void updatePresence({
+        action: 'activity',
+        state: activity,
+        wrapUpSeconds: 30,
+      }).catch(() => undefined)
+    }, 0)
+
+    return () => window.clearTimeout(presenceTimer)
+  }, [callState, tokenPayload, updatePresence])
 
   useEffect(() => {
     if (callState !== 'connected' || isOnHold) return
@@ -687,14 +774,30 @@ export default function DialerClient({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => void connectDevice()}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Reconnect
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+            <UserRoundCheck className="h-4 w-4 text-cyan-300" />
+            <select
+              value={availability}
+              onChange={(event) => void changeAvailability(event.target.value as AgentAvailability)}
+              className="bg-transparent text-sm font-semibold text-white outline-none"
+            >
+              <option value="available" className="bg-slate-950">Available</option>
+              <option value="away" className="bg-slate-950">Away</option>
+              <option value="dnd" className="bg-slate-950">Do not disturb</option>
+              <option value="offline" className="bg-slate-950">Offline</option>
+            </select>
+            <span className="text-xs text-slate-400">{presence?.onlineDeviceCount ?? 0} device(s)</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => void connectDevice()}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Reconnect
+          </button>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">

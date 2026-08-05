@@ -5,6 +5,8 @@ import type { CreatedInboundRoute, InboundRoutingPlan, RoutingTarget } from './t
 
 type MemberRow = { user_id: string; priority: number | null }
 type ActiveMemberRow = { user_id: string; status: string | null }
+type PresenceRow = { user_id: string; availability: string; activity_state: string; wrap_up_until: string | null; last_seen_at: string | null }
+type DeviceRow = { user_id: string; status: string; supports_inbound: boolean; last_heartbeat_at: string | null }
 
 function uniqueTargets(rows: MemberRow[], activeUsers: Set<string>): RoutingTarget[] {
   const seen = new Set<string>()
@@ -18,13 +20,25 @@ function uniqueTargets(rows: MemberRow[], activeUsers: Set<string>): RoutingTarg
 
 async function activeOrganizationUsers(organizationId: string): Promise<Set<string>> {
   const admin = createTelephonyAdminClient()
-  const { data, error } = await admin
-    .from('organization_members')
-    .select('user_id, status')
-    .eq('organization_id', organizationId)
-    .eq('status', 'active')
-  if (error) throw new Error(`Unable to load active routing members: ${error.message}`)
-  return new Set(((data ?? []) as ActiveMemberRow[]).map((row) => row.user_id))
+  const heartbeatCutoff = new Date(Date.now() - 90_000).toISOString()
+  const [{ data: members, error: memberError }, { data: presence, error: presenceError }, { data: devices, error: deviceError }] = await Promise.all([
+    admin.from('organization_members').select('user_id, status').eq('organization_id', organizationId).eq('status', 'active'),
+    admin.from('agent_presence').select('user_id, availability, activity_state, wrap_up_until, last_seen_at').eq('organization_id', organizationId),
+    admin.from('agent_devices').select('user_id, status, supports_inbound, last_heartbeat_at').eq('organization_id', organizationId).eq('status', 'online').eq('supports_inbound', true).gt('last_heartbeat_at', heartbeatCutoff),
+  ])
+  if (memberError || presenceError || deviceError) {
+    throw new Error(memberError?.message ?? presenceError?.message ?? deviceError?.message ?? 'Unable to load active routing members.')
+  }
+
+  const activeMembers = new Set(((members ?? []) as ActiveMemberRow[]).map((row) => row.user_id))
+  const usersWithOnlineDevices = new Set(((devices ?? []) as DeviceRow[]).map((row) => row.user_id))
+  const now = Date.now()
+  return new Set(((presence ?? []) as PresenceRow[])
+    .filter((row) => {
+      const wrapUpActive = row.wrap_up_until ? new Date(row.wrap_up_until).getTime() > now : false
+      return activeMembers.has(row.user_id) && usersWithOnlineDevices.has(row.user_id) && row.availability === 'available' && row.activity_state !== 'busy' && row.activity_state !== 'ringing' && !wrapUpActive
+    })
+    .map((row) => row.user_id))
 }
 
 export async function buildInboundRoutingPlan(input: {

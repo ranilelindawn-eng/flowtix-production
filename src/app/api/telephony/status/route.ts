@@ -1,5 +1,6 @@
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
+import { setAgentCallActivity } from '@/lib/telephony/presence/service'
 import { parseTwilioForm, validateTwilioWebhook } from '@/lib/telephony/validation'
 
 const statusMap: Record<string, string> = {
@@ -40,6 +41,12 @@ export async function POST(request: Request) {
     }
   }
 
+  if (userId && status === 'connected') {
+    await setAgentCallActivity({ organizationId, userId, state: 'busy', callId }).catch((error) => {
+      console.error('Unable to mark answering agent busy:', error)
+    })
+  }
+
   const update: Record<string, unknown> = {
     status,
     provider_child_call_sid: providerChildCallId,
@@ -50,6 +57,12 @@ export async function POST(request: Request) {
     update.duration_seconds = Number.isFinite(duration) ? duration : 0
   }
   await admin.from('calls').update(update).eq('id', callId).eq('organization_id', organizationId)
+
+  if (userId && (status === 'completed' || status === 'failed' || status === 'cancelled')) {
+    await setAgentCallActivity({ organizationId, userId, state: 'wrap_up', callId, wrapUpSeconds: 30 }).catch((error) => {
+      console.error('Unable to start agent wrap-up:', error)
+    })
+  }
 
   if (routingAttemptId) {
     const terminal = status === 'completed' || status === 'failed' || status === 'cancelled'
