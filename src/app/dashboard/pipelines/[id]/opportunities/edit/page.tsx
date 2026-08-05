@@ -37,7 +37,7 @@ export default async function EditOpportunityPage({
     supabase
       .from('opportunities')
       .select(
-        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description,owner_membership_id',
+        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description,owner_membership_id,opportunity_type,source,forecast_category,amount_type,recurring_amount,recurring_interval,next_step,next_step_due_at,loss_reason,competitor_names,status',
       )
       .eq('organization_id', membership.organization_id)
       .eq('pipeline_id', pipelineId)
@@ -220,6 +220,34 @@ export default async function EditOpportunityPage({
           defaultMembershipId={opportunity.owner_membership_id}
           className={input}
         />
+
+
+        <label className="text-sm text-slate-300">
+          Opportunity type
+          <select name="opportunity_type" defaultValue={opportunity.opportunity_type || 'new_business'} className={`${input} mt-2`}>
+            <option value="new_business">New business</option><option value="renewal">Renewal</option><option value="upsell">Upsell</option><option value="cross_sell">Cross-sell</option><option value="expansion">Expansion</option><option value="other">Other</option>
+          </select>
+        </label>
+        <label className="text-sm text-slate-300">Forecast category
+          <select name="forecast_category" defaultValue={opportunity.forecast_category || 'pipeline'} className={`${input} mt-2`}>
+            <option value="pipeline">Pipeline</option><option value="best_case">Best case</option><option value="commit">Commit</option><option value="closed">Closed</option><option value="omitted">Omitted</option>
+          </select>
+        </label>
+        <label className="text-sm text-slate-300">Status
+          <select name="status" defaultValue={opportunity.status || 'open'} className={`${input} mt-2`}><option value="open">Open</option><option value="won">Won</option><option value="lost">Lost</option></select>
+        </label>
+        <label className="text-sm text-slate-300">Source<input name="source" defaultValue={opportunity.source ?? ''} className={`${input} mt-2`} /></label>
+        <label className="text-sm text-slate-300">Amount type
+          <select name="amount_type" defaultValue={opportunity.amount_type || 'one_time'} className={`${input} mt-2`}><option value="one_time">One-time</option><option value="recurring">Recurring</option><option value="mixed">Mixed</option></select>
+        </label>
+        <label className="text-sm text-slate-300">Recurring amount<input type="number" min="0" step="0.01" name="recurring_amount" defaultValue={opportunity.recurring_amount ?? ''} className={`${input} mt-2`} /></label>
+        <label className="text-sm text-slate-300">Recurring interval
+          <select name="recurring_interval" defaultValue={opportunity.recurring_interval ?? ''} className={`${input} mt-2`}><option value="">Not applicable</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option></select>
+        </label>
+        <label className="text-sm text-slate-300">Next-step due<input type="datetime-local" name="next_step_due_at" defaultValue={opportunity.next_step_due_at ? new Date(opportunity.next_step_due_at).toISOString().slice(0,16) : ''} className={`${input} mt-2`} /></label>
+        <label className="text-sm text-slate-300 md:col-span-2">Next step<textarea name="next_step" rows={3} defaultValue={opportunity.next_step ?? ''} className={`${input} mt-2 py-3`} /></label>
+        <label className="text-sm text-slate-300 md:col-span-2">Competitors<input name="competitor_names" defaultValue={Array.isArray(opportunity.competitor_names) ? opportunity.competitor_names.join(', ') : ''} placeholder="Comma-separated" className={`${input} mt-2`} /></label>
+        <label className="text-sm text-slate-300 md:col-span-2">Loss reason<textarea name="loss_reason" rows={3} defaultValue={opportunity.loss_reason ?? ''} className={`${input} mt-2 py-3`} /></label>
 
         <label className="text-sm text-slate-300 md:col-span-2">
           Description

@@ -49,7 +49,7 @@ export default async function PipelineDetailsPage({
     supabase
       .from('opportunities')
       .select(
-        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description,created_at',
+        'id,pipeline_id,stage_id,company_id,contact_id,name,value,currency,probability,expected_close_date,description,opportunity_type,forecast_category,next_step,next_step_due_at,status,created_at',
       )
       .eq('organization_id', membership.organization_id)
       .eq('pipeline_id', id)
@@ -171,7 +171,7 @@ export default async function PipelineDetailsPage({
 
       <form
         action={createOpportunity}
-        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2 xl:grid-cols-7"
+        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2 xl:grid-cols-8"
       >
         <input type="hidden" name="pipeline_id" value={pipeline.id} />
 
@@ -226,6 +226,8 @@ export default async function PipelineDetailsPage({
             </option>
           ))}
         </select>
+
+        <select name="opportunity_type" className={field}><option value="new_business">New business</option><option value="renewal">Renewal</option><option value="upsell">Upsell</option><option value="cross_sell">Cross-sell</option><option value="expansion">Expansion</option><option value="other">Other</option></select>
 
         <button className="rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500">
           Add opportunity
@@ -292,6 +294,8 @@ export default async function PipelineDetailsPage({
                       </span>
                     </div>
 
+                    <div className="mt-3 flex flex-wrap gap-2 text-[11px]"><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{deal.opportunity_type?.replace('_', ' ') || 'new business'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{deal.forecast_category?.replace('_', ' ') || 'pipeline'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{deal.status || 'open'}</span></div>
+
                     {(deal.company_id || deal.contact_id) && (
                       <div className="mt-3 space-y-1 text-xs text-slate-400">
                         {deal.company_id && (
@@ -319,6 +323,8 @@ export default async function PipelineDetailsPage({
                         ).toLocaleDateString('en-US')}
                       </p>
                     )}
+
+                    {deal.next_step && (<p className="mt-3 text-xs text-cyan-200">Next: {deal.next_step}</p>)}
 
                     {deal.description && (
                       <p className="mt-3 line-clamp-3 text-sm text-slate-400">
