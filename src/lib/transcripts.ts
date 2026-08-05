@@ -12,6 +12,17 @@ export type Transcript = {
   created_by: string
   created_at: string
   updated_at: string
+  processing_status?: 'pending' | 'processing' | 'completed' | 'failed'
+  processing_version?: number | null
+  normalized_content?: string | null
+  redacted_content?: string | null
+  detected_language?: string | null
+  speaker_count?: number
+  word_count?: number
+  quality_score?: number | null
+  processing_confidence?: number | null
+  processed_at?: string | null
+  processing_metadata?: Record<string, unknown>
 }
 
 export type TranscriptFilters = {

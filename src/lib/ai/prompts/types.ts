@@ -12,6 +12,7 @@ export type AIPromptKey =
   | 'summary.transcript'
   | 'sentiment.analyze'
   | 'coaching.call'
+  | 'transcript.process'
 
 export type AIPromptVariableValue = string | number | boolean | null | undefined
 export type AIPromptVariables = Record<string, AIPromptVariableValue>
