@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 
-import type { ConfiguredTelephonyProviderName, TelephonyCallStatus } from '@/lib/telephony/provider'
+import type { TelephonyCallStatus } from '@/lib/telephony/provider'
 import type { NormalizedCallEvent, NormalizeProviderWebhookInput } from './types'
 
 function text(value: unknown): string {

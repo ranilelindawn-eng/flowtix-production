@@ -1,0 +1,7 @@
+import { NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/auth'
+import { listCompanyFieldDefinitions,upsertCompanyFieldDefinition,type CompanyFieldType } from '@/lib/company-advanced'
+import { writeAuditEvent } from '@/lib/security/audit'
+const TYPES=new Set<CompanyFieldType>(['text','number','date','boolean','select','multi_select'])
+export async function GET(){ await requirePermission('companies.view'); return NextResponse.json({fields:await listCompanyFieldDefinitions()}) }
+export async function POST(request:Request){ const membership=await requirePermission('companies.update'); const body=await request.json() as Record<string,unknown>; const fieldType=typeof body.fieldType==='string'&&TYPES.has(body.fieldType as CompanyFieldType)?body.fieldType as CompanyFieldType:'text'; const field=await upsertCompanyFieldDefinition({id:typeof body.id==='string'?body.id:undefined,fieldKey:typeof body.fieldKey==='string'?body.fieldKey:'',label:typeof body.label==='string'?body.label:'',fieldType,options:Array.isArray(body.options)?body.options:[],isRequired:body.isRequired===true,isActive:body.isActive!==false,position:typeof body.position==='number'?body.position:0}); await writeAuditEvent({action:'company_field.upsert',resourceType:'company_field_definition',resourceId:field.id,organizationId:membership.organization_id,metadata:{fieldKey:field.field_key,fieldType:field.field_type}}); return NextResponse.json({field}) }

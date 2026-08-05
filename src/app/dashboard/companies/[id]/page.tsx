@@ -136,6 +136,13 @@ export default async function CompanyPage({
               </dd>
             </div>
 
+            <div><dt className="text-slate-500">Company type</dt><dd className="capitalize text-slate-200">{company.company_type || '—'}</dd></div>
+            <div><dt className="text-slate-500">Legal name</dt><dd className="text-slate-200">{company.legal_name || '—'}</dd></div>
+            <div><dt className="text-slate-500">Employees</dt><dd className="text-slate-200">{company.employee_count ?? '—'}</dd></div>
+            <div><dt className="text-slate-500">Annual revenue</dt><dd className="text-slate-200">{company.annual_revenue != null ? `${company.currency_code || 'USD'} ${Number(company.annual_revenue).toLocaleString()}` : '—'}</dd></div>
+            <div><dt className="text-slate-500">Founded</dt><dd className="text-slate-200">{company.founded_year || '—'}</dd></div>
+            <div><dt className="text-slate-500">Timezone / locale</dt><dd className="text-slate-200">{[company.timezone, company.locale].filter(Boolean).join(' · ') || '—'}</dd></div>
+
             <div>
               <dt className="text-slate-500">Industry</dt>
               <dd className="text-slate-200">{company.industry || '—'}</dd>

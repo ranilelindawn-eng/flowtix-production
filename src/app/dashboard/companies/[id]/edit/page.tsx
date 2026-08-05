@@ -23,7 +23,7 @@ export default async function EditCompanyPage({
   const { data: company, error } = await supabase
     .from('companies')
     .select(
-      'id,name,domain,industry,email,phone,website,status,address,city,country,description,owner_membership_id',
+      'id,name,legal_name,company_type,employee_count,annual_revenue,currency_code,linkedin_url,timezone,locale,founded_year,domain,industry,email,phone,website,status,address,city,country,description,owner_membership_id',
     )
     .eq('organization_id', membership.organization_id)
     .eq('id', id)
@@ -76,6 +76,9 @@ export default async function EditCompanyPage({
           />
         </label>
 
+        <label className="text-sm text-slate-300">Legal name<input name="legal_name" defaultValue={company.legal_name ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Company type<select name="company_type" defaultValue={company.company_type ?? 'prospect'} className={`${input} mt-2`}><option value="prospect">Prospect</option><option value="customer">Customer</option><option value="partner">Partner</option><option value="vendor">Vendor</option><option value="competitor">Competitor</option><option value="other">Other</option></select></label>
+
         <OwnerSelect
           members={owners}
           defaultMembershipId={company.owner_membership_id}
@@ -119,6 +122,13 @@ export default async function EditCompanyPage({
           />
         </label>
 
+        <label className="text-sm text-slate-300">Employees<input type="number" min="0" name="employee_count" defaultValue={company.employee_count ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Annual revenue<input type="number" min="0" step="0.01" name="annual_revenue" defaultValue={company.annual_revenue ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Currency<input name="currency_code" maxLength={3} defaultValue={company.currency_code ?? 'USD'} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Founded year<input type="number" min="1000" max="9999" name="founded_year" defaultValue={company.founded_year ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">LinkedIn URL<input name="linkedin_url" defaultValue={company.linkedin_url ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Timezone<input name="timezone" defaultValue={company.timezone ?? ''} className={`${input} mt-2`}/></label>
+        <label className="text-sm text-slate-300">Locale<input name="locale" defaultValue={company.locale ?? ''} className={`${input} mt-2`}/></label>
         <label className="text-sm text-slate-300">
           Website
           <input
