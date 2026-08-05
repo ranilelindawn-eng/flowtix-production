@@ -214,6 +214,13 @@ const navItems: NavItem[] = [
     icon: Target,
   },
   {
+    id: 'sales-analytics',
+    label: 'Sales Analytics',
+    href: '/dashboard/sales-analytics',
+    permission: 'reports.view',
+    icon: BadgeDollarSign,
+  },
+  {
     id: 'ai-workspace',
     label: 'AI Workspace',
     href: '/dashboard/ai',
