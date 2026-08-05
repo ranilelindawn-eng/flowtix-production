@@ -1,0 +1,10 @@
+begin;
+create extension if not exists pgcrypto;
+alter table public.user_sessions add column if not exists auth_session_id text, add column if not exists last_authenticated_at timestamptz, add column if not exists expires_at timestamptz, add column if not exists risk_level text not null default 'low', add column if not exists revoked_reason text, add column if not exists metadata jsonb not null default '{}'::jsonb;
+create unique index if not exists user_sessions_auth_session_idx on public.user_sessions(user_id,auth_session_id) where auth_session_id is not null;
+create index if not exists user_sessions_active_idx on public.user_sessions(user_id,last_seen_at desc) where revoked_at is null;
+create or replace function public.revoke_user_session(p_session_id uuid,p_reason text default 'user_revoked') returns boolean language plpgsql security definer set search_path=public,auth as $$ begin update public.user_sessions set revoked_at=coalesce(revoked_at,now()),revoked_reason=coalesce(nullif(trim(p_reason),''),'user_revoked') where id=p_session_id and user_id=auth.uid(); return found; end $$;
+revoke all on function public.revoke_user_session(uuid,text) from public; grant execute on function public.revoke_user_session(uuid,text) to authenticated;
+create or replace function public.revoke_other_user_sessions(p_current_fingerprint text) returns integer language plpgsql security definer set search_path=public,auth as $$ declare n integer; begin update public.user_sessions set revoked_at=now(),revoked_reason='revoke_others' where user_id=auth.uid() and revoked_at is null and session_fingerprint<>p_current_fingerprint; get diagnostics n=row_count; return n; end $$;
+revoke all on function public.revoke_other_user_sessions(text) from public; grant execute on function public.revoke_other_user_sessions(text) to authenticated;
+commit;

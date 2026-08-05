@@ -25,6 +25,7 @@ import {
   PhoneCall,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   Tags,
   Target,
@@ -307,6 +308,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/roles',
     permission: 'team.update_roles',
     icon: ShieldCheck,
+  },
+  {
+    id: 'administration',
+    label: 'Administration',
+    href: '/dashboard/administration',
+    permission: 'settings.manage',
+    icon: SlidersHorizontal,
   },
   {
     id: 'billing',

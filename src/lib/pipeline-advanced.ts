@@ -6,7 +6,7 @@ export type PipelineStatus = 'active' | 'inactive' | 'archived'
 export type PipelineStageType = 'open' | 'won' | 'lost'
 
 export async function findPipelineDuplicates(name: string, excludeId?: string) {
-  const membership = await requireOrganization()
+  await requireOrganization()
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('find_pipeline_duplicates', {
     p_name: name,

@@ -1,0 +1,15 @@
+begin;
+create table if not exists public.api_security_policies(id uuid primary key default gen_random_uuid(),organization_id uuid not null unique references public.organizations(id) on delete cascade,allowed_origins text[] not null default '{}',allowed_ip_cidrs cidr[] not null default '{}',requests_per_minute integer not null default 120,require_idempotency_for_writes boolean not null default true,block_anonymous_api boolean not null default true,updated_by uuid references auth.users(id) on delete set null,created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+create table if not exists public.api_request_events(id uuid primary key default gen_random_uuid(),organization_id uuid references public.organizations(id) on delete cascade,user_id uuid references auth.users(id) on delete set null,request_id text not null,method text not null,path text not null,status_code integer,ip_address inet,user_agent text,duration_ms integer,blocked_reason text,created_at timestamptz not null default now());
+create index if not exists api_request_events_org_created_idx on public.api_request_events(organization_id,created_at desc);
+alter table public.api_security_policies enable row level security; alter table public.api_request_events enable row level security;
+create policy "members read api policy" on public.api_security_policies for select using(exists(select 1 from public.organization_members m where m.organization_id=api_security_policies.organization_id and m.user_id=auth.uid()));
+create policy "admins manage api policy" on public.api_security_policies for all using(exists(select 1 from public.organization_members m where m.organization_id=api_security_policies.organization_id and m.user_id=auth.uid() and m.role in('owner','admin'))) with check(exists(select 1 from public.organization_members m where m.organization_id=api_security_policies.organization_id and m.user_id=auth.uid() and m.role in('owner','admin')));
+create policy "admins read api events" on public.api_request_events for select using(exists(select 1 from public.organization_members m where m.organization_id=api_request_events.organization_id and m.user_id=auth.uid() and m.role in('owner','admin')));
+create or replace function public.record_api_request_event(p_request_id text,p_method text,p_path text,p_ip_address inet default null,p_user_agent text default null,p_blocked_reason text default null)
+returns uuid language plpgsql security definer set search_path=public,auth as $$ declare eid uuid; oid uuid; begin
+ select organization_id into oid from public.profiles where id=auth.uid();
+ insert into public.api_request_events(organization_id,user_id,request_id,method,path,ip_address,user_agent,blocked_reason)
+ values(oid,auth.uid(),p_request_id,p_method,p_path,p_ip_address,p_user_agent,p_blocked_reason) returning id into eid; return eid; end $$;
+revoke all on function public.record_api_request_event(text,text,text,inet,text,text) from public; grant execute on function public.record_api_request_event(text,text,text,inet,text,text) to anon,authenticated,service_role;
+commit;

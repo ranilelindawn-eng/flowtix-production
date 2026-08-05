@@ -101,6 +101,18 @@ export async function POST(request: Request) {
       })
 
     const admin = createAdminClient()
+    const { data: targetPlan, error: planError } = await admin
+      .from('subscription_plans')
+      .select('id')
+      .eq('code', plan.code)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    if (planError || !targetPlan) {
+      throw new Error(planError?.message ?? 'Subscription plan was not found.')
+    }
+
+    const checkoutExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     const { data: updatedSubscription, error: updateError } = await admin
       .from('organization_subscriptions')
       .update({
@@ -110,10 +122,14 @@ export async function POST(request: Request) {
         paymongo_payment_id: null,
         provider_checkout_id: checkoutId,
         provider_payment_id: null,
+        pending_plan_id: targetPlan.id,
+        pending_checkout_expires_at: checkoutExpiresAt,
+        last_payment_status: 'pending',
         status: 'pending',
         billing_metadata: {
           checkout_created_at: new Date().toISOString(),
           requested_plan_code: plan.code,
+          checkout_expires_at: checkoutExpiresAt,
         },
       })
       .eq('organization_id', organizationId)
@@ -125,6 +141,19 @@ export async function POST(request: Request) {
         updateError?.message ?? 'Subscription record was not updated.',
       )
     }
+
+    await admin.from('billing_payments').insert({
+      organization_id: organizationId,
+      subscription_id: updatedSubscription.id,
+      provider: 'paymongo',
+      provider_checkout_id: checkoutId,
+      plan_id: targetPlan.id,
+      plan_code: plan.code,
+      status: 'pending',
+      amount: plan.amount,
+      currency: 'PHP',
+      metadata: { checkout_expires_at: checkoutExpiresAt },
+    })
 
     await completeIdempotentOperation(
       idempotency,

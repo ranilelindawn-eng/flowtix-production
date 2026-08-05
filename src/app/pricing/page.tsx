@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Choose a Flowtix plan and start a 7-day free trial with secure Stripe billing.',
+    'Choose a Flowtix plan and start a 7-day free trial with secure PayMongo billing.',
 }
 
 type PricingPlan = {
@@ -117,7 +117,7 @@ export default function Page() {
       <MarketingHero
         eyebrow="Simple pricing"
         title="Start free for 7 days. Pay only when your trial ends."
-        description="Create your Flowtix account, securely add your payment details through Stripe, and begin your 7-day free trial. Cancel before the trial ends to avoid being charged."
+        description="Create your Flowtix account, securely add your payment details through PayMongo, and begin your 7-day free trial. Cancel before the trial ends to avoid being charged."
       />
 
       <ContentSection title="Plans">

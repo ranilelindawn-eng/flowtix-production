@@ -46,6 +46,13 @@ export type OrganizationSubscription = {
   cancel_at_period_end: boolean
   last_billing_event_at: string | null
   billing_metadata: Record<string, unknown>
+  pending_plan_id: string | null
+  pending_checkout_expires_at: string | null
+  activated_at: string | null
+  cancelled_at: string | null
+  grace_period_ends_at: string | null
+  payment_failure_count: number
+  last_payment_status: string | null
   plan: SubscriptionPlan | null
 }
 

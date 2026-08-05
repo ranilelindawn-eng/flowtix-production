@@ -97,6 +97,10 @@ export default async function BillingPage({
     typeof query.checkout === 'string'
       ? query.checkout
       : null
+  const subscriptionState =
+    typeof query.subscription === 'string'
+      ? query.subscription
+      : null
   const requestedFeature =
     typeof query.feature === 'string'
       ? query.feature
@@ -137,6 +141,7 @@ export default async function BillingPage({
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end"><a href="/dashboard/billing/invoices" className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">Invoices and usage billing</a></div>
       <div>
         <p className="text-sm font-medium text-cyan-400">
           Workspace billing
@@ -176,6 +181,18 @@ export default async function BillingPage({
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
           Checkout was cancelled. Your current
           active plan was not changed.
+        </div>
+      ) : null}
+
+      {subscriptionState === 'cancel_scheduled' ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+          Cancellation is scheduled for the end of the current billing period.
+        </div>
+      ) : null}
+
+      {subscriptionState === 'reactivated' ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          The scheduled cancellation was removed.
         </div>
       ) : null}
 
@@ -229,13 +246,35 @@ export default async function BillingPage({
           </div>
 
           {canManage ? (
-            <a
-              href="#available-plans"
-              className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
-            >
-              <CreditCard className="h-4 w-4" />
-              Manage subscription
-            </a>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="#available-plans"
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-4 py-3 font-semibold text-white transition hover:bg-slate-800"
+              >
+                <CreditCard className="h-4 w-4" />
+                Manage subscription
+              </a>
+
+              {pendingPlan ? (
+                <form action="/api/paymongo/checkout/cancel" method="post">
+                  <button className="rounded-xl border border-amber-500/40 px-4 py-3 font-semibold text-amber-300 transition hover:bg-amber-500/10">
+                    Cancel pending checkout
+                  </button>
+                </form>
+              ) : subscription?.cancel_at_period_end ? (
+                <form action="/api/paymongo/subscription/reactivate" method="post">
+                  <button className="rounded-xl border border-emerald-500/40 px-4 py-3 font-semibold text-emerald-300 transition hover:bg-emerald-500/10">
+                    Keep subscription active
+                  </button>
+                </form>
+              ) : subscription?.status === 'active' ? (
+                <form action="/api/paymongo/subscription/cancel" method="post">
+                  <button className="rounded-xl border border-rose-500/40 px-4 py-3 font-semibold text-rose-300 transition hover:bg-rose-500/10">
+                    Cancel at period end
+                  </button>
+                </form>
+              ) : null}
+            </div>
           ) : null}
         </div>
       </section>

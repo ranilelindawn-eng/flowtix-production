@@ -55,6 +55,8 @@ export async function clockIn(
   _previousState: AttendanceActionState,
   _formData: FormData,
 ): Promise<AttendanceActionState> {
+  void _previousState
+  void _formData
   return runAttendanceAction(
     'clock_in_attendance',
     'You are now clocked in.',
@@ -65,6 +67,8 @@ export async function clockOut(
   _previousState: AttendanceActionState,
   _formData: FormData,
 ): Promise<AttendanceActionState> {
+  void _previousState
+  void _formData
   return runAttendanceAction(
     'clock_out_attendance',
     'You are now clocked out.',

@@ -1,0 +1,10 @@
+begin;
+alter table public.organizations add column if not exists slug text;
+alter table public.organizations add column if not exists status text not null default 'active' check(status in('active','suspended','archived'));
+alter table public.organizations add column if not exists metadata jsonb not null default '{}'::jsonb;
+alter table public.organizations add column if not exists updated_at timestamptz not null default now();
+create unique index if not exists organizations_slug_unique_idx on public.organizations(lower(slug)) where slug is not null;
+create table if not exists public.organization_lifecycle_events(id uuid primary key default gen_random_uuid(),organization_id uuid not null references public.organizations(id) on delete cascade,event_type text not null,previous_state jsonb not null default '{}'::jsonb,resulting_state jsonb not null default '{}'::jsonb,actor_user_id uuid references auth.users(id) on delete set null,created_at timestamptz not null default now());
+alter table public.organization_lifecycle_events enable row level security;
+create policy "admins read organization lifecycle" on public.organization_lifecycle_events for select using(exists(select 1 from public.organization_members m where m.organization_id=organization_lifecycle_events.organization_id and m.user_id=auth.uid() and m.role in('owner','admin')));
+commit;

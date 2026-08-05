@@ -17,7 +17,7 @@ export default function CheckoutSuccessPage() {
         </h1>
 
         <p className="mt-4 leading-7 text-slate-400">
-          Stripe has securely saved your payment method. Check your email for
+          PayMongo has securely processed your checkout. Check your email for
           the Supabase confirmation message, confirm your account if required,
           and then sign in to Flowtix.
         </p>

@@ -1,0 +1,5 @@
+import { NextRequest,NextResponse } from 'next/server'
+import { requireOwner } from '@/lib/auth'
+import { encryptSecret } from '@/lib/security/secrets'
+import { createClient } from '@/lib/supabase/server'
+export async function POST(request:NextRequest){const membership=await requireOwner();const body=await request.json() as {name?:string;value?:string;type?:string;expiresAt?:string|null};const name=body.name?.trim();const value=body.value?.trim();if(!name||!value)return NextResponse.json({error:'Name and secret value are required.'},{status:400});const supabase=await createClient();let encrypted:string;try{encrypted=encryptSecret(value)}catch(error){return NextResponse.json({error:error instanceof Error?error.message:'Unable to encrypt secret.'},{status:500})}const {error}=await supabase.rpc('upsert_organization_secret',{p_organization_id:membership.organization_id,p_name:name,p_secret_type:body.type?.trim()||'generic',p_encrypted_value:encrypted,p_last_four:value.slice(-4),p_expires_at:body.expiresAt||null});if(error)return NextResponse.json({error:error.message},{status:400});return NextResponse.json({ok:true},{status:201})}

@@ -154,7 +154,6 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
 
   const profileByUser = new Map(profiles.map((row) => [text(row.id), row]))
   const membershipById = new Map(members.map((row) => [text(row.id), row]))
-  const membershipByUser = new Map(members.map((row) => [text(row.user_id), row]))
   const presenceByUser = new Map(presence.map((row) => [text(row.user_id), row]))
   const trend = buildTrend(period, now)
   const trendByDate = new Map(trend.map((point) => [point.date, point]))
