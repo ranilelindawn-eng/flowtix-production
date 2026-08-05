@@ -9,6 +9,7 @@ import type { Permission } from '@/lib/permissions'
 import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
 import { enqueueJob } from '@/lib/jobs/queue'
+import { ATTACHMENT_BUCKET, MAX_ATTACHMENT_BYTES, checksumFile, sanitizeAttachmentName, type AttachmentCategory, type AttachmentEntityType } from '@/lib/attachments'
 
 const text = (formData: FormData, key: string) => formData.get(key)?.toString().trim() ?? ''
 const optional = (value: string) => value || null
@@ -809,15 +810,22 @@ export async function uploadAttachment(formData: FormData) {
   const { membership, supabase, user } = await context()
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a file to upload.')
-  if (file.size > 25 * 1024 * 1024) throw new Error('Maximum file size is 25 MB.')
-  const entityType = text(formData, 'entity_type') || 'company'
+  if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
+  const entityType = (text(formData, 'entity_type') || 'company') as AttachmentEntityType
   const entityId = text(formData, 'entity_id')
+  const category = (text(formData, 'category') || 'general') as AttachmentCategory
   if (!entityId) throw new Error('Attachment entity is required.')
-  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
-  const path = `${membership.organization_id}/${entityType}/${entityId}/${crypto.randomUUID()}-${safeName}`
-  const { error: uploadError } = await supabase.storage.from('crm-attachments').upload(path, file, { contentType: file.type, upsert: false })
+  const checksum = await checksumFile(file)
+  const safeName = sanitizeAttachmentName(file.name)
+  const attachmentId = crypto.randomUUID()
+  const path = `${membership.organization_id}/${entityType}/${entityId}/${attachmentId}/v1-${safeName}`
+  const { error: uploadError } = await supabase.storage.from(ATTACHMENT_BUCKET).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+  })
   if (uploadError) throw new Error(uploadError.message)
   const { error } = await supabase.from('attachments').insert({
+    id: attachmentId,
     organization_id: membership.organization_id,
     entity_type: entityType,
     entity_id: entityId,
@@ -826,8 +834,36 @@ export async function uploadAttachment(formData: FormData) {
     mime_type: file.type || null,
     size_bytes: file.size,
     uploaded_by: user.id,
+    category,
+    description: optional(text(formData, 'description')),
+    checksum_sha256: checksum,
+    scan_status: 'pending',
+    status: 'active',
+    version_number: 1,
   })
-  if (error) throw new Error(error.message)
+  if (error) {
+    await supabase.storage.from(ATTACHMENT_BUCKET).remove([path])
+    throw new Error(error.message)
+  }
+  const { error: versionError } = await supabase.from('attachment_versions').insert({
+    organization_id: membership.organization_id,
+    attachment_id: attachmentId,
+    version_number: 1,
+    file_name: file.name,
+    storage_path: path,
+    mime_type: file.type || null,
+    size_bytes: file.size,
+    checksum_sha256: checksum,
+    uploaded_by: user.id,
+  })
+  if (versionError) throw new Error(versionError.message)
+  await supabase.from('attachment_events').insert({
+    organization_id: membership.organization_id,
+    attachment_id: attachmentId,
+    action: 'uploaded',
+    actor_user_id: user.id,
+    metadata: { entityType, entityId, category },
+  })
   revalidatePath('/dashboard/files')
   revalidatePath(`/dashboard/companies/${entityId}`)
 }

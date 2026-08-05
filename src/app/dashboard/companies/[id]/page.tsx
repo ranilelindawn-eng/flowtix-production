@@ -39,10 +39,11 @@ export default async function CompanyPage({
       .eq('organization_id', membership.organization_id)
       .eq('entity_type', 'company')
       .eq('entity_id', id)
+      .eq('status', 'active')
       .order('created_at', { ascending: false }),
     supabase
       .from('attachments')
-      .select('id,file_name,mime_type,size_bytes,created_at')
+      .select('id,file_name,mime_type,size_bytes,created_at,category,version_number,scan_status')
       .eq('organization_id', membership.organization_id)
       .eq('entity_type', 'company')
       .eq('entity_id', id)
@@ -256,8 +257,11 @@ export default async function CompanyPage({
               >
                 <p className="truncate text-sm text-white">{file.file_name}</p>
                 <p className="mt-1 text-xs text-slate-500">
-                  {Math.ceil(Number(file.size_bytes) / 1024)} KB
+                  {Math.ceil(Number(file.size_bytes) / 1024)} KB · {file.category} · v{file.version_number}
                 </p>
+                <Link href={`/api/crm/attachments/${file.id}/download`} className="mt-2 inline-flex rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-200 hover:border-blue-500/50">
+                  Download
+                </Link>
               </div>
             ))}
 
