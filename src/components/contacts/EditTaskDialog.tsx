@@ -76,6 +76,15 @@ export default function EditTaskDialog({
             value={contactId}
           />
 
+          <input type="hidden" name="taskType" value={task.task_type} />
+          <input type="hidden" name="startAt" value={task.start_at ?? ''} />
+          <input type="hidden" name="reminderAt" value={task.reminder_at ?? ''} />
+          <input type="hidden" name="estimatedMinutes" value={task.estimated_minutes ?? ''} />
+          <input type="hidden" name="actualMinutes" value={task.actual_minutes ?? ''} />
+          <input type="hidden" name="recurrenceRule" value={task.recurrence_rule ?? ''} />
+          <input type="hidden" name="outcome" value={task.outcome ?? ''} />
+          <input type="hidden" name="blockedReason" value={task.blocked_reason ?? ''} />
+
           <div className="border-b border-white/10 px-6 py-5">
             <h2 className="text-lg font-semibold">
               Edit Follow-up Task

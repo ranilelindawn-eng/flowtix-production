@@ -48,6 +48,7 @@ function revalidateContactPaths(contactId: string) {
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/contacts')
   revalidatePath(`/dashboard/contacts/${contactId}`)
+  revalidatePath('/dashboard/tasks')
 }
 
 function parseTaskStatus(value: string): ContactTaskStatus {
@@ -68,6 +69,20 @@ function parseTaskPriority(value: string): ContactTaskPriority {
   }
 
   return 'medium'
+}
+
+type ContactTaskType = 'follow_up' | 'call' | 'email' | 'meeting' | 'research' | 'internal' | 'other'
+
+function parseTaskType(value: string): ContactTaskType {
+  if (value === 'follow_up' || value === 'call' || value === 'email' || value === 'meeting' || value === 'research' || value === 'internal' || value === 'other') return value
+  return 'follow_up'
+}
+
+function parseOptionalMinutes(value: string): number | null {
+  if (!value) return null
+  const parsed = Number.parseInt(value, 10)
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10080) throw new Error('Task duration must be between 0 and 10,080 minutes.')
+  return parsed
 }
 
 async function getAuthenticatedSupabaseClient() {
@@ -289,6 +304,11 @@ export async function createContactTask(formData: FormData) {
   const priority = parseTaskPriority(
     getString(formData, 'priority'),
   )
+  const taskType = parseTaskType(getString(formData, 'taskType'))
+  const startAt = getString(formData, 'startAt')
+  const reminderAt = getString(formData, 'reminderAt')
+  const estimatedMinutes = parseOptionalMinutes(getString(formData, 'estimatedMinutes'))
+  const recurrenceRule = getString(formData, 'recurrenceRule')
 
   if (!contactId) {
     throw new Error('A valid contact ID is required.')
@@ -350,6 +370,12 @@ export async function createContactTask(formData: FormData) {
       title,
       description: description || null,
       due_at: dueAt || null,
+      start_at: startAt || null,
+      reminder_at: reminderAt || null,
+      estimated_minutes: estimatedMinutes,
+      recurrence_rule: recurrenceRule || null,
+      task_type: taskType,
+      source: 'manual',
       status: 'pending',
       priority,
       assigned_to: owner.ownerUserId,
@@ -427,6 +453,14 @@ export async function updateContactTask(formData: FormData) {
   const priority = parseTaskPriority(
     getString(formData, 'priority'),
   )
+  const taskType = parseTaskType(getString(formData, 'taskType'))
+  const startAt = getString(formData, 'startAt')
+  const reminderAt = getString(formData, 'reminderAt')
+  const estimatedMinutes = parseOptionalMinutes(getString(formData, 'estimatedMinutes'))
+  const actualMinutes = parseOptionalMinutes(getString(formData, 'actualMinutes'))
+  const recurrenceRule = getString(formData, 'recurrenceRule')
+  const outcome = getString(formData, 'outcome')
+  const blockedReason = getString(formData, 'blockedReason')
   const status = parseTaskStatus(getString(formData, 'status'))
 
   if (!taskId) {
@@ -473,6 +507,14 @@ export async function updateContactTask(formData: FormData) {
     priority: ContactTaskPriority
     status: ContactTaskStatus
     completed_at?: string | null
+    task_type: ContactTaskType
+    start_at: string | null
+    reminder_at: string | null
+    estimated_minutes: number | null
+    actual_minutes: number | null
+    recurrence_rule: string | null
+    outcome: string | null
+    blocked_reason: string | null
     updated_at: string
   } = {
     title,
@@ -480,6 +522,14 @@ export async function updateContactTask(formData: FormData) {
     due_at: dueAt || null,
     priority,
     status,
+    task_type: taskType,
+    start_at: startAt || null,
+    reminder_at: reminderAt || null,
+    estimated_minutes: estimatedMinutes,
+    actual_minutes: actualMinutes,
+    recurrence_rule: recurrenceRule || null,
+    outcome: outcome || null,
+    blocked_reason: blockedReason || null,
     updated_at: new Date().toISOString(),
   }
 

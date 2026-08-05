@@ -12,6 +12,15 @@ export type ContactTask = {
   completed_at: string | null
   created_at: string
   updated_at: string
+  task_type: 'follow_up' | 'call' | 'email' | 'meeting' | 'research' | 'internal' | 'other'
+  source: 'manual' | 'ai' | 'sequence' | 'campaign' | 'automation' | 'import' | 'system'
+  start_at: string | null
+  reminder_at: string | null
+  estimated_minutes: number | null
+  actual_minutes: number | null
+  recurrence_rule: string | null
+  outcome: string | null
+  blocked_reason: string | null
 }
 
 
@@ -33,7 +42,16 @@ export async function getContactTasks(
       created_by,
       completed_at,
       created_at,
-      updated_at
+      updated_at,
+      task_type,
+      source,
+      start_at,
+      reminder_at,
+      estimated_minutes,
+      actual_minutes,
+      recurrence_rule,
+      outcome,
+      blocked_reason
     `)
     .eq('contact_id', contactId)
     .order('due_at', {
