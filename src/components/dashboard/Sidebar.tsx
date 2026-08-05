@@ -150,6 +150,13 @@ const navItems: NavItem[] = [
     icon: Activity,
   },
   {
+    id: 'telephony-monitoring',
+    label: 'Telephony Monitoring',
+    href: '/dashboard/telephony-monitoring',
+    permission: 'calls.view',
+    icon: BarChart3,
+  },
+  {
     id: 'ring-groups',
     label: 'Ring Groups',
     href: '/dashboard/ring-groups',
