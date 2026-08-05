@@ -223,6 +223,21 @@ export default function ContactTimeline({
               )
             }
 
+            if (activity.type === 'timeline') {
+              const item = activity.timeline
+              return (
+                <article key={activity.id} className="relative flex gap-4 py-5">
+                  {!isLast ? <div className="absolute bottom-0 left-[21px] top-12 w-px bg-white/10" /> : null}
+                  <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-sky-400/15 bg-sky-400/[0.08] text-sky-300"><Clock3 className="h-5 w-5" /></div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-white">{item.title}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{item.event_type}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-400">{item.event_action.replaceAll('_', ' ')}</span></div>
+                    {item.description ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">{item.description}</p> : null}
+                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt)} · {item.source_table}</p>
+                  </div>
+                </article>
+              )
+            }
+
             if (activity.type === 'activity') {
               const item = activity.activity
               return (

@@ -2,6 +2,7 @@ import type { ContactCall } from '@/lib/contact-calls'
 import type { ContactNote } from '@/lib/contact-notes'
 import type { ContactTask } from '@/lib/contact-tasks'
 import type { CrmActivity } from '@/lib/activities'
+import type { TimelineEvent } from '@/lib/timeline'
 
 export type ContactActivity =
   | {
@@ -28,12 +29,19 @@ export type ContactActivity =
       occurredAt: string
       activity: CrmActivity
     }
+  | {
+      id: string
+      type: 'timeline'
+      occurredAt: string
+      timeline: TimelineEvent
+    }
 
 type GetContactActivityInput = {
   calls: ContactCall[]
   notes: ContactNote[]
   tasks: ContactTask[]
   crmActivities?: CrmActivity[]
+  timelineEvents?: TimelineEvent[]
 }
 
 function timestamp(value: string | null): number {
@@ -49,6 +57,7 @@ export function getContactActivity({
   notes,
   tasks,
   crmActivities = [],
+  timelineEvents = [],
 }: GetContactActivityInput): ContactActivity[] {
   const activities: ContactActivity[] = [
     ...calls.map((call) => ({
@@ -78,6 +87,15 @@ export function getContactActivity({
       occurredAt: task.due_at ?? task.created_at,
       task,
     })),
+
+    ...timelineEvents
+      .filter((event) => !['calls', 'contact_notes', 'contact_tasks', 'crm_activities'].includes(event.source_table))
+      .map((event) => ({
+        id: `timeline-${event.id}`,
+        type: 'timeline' as const,
+        occurredAt: event.occurred_at,
+        timeline: event,
+      })),
   ]
 
   return activities.sort(

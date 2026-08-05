@@ -94,6 +94,13 @@ const navItems: NavItem[] = [
     icon: Activity,
   },
   {
+    id: 'timeline',
+    label: 'Timeline',
+    href: '/dashboard/timeline',
+    permission: 'contacts.view',
+    icon: Clock3,
+  },
+  {
     id: 'calendar',
     label: 'Calendar',
     href: '/dashboard/calendar',

@@ -11,6 +11,7 @@ import { getActivities } from '@/lib/activities'
 import { getContactCalls } from '@/lib/contact-calls'
 import { getContactNotes } from '@/lib/contact-notes'
 import { getContactTasks } from '@/lib/contact-tasks'
+import { getTimelineEvents } from '@/lib/timeline'
 import { getContact } from '@/lib/contacts'
 
 type ContactPageProps = {
@@ -26,12 +27,13 @@ export default async function ContactPage({
 
   const { id } = await params
 
-  const [contact, calls, notes, tasks, crmActivities] = await Promise.all([
+  const [contact, calls, notes, tasks, crmActivities, timelineEvents] = await Promise.all([
     getContact(id),
     getContactCalls(id),
     getContactNotes(id),
     getContactTasks(id),
     getActivities({ organizationId: organization.organization_id, contactId: id, limit: 100 }),
+    getTimelineEvents({ organizationId: organization.organization_id, contactId: id, limit: 150 }),
   ])
 
   if (!contact) {
@@ -43,6 +45,7 @@ export default async function ContactPage({
     notes,
     tasks,
     crmActivities,
+    timelineEvents,
   })
 
   return (
