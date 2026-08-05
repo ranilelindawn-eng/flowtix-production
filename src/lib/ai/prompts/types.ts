@@ -10,6 +10,7 @@ export type AIPromptKey =
   | 'email.generate'
   | 'tasks.suggest'
   | 'summary.transcript'
+  | 'sentiment.analyze'
 
 export type AIPromptVariableValue = string | number | boolean | null | undefined
 export type AIPromptVariables = Record<string, AIPromptVariableValue>
