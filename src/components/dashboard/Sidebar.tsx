@@ -237,6 +237,13 @@ const navItems: NavItem[] = [
     icon: UserRoundCheck,
   },
   {
+    id: 'campaign-analytics',
+    label: 'Campaign Analytics',
+    href: '/dashboard/campaign-analytics',
+    permission: 'reports.view',
+    icon: Sparkles,
+  },
+  {
     id: 'ai-workspace',
     label: 'AI Workspace',
     href: '/dashboard/ai',
