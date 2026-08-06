@@ -188,13 +188,20 @@ export async function processPayMongoWebhookBody(
     }
 
     const status = typeof data?.status === 'string' ? data.status : 'failed'
-    if (status !== 'processed' && status !== 'ignored') {
-      throw new Error(
-        typeof data?.reason === 'string'
-          ? `PayMongo lifecycle processing failed: ${data.reason}.`
-          : 'PayMongo lifecycle processing failed.',
-      )
-    }
+
+if (status !== 'processed' && status !== 'ignored') {
+  const reason =
+    typeof data?.reason === 'string' ? data.reason : 'processing_error'
+
+  const diagnostic =
+    typeof data?.error === 'string' && data.error.trim().length > 0
+      ? ` ${data.error.trim()}`
+      : ''
+
+  throw new Error(
+    `PayMongo lifecycle processing failed: ${reason}.${diagnostic}`,
+  )
+}
 
     const outcome = status === 'ignored' ? 'ignored' : 'processed'
     const { error: attemptError } = await admin.rpc(
