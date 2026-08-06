@@ -7,6 +7,7 @@ import {
 
 import { UsageMeter } from '@/components/billing/UsageMeter'
 import { requirePermission } from '@/lib/auth'
+import type { OrganizationSubscription } from '@/lib/billing'
 import {
   getCurrentSubscription,
   getPlans,
@@ -44,6 +45,27 @@ function formatBytes(bytes: number) {
     bytes /
     1024 ** 3
   ).toFixed(1)} GB`
+}
+
+function isCancelableActiveSubscription(
+  subscription: OrganizationSubscription | null,
+): boolean {
+  if (
+    !subscription ||
+    subscription.status !== 'active' ||
+    !subscription.current_period_end
+  ) {
+    return false
+  }
+
+  const planCode =
+    subscription.plan?.code ?? subscription.paymongo_plan_code
+
+  if (planCode === 'starter') {
+    return false
+  }
+
+  return Date.parse(subscription.current_period_end) > Date.now()
 }
 
 function getPayMongoPlanCode(
@@ -138,6 +160,13 @@ export default async function BillingPage({
         subscription?.status ??
         'active'
       )
+
+  // The cancellation button must only render for active paid subscriptions
+  // that have a valid future period end.
+  const canCancelActiveSubscription =
+    isCancelableActiveSubscription(
+      subscription as OrganizationSubscription | null,
+    )
 
   return (
     <div className="space-y-8">
@@ -267,7 +296,7 @@ export default async function BillingPage({
                     Keep subscription active
                   </button>
                 </form>
-              ) : subscription?.status === 'active' ? (
+              ) : canCancelActiveSubscription ? (
                 <form action="/api/paymongo/subscription/cancel" method="post">
                   <button className="rounded-xl border border-rose-500/40 px-4 py-3 font-semibold text-rose-300 transition hover:bg-rose-500/10">
                     Cancel at period end
