@@ -1,6 +1,27 @@
 import 'server-only'
 
+import { retrievePayMongoCheckoutSession } from '@/lib/paymongo/client'
 import { createAdminClient } from '@/lib/supabase/admin'
+
+type PayMongoMetadata = {
+  organization_id?: string
+  plan_code?: string
+  checkout_id?: string
+  billing_provider?: string
+}
+
+type PayMongoPayment = {
+  id?: string
+  type?: string
+  attributes?: {
+    amount?: number
+    currency?: string
+    status?: string
+    failed_code?: string
+    failed_message?: string
+    metadata?: PayMongoMetadata
+  }
+}
 
 export type PayMongoWebhookBody = {
   data?: {
@@ -16,29 +37,16 @@ export type PayMongoWebhookBody = {
           amount?: number
           currency?: string
           status?: string
-          metadata?: { organization_id?: string; plan_code?: string }
-          payments?: Array<{
+          metadata?: PayMongoMetadata
+          payments?: PayMongoPayment[]
+          payment_intent?: {
             id?: string
             attributes?: {
               amount?: number
               currency?: string
               status?: string
-              failed_code?: string
-              failed_message?: string
-            }
-          }>
-          payment_intent?: {
-            attributes?: {
-              payments?: Array<{
-                id?: string
-                attributes?: {
-                  amount?: number
-                  currency?: string
-                  status?: string
-                  failed_code?: string
-                  failed_message?: string
-                }
-              }>
+              metadata?: PayMongoMetadata
+              payments?: PayMongoPayment[]
             }
           }
         }
@@ -48,6 +56,8 @@ export type PayMongoWebhookBody = {
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const CHECKOUT_PAID_EVENT = 'checkout_session.payment.paid'
+const PAYMENT_PAID_EVENT = 'payment.paid'
 
 const cleanText = (value: unknown) =>
   typeof value === 'string' && value.trim() ? value.trim() : null
@@ -58,33 +68,91 @@ function cleanAmount(value: unknown): number | null {
     : null
 }
 
+function sleep(milliseconds: number) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds))
+}
+
+async function retrieveCheckoutPayment(checkoutId: string) {
+  const retryDelays = [0, 300, 900]
+
+  for (const delay of retryDelays) {
+    if (delay > 0) await sleep(delay)
+
+    try {
+      const checkout = await retrievePayMongoCheckoutSession(checkoutId)
+      const payment = checkout.payments[0]
+      if (payment?.id) {
+        return {
+          payment,
+          metadata: checkout.metadata,
+          status: checkout.status,
+        }
+      }
+    } catch (error) {
+      console.error('PAYMONGO CHECKOUT ENRICHMENT ERROR:', error)
+      return null
+    }
+  }
+
+  return null
+}
+
 export async function processPayMongoWebhookBody(
   body: PayMongoWebhookBody,
   signatureTimestamp: string,
 ) {
   const startedAt = Date.now()
   const eventId = cleanText(body.data?.id)
-  const eventType = cleanText(body.data?.attributes?.type) ?? 'unknown'
+  const eventType = cleanText(body.data?.attributes?.type)?.toLowerCase() ?? 'unknown'
   const resource = body.data?.attributes?.data
-  const metadata = resource?.attributes?.metadata
-  const organizationText = cleanText(metadata?.organization_id)
+  const resourceType = cleanText(resource?.type)?.toLowerCase()
+  const resourceId = cleanText(resource?.id)
+  const resourceAttributes = resource?.attributes
+  const paymentIntentAttributes = resourceAttributes?.payment_intent?.attributes
+
+  let metadata: PayMongoMetadata = {
+    ...(paymentIntentAttributes?.metadata ?? {}),
+    ...(resourceAttributes?.metadata ?? {}),
+  }
+
+  let payments =
+    resourceAttributes?.payments ?? paymentIntentAttributes?.payments ?? []
+  let payment: PayMongoPayment | undefined
+  let checkoutId: string | null = null
+
+  if (eventType === PAYMENT_PAID_EVENT || resourceType === 'payment') {
+    payment = resource as PayMongoPayment
+    checkoutId = cleanText(metadata.checkout_id)
+  } else {
+    checkoutId = resourceId
+    payment = payments[0]
+
+    if (eventType === CHECKOUT_PAID_EVENT && checkoutId && !payment?.id) {
+      const enriched = await retrieveCheckoutPayment(checkoutId)
+      if (enriched) {
+        payment = enriched.payment
+        payments = [enriched.payment]
+        metadata = { ...enriched.metadata, ...metadata }
+      }
+    }
+  }
+
+  const paymentAttributes = payment?.attributes
+  const organizationText = cleanText(
+    metadata.organization_id ?? paymentAttributes?.metadata?.organization_id,
+  )
   const organizationId =
     organizationText && UUID_PATTERN.test(organizationText)
       ? organizationText
       : null
-  const payments =
-    resource?.attributes?.payments ??
-    resource?.attributes?.payment_intent?.attributes?.payments ??
-    []
-  const payment = payments[0]
-  const paymentAttributes = payment?.attributes
 
   if (!eventId) {
     throw new Error('Webhook event ID is required.')
   }
 
   const paymentAmount = cleanAmount(paymentAttributes?.amount)
-  const resourceAmount = cleanAmount(resource?.attributes?.amount)
+  const resourceAmount = cleanAmount(resourceAttributes?.amount)
+  const paymentIntentAmount = cleanAmount(paymentIntentAttributes?.amount)
   const admin = createAdminClient()
 
   try {
@@ -93,19 +161,23 @@ export async function processPayMongoWebhookBody(
       p_event_type: eventType,
       p_livemode: body.data?.attributes?.livemode ?? null,
       p_signature_timestamp: signatureTimestamp,
-      p_resource_type: cleanText(resource?.type),
-      p_resource_id: cleanText(resource?.id),
+      p_resource_type: resourceType ?? null,
+      p_resource_id: resourceId,
       p_organization_id: organizationId,
-      p_checkout_id: cleanText(resource?.id),
+      p_checkout_id: checkoutId,
       p_payment_id: cleanText(payment?.id),
-      p_plan_code: cleanText(metadata?.plan_code),
-      p_amount: paymentAmount ?? resourceAmount,
+      p_plan_code: cleanText(
+        metadata.plan_code ?? paymentAttributes?.metadata?.plan_code,
+      ),
+      p_amount: paymentAmount ?? resourceAmount ?? paymentIntentAmount,
       p_currency:
         cleanText(paymentAttributes?.currency) ??
-        cleanText(resource?.attributes?.currency),
+        cleanText(resourceAttributes?.currency) ??
+        cleanText(paymentIntentAttributes?.currency),
       p_payment_status:
         cleanText(paymentAttributes?.status) ??
-        cleanText(resource?.attributes?.status),
+        cleanText(resourceAttributes?.status) ??
+        cleanText(paymentIntentAttributes?.status),
       p_failure_code: cleanText(paymentAttributes?.failed_code),
       p_failure_message: cleanText(paymentAttributes?.failed_message),
       p_payload: body,
