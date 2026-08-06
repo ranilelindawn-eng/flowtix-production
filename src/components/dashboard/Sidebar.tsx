@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Rocket,
   Tags,
   Target,
   TextQuote,
@@ -315,6 +316,13 @@ const navItems: NavItem[] = [
     href: '/dashboard/administration',
     permission: 'settings.manage',
     icon: SlidersHorizontal,
+  },
+  {
+    id: 'production-readiness',
+    label: 'Production Readiness',
+    href: '/dashboard/production-readiness',
+    permission: 'settings.manage',
+    icon: Rocket,
   },
   {
     id: 'billing',

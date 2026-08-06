@@ -76,9 +76,27 @@ type SubscriptionPlanRow = {
   id: string
   code: string
   name: string
+  description: string | null
+  monthly_price_cents: number
   billing_provider: string
   provider_price_code: string | null
+  paymongo_price_code: string | null
+  max_members: number | null
+  max_contacts: number | null
+  max_storage_bytes: number | null
+  max_calls_per_month: number | null
+  max_ai_requests_per_month: number | null
+  max_emails_per_month: number | null
+  max_sms_per_month: number | null
+  max_phone_numbers: number | null
+  max_api_keys: number | null
+  sort_order: number
+  is_public: boolean
+  features: Json
+  entitlements: Json
   is_active: boolean
+  created_at: string
+  updated_at: string
 }
 
 type BillingPaymentEventRow = {
@@ -233,8 +251,27 @@ type Database = {
           id?: string
           code: string
           name: string
+          description?: string | null
+          monthly_price_cents?: number
           billing_provider?: string
           provider_price_code?: string | null
+          paymongo_price_code?: string | null
+          max_members?: number | null
+          max_contacts?: number | null
+          max_storage_bytes?: number | null
+          max_calls_per_month?: number | null
+          max_ai_requests_per_month?: number | null
+          max_emails_per_month?: number | null
+          max_sms_per_month?: number | null
+          max_phone_numbers?: number | null
+          max_api_keys?: number | null
+          sort_order?: number
+          is_public?: boolean
+          features?: Json
+          entitlements?: Json
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Update: Partial<SubscriptionPlanRow>
         Relationships: []

@@ -18,9 +18,9 @@ function formatPrice(cents: number) {
     return 'Custom'
   }
 
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-PH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'PHP',
     maximumFractionDigits: 0,
   }).format(cents / 100)
 }
@@ -463,24 +463,7 @@ export default async function BillingPage({
                       <input
                         type="hidden"
                         name="plan"
-                        value={plan.name}
-                      />
-
-                      <input
-                        type="hidden"
-                        name="amount"
-                        value={
-                          plan.monthly_price_cents /
-                          100
-                        }
-                      />
-
-                      <input
-                        type="hidden"
-                        name="description"
-                        value={
-                          plan.description ?? ''
-                        }
+                        value={plan.code}
                       />
 
                       <button

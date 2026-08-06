@@ -15,7 +15,7 @@ export type SubscriptionPlan = {
   name: string
   description: string | null
   monthly_price_cents: number
-  billing_provider: 'paymongo' | 'legacy_stripe'
+  billing_provider: 'paymongo'
   provider_price_code: string | null
   paymongo_price_code: string | null
   max_members: number | null
@@ -32,7 +32,7 @@ export type OrganizationSubscription = {
   id: string
   organization_id: string
   plan_id: string
-  billing_provider: 'paymongo' | 'legacy_stripe'
+  billing_provider: 'paymongo'
   provider_customer_id: string | null
   provider_subscription_id: string | null
   provider_checkout_id: string | null
@@ -99,9 +99,9 @@ export const getCurrentSubscription = cache(
 
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    const { data: subscription, error } = await supabase
       .from('organization_subscriptions')
-      .select('*, plan:subscription_plans(*)')
+      .select('*')
       .eq(
         'organization_id',
         organization.organization_id,
@@ -114,34 +114,51 @@ export const getCurrentSubscription = cache(
       )
     }
 
-    if (!data) {
+    if (!subscription) {
       return null
     }
 
-    const plan = Array.isArray(data.plan)
-      ? data.plan[0] ?? null
-      : data.plan
+    let plan: SubscriptionPlan | null = null
+
+    if (subscription.plan_id) {
+      const { data: planData, error: planError } =
+        await supabase
+          .from('subscription_plans')
+          .select('*')
+          .eq('id', subscription.plan_id)
+          .maybeSingle()
+
+      if (planError) {
+        throw new Error(
+          `Failed to load subscription plan: ${planError.message}`,
+        )
+      }
+
+      if (planData) {
+        plan = {
+          ...planData,
+          code: planData.code as PlanCode,
+          billing_provider: 'paymongo',
+          features: Array.isArray(planData.features)
+            ? planData.features.filter(
+                (
+                  item: unknown,
+                ): item is string =>
+                  typeof item === 'string',
+              )
+            : [],
+        }
+      }
+    }
 
     return {
-      ...data,
+      ...subscription,
+      billing_provider: 'paymongo',
       paymongo_plan_code:
-        typeof data.paymongo_plan_code === 'string'
-          ? (data.paymongo_plan_code as PlanCode)
+        typeof subscription.paymongo_plan_code === 'string'
+          ? (subscription.paymongo_plan_code as PlanCode)
           : null,
-      plan: plan
-        ? {
-            ...plan,
-            code: plan.code as PlanCode,
-            features: Array.isArray(plan.features)
-              ? plan.features.filter(
-                  (
-                    item: unknown,
-                  ): item is string =>
-                    typeof item === 'string',
-                )
-              : [],
-          }
-        : null,
+      plan,
     }
   },
 )

@@ -1,36 +1,77 @@
-export const payMongoPlans = {
-  starter: {
-    code: 'starter',
-    amount: 170000,
-    name: 'Flowtix Starter',
-  },
-  professional: {
-    code: 'pro',
-    amount: 460000,
-    name: 'Flowtix Professional',
-  },
-  pro: {
-    code: 'pro',
-    amount: 460000,
-    name: 'Flowtix Professional',
-  },
-  business: {
-    code: 'business',
-    amount: 1150000,
-    name: 'Flowtix Business',
-  },
-  enterprise: {
-    code: 'enterprise',
-    amount: 2900000,
-    name: 'Flowtix Enterprise',
-  },
-} as const
+import 'server-only'
 
-export type PayMongoCheckoutPlanKey = keyof typeof payMongoPlans
+import { createAdminClient } from '@/lib/supabase/admin'
+
+export const PAYMONGO_PLAN_CODES = [
+  'starter',
+  'pro',
+  'business',
+  'enterprise',
+] as const
+
 export type PayMongoPlanCode =
-  (typeof payMongoPlans)[PayMongoCheckoutPlanKey]['code']
+  (typeof PAYMONGO_PLAN_CODES)[number]
 
-export function getPayMongoPlan(value: string) {
+export type PayMongoPlan = {
+  id: string
+  code: PayMongoPlanCode
+  name: string
+  description: string | null
+  amount: number
+  providerPriceCode: string
+}
+
+export function normalizePayMongoPlanCode(
+  value: string,
+): PayMongoPlanCode | null {
   const normalized = value.trim().toLowerCase()
-  return payMongoPlans[normalized as PayMongoCheckoutPlanKey] ?? null
+  const alias = normalized === 'professional' ? 'pro' : normalized
+
+  return PAYMONGO_PLAN_CODES.includes(
+    alias as PayMongoPlanCode,
+  )
+    ? (alias as PayMongoPlanCode)
+    : null
+}
+
+export async function getPayMongoPlan(
+  value: string,
+): Promise<PayMongoPlan | null> {
+  const code = normalizePayMongoPlanCode(value)
+
+  if (!code) {
+    return null
+  }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('subscription_plans')
+    .select(
+      'id,code,name,description,monthly_price_cents,billing_provider,provider_price_code,is_active,is_public',
+    )
+    .eq('code', code)
+    .eq('billing_provider', 'paymongo')
+    .eq('is_active', true)
+    .eq('is_public', true)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(
+      `Unable to load PayMongo plan: ${error.message}`,
+    )
+  }
+
+  if (!data || data.monthly_price_cents <= 0) {
+    return null
+  }
+
+  return {
+    id: data.id,
+    code: data.code as PayMongoPlanCode,
+    name: data.name,
+    description: data.description,
+    amount: data.monthly_price_cents,
+    providerPriceCode:
+      data.provider_price_code?.trim() || data.code,
+  }
 }

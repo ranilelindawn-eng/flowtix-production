@@ -3,7 +3,7 @@
 import { redirect } from 'next/navigation'
 
 import { createPayMongoCheckoutSession } from '@/lib/paymongo/client'
-import { payMongoPlans } from '@/lib/paymongo/plans'
+import { getPayMongoPlan } from '@/lib/paymongo/plans'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -154,7 +154,11 @@ async function createSignupCheckout({
   siteUrl: string
   hasSession: boolean
 }) {
-  const selectedPlan = payMongoPlans[plan]
+  const selectedPlan = await getPayMongoPlan(plan)
+
+  if (!selectedPlan) {
+    throw new Error('The selected PayMongo plan is unavailable.')
+  }
 
   const successUrl = hasSession
     ? `${siteUrl}/dashboard?payment=success`

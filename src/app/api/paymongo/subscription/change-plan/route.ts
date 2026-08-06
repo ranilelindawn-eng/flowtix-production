@@ -11,16 +11,17 @@ export async function POST(request: Request) {
     const form = await request.formData()
     const planCode = form.get('plan')?.toString() ?? ''
     const effective = form.get('effective') === 'immediate' ? 'immediate' : 'period_end'
-    if (!getPayMongoPlan(planCode)) {
+    const plan = await getPayMongoPlan(planCode)
+    if (!plan) {
       return NextResponse.json({ error: 'Invalid plan selected.' }, { status: 400 })
     }
-    await schedulePlanChange(planCode, effective)
+    await schedulePlanChange(plan.code, effective)
     if (organization) {
       await writeAuditEvent({
         action: 'billing.subscription.plan_change_scheduled',
         organizationId: organization.organization_id,
         resourceType: 'organization_subscription',
-        metadata: { plan_code: planCode, effective },
+        metadata: { plan_code: plan.code, effective },
       })
     }
     return NextResponse.redirect(new URL('/dashboard/billing?subscription=plan_scheduled', request.url), 303)
