@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
+import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
@@ -10,13 +12,11 @@ import {
 } from '@/lib/telephony/control/service'
 import type { SupervisorMode } from '@/lib/telephony/control/types'
 
-type RequestBody = { callId?: string; mode?: SupervisorMode; supervisorIdentity?: string }
+type RequestBody = { callId?: string; mode?: SupervisorMode }
 type CallRow = { id: string; provider_call_sid: string | null; provider_child_call_sid: string | null; provider: string | null }
 
 function supervisorTwiml(input: { conferenceName: string; mode: SupervisorMode; coachedCallSid?: string | null }): string {
-  if (input.mode === 'monitor') {
-    return `<Response><Dial><Conference muted="true" startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${input.conferenceName}</Conference></Dial></Response>`
-  }
+  if (input.mode === 'monitor') return `<Response><Dial><Conference muted="true" startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${input.conferenceName}</Conference></Dial></Response>`
   if (input.mode === 'whisper') {
     if (!input.coachedCallSid) throw new Error('The agent participant is unavailable for whisper mode.')
     return `<Response><Dial><Conference coach="${input.coachedCallSid}" startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${input.conferenceName}</Conference></Dial></Response>`
@@ -27,11 +27,15 @@ function supervisorTwiml(input: { conferenceName: string; mode: SupervisorMode; 
 export async function POST(request: Request) {
   const body = await request.json() as RequestBody
   const organization = await getCurrentOrganization()
-  if (!organization || !body.callId || !body.mode || !['monitor', 'whisper', 'barge'].includes(body.mode) || !body.supervisorIdentity) {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+  if (!organization) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+  if (!hasPermission(organization.role, 'calls.view_all')) return NextResponse.json({ error: 'Supervisor controls require manager access.' }, { status: 403 })
+  try {
+    await assertEntitlement('dialer.cloud', organization.organization_id)
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Calling is unavailable.' }, { status: isEntitlementError(error) ? 403 : 500 })
   }
-  if (organization.role === 'agent') {
-    return NextResponse.json({ error: 'Supervisor call controls require manager, administrator, or owner access.' }, { status: 403 })
+  if (!body.callId || !body.mode || !['monitor', 'whisper', 'barge'].includes(body.mode)) {
+    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 
   const supabase = await createClient()
@@ -42,9 +46,7 @@ export async function POST(request: Request) {
     .maybeSingle()
   const call = data as CallRow | null
   if (!call) return NextResponse.json({ error: 'Call not found.' }, { status: 404 })
-  if ((call.provider ?? 'twilio') !== 'twilio') {
-    return NextResponse.json({ error: 'Supervisor controls are not yet supported by this provider.' }, { status: 409 })
-  }
+  if ((call.provider ?? 'twilio') !== 'twilio') return NextResponse.json({ error: 'Supervisor controls are not yet supported by this provider.' }, { status: 409 })
 
   const config = await getOrganizationTwilioConfiguration(organization.organization_id)
   const client = twilio(config.accountSid, config.authToken)
@@ -53,12 +55,7 @@ export async function POST(request: Request) {
 
   try {
     const activeSid = call.provider_child_call_sid ?? call.provider_call_sid
-    if (activeSid) {
-      await client.calls(activeSid).update({
-        twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${session.conferenceName}</Conference></Dial></Response>`,
-      })
-    }
-
+    if (activeSid) await client.calls(activeSid).update({ twiml: `<Response><Dial><Conference startConferenceOnEnter="true" endConferenceOnExit="false" beep="false">${session.conferenceName}</Conference></Dial></Response>` })
     const conferences = await client.conferences.list({ friendlyName: session.conferenceName, status: 'in-progress', limit: 1 })
     const conference = conferences[0]
     let coachedCallSid: string | null = null
@@ -66,9 +63,9 @@ export async function POST(request: Request) {
       const participants = await client.conferences(conference.sid).participants.list({ limit: 100 })
       coachedCallSid = participants.find((participant) => participant.callSid === activeSid)?.callSid ?? null
     }
-
+    const supervisorIdentity = `cf_${organization.user_id.replace(/-/g, '')}`
     const supervisorCall = await client.calls.create({
-      to: `client:${body.supervisorIdentity.replace(/[^a-zA-Z0-9_]/g, '')}`,
+      to: `client:${supervisorIdentity}`,
       from: config.callerId,
       twiml: supervisorTwiml({ conferenceName: session.conferenceName, mode: body.mode, coachedCallSid }),
     })

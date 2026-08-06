@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import type { Attachment, AttachmentCategory, AttachmentEntityType } from './types'
 
@@ -21,7 +21,7 @@ export async function listAttachments(filters: {
   category?: AttachmentCategory
   search?: string
 } = {}): Promise<Attachment[]> {
-  const membership = await requireOrganization()
+  const membership = await requirePermission('contacts.view')
   const supabase = await createClient()
   let query = supabase.from('attachments').select('*')
     .eq('organization_id', membership.organization_id)
@@ -36,7 +36,7 @@ export async function listAttachments(filters: {
 }
 
 export async function getAttachment(id: string): Promise<Attachment | null> {
-  const membership = await requireOrganization()
+  const membership = await requirePermission('contacts.view')
   const supabase = await createClient()
   const { data, error } = await supabase.from('attachments').select('*')
     .eq('id', id).eq('organization_id', membership.organization_id).maybeSingle()

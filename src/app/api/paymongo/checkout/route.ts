@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 
+import { getBillingAppUrl } from '@/lib/billing/config'
 import {
   beginIdempotentOperation,
   completeIdempotentOperation,
@@ -16,17 +17,20 @@ import { writeAuditEvent } from '@/lib/security/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentOrganization } from '@/lib/team'
 
-const getAppUrl = () => {
-  const url =
-    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
-    process.env.NEXT_PUBLIC_SITE_URL?.trim()
+type CheckoutCreationLease = {
+  subscription_id?: string
+  creation_token?: string
+}
 
-  return (url || 'http://localhost:3000').replace(/\/$/, '')
+type CheckoutRegistration = {
+  subscription_id?: string
+  payment_id?: string
 }
 
 export async function POST(request: Request) {
   let idempotency: IdempotencyHandle | null = null
   let organizationId: string | null = null
+  let creationToken: string | null = null
 
   try {
     const organization = await getCurrentOrganization()
@@ -85,64 +89,70 @@ export async function POST(request: Request) {
       })
     }
 
-    const appUrl = getAppUrl()
-    const { checkoutId, checkoutUrl } =
-      await createPayMongoCheckoutSession({
-        amount: plan.amount,
-        name: plan.name,
-        description: `${plan.name} monthly subscription`,
-        metadata: {
-          organization_id: organizationId,
-          plan_code: plan.code,
-          billing_provider: 'paymongo',
-        },
-        successUrl: `${appUrl}/dashboard?payment=success`,
-        cancelUrl: `${appUrl}/dashboard/billing?checkout=cancelled`,
-      })
-
     const admin = createAdminClient()
-    const checkoutExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-    const { data: updatedSubscription, error: updateError } = await admin
-      .from('organization_subscriptions')
-      .update({
-        billing_provider: 'paymongo',
-        paymongo_checkout_id: checkoutId,
-        paymongo_plan_code: plan.code,
-        paymongo_payment_id: null,
-        provider_checkout_id: checkoutId,
-        provider_payment_id: null,
-        pending_plan_id: plan.id,
-        pending_checkout_expires_at: checkoutExpiresAt,
-        last_payment_status: 'pending',
-        status: 'pending',
-        billing_metadata: {
-          checkout_created_at: new Date().toISOString(),
-          requested_plan_code: plan.code,
-          checkout_expires_at: checkoutExpiresAt,
-        },
-      })
-      .eq('organization_id', organizationId)
-      .select('id')
-      .maybeSingle()
+    const { data: lease, error: leaseError } = await admin.rpc(
+      'begin_paymongo_checkout_creation',
+      {
+        p_organization_id: organizationId,
+        p_plan_id: plan.id,
+        p_plan_code: plan.code,
+        p_amount: plan.amount,
+        p_currency: 'PHP',
+      },
+    )
 
-    if (updateError || !updatedSubscription) {
+    if (leaseError) {
+      throw new Error(`Unable to reserve PayMongo checkout creation: ${leaseError.message}`)
+    }
+
+    const leaseResult = lease as CheckoutCreationLease | null
+    if (!leaseResult?.subscription_id || !leaseResult.creation_token) {
+      throw new Error('PayMongo checkout reservation returned an invalid result.')
+    }
+    creationToken = leaseResult.creation_token
+
+    const appUrl = getBillingAppUrl()
+    const { checkoutId, checkoutUrl } = await createPayMongoCheckoutSession({
+      amount: plan.amount,
+      name: plan.name,
+      description: `${plan.name} monthly subscription`,
+      metadata: {
+        organization_id: organizationId,
+        plan_code: plan.code,
+        billing_provider: 'paymongo',
+      },
+      successUrl: `${appUrl}/dashboard?payment=success`,
+      cancelUrl: `${appUrl}/dashboard/billing?checkout=cancelled`,
+    })
+
+    const checkoutExpiresAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000,
+    ).toISOString()
+    const { data: registration, error: registrationError } = await admin.rpc(
+      'finalize_paymongo_checkout_creation',
+      {
+        p_organization_id: organizationId,
+        p_creation_token: creationToken,
+        p_checkout_id: checkoutId,
+        p_plan_id: plan.id,
+        p_plan_code: plan.code,
+        p_amount: plan.amount,
+        p_currency: 'PHP',
+        p_expires_at: checkoutExpiresAt,
+      },
+    )
+
+    if (registrationError) {
       throw new Error(
-        updateError?.message ?? 'Subscription record was not updated.',
+        `Unable to finalize PayMongo checkout: ${registrationError.message}`,
       )
     }
 
-    await admin.from('billing_payments').insert({
-      organization_id: organizationId,
-      subscription_id: updatedSubscription.id,
-      provider: 'paymongo',
-      provider_checkout_id: checkoutId,
-      plan_id: plan.id,
-      plan_code: plan.code,
-      status: 'pending',
-      amount: plan.amount,
-      currency: 'PHP',
-      metadata: { checkout_expires_at: checkoutExpiresAt },
-    })
+    const registrationResult = registration as CheckoutRegistration | null
+    if (!registrationResult?.subscription_id || !registrationResult.payment_id) {
+      throw new Error('PayMongo checkout finalization returned an invalid result.')
+    }
+    creationToken = null
 
     await completeIdempotentOperation(
       idempotency,
@@ -155,9 +165,10 @@ export async function POST(request: Request) {
       action: 'billing.paymongo.checkout.created',
       organizationId,
       resourceType: 'organization_subscription',
-      resourceId: updatedSubscription.id,
+      resourceId: registrationResult.subscription_id,
       metadata: {
         checkout_id: checkoutId,
+        payment_id: registrationResult.payment_id,
         plan_code: plan.code,
         amount: plan.amount,
         currency: 'PHP',
@@ -166,6 +177,20 @@ export async function POST(request: Request) {
 
     return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {
+    if (organizationId && creationToken) {
+      try {
+        const admin = createAdminClient()
+        await admin.rpc('abandon_paymongo_checkout_creation', {
+          p_organization_id: organizationId,
+          p_creation_token: creationToken,
+          p_reason:
+            error instanceof Error ? error.message : 'Unknown checkout error',
+        })
+      } catch (cleanupError) {
+        console.error('PAYMONGO CHECKOUT LEASE CLEANUP ERROR:', cleanupError)
+      }
+    }
+
     const status =
       error instanceof PayMongoApiError
         ? Math.max(400, Math.min(error.status, 599))

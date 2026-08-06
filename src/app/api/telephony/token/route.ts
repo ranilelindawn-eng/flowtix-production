@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
+import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 import {
@@ -17,16 +19,21 @@ export async function GET(request: NextRequest) {
     if (typeof userId !== 'string' || !organization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    if (!hasPermission(organization.role, 'calls.create')) {
+      return NextResponse.json({ error: 'You do not have permission to place calls.' }, { status: 403 })
+    }
+    await assertEntitlement('dialer.cloud', organization.organization_id)
 
-    const provider = request.nextUrl.searchParams.get('provider') === 'telnyx'
-      ? 'telnyx'
-      : 'twilio'
+    const requestedProvider = request.nextUrl.searchParams.get('provider')
+    if (requestedProvider !== 'twilio' && requestedProvider !== 'telnyx') {
+      return NextResponse.json({ error: 'A supported provider is required.' }, { status: 400 })
+    }
 
-    if (provider === 'telnyx') {
+    if (requestedProvider === 'telnyx') {
       const config = await getOrganizationTelnyxConfiguration(organization.organization_id)
       const token = await createTelnyxWebRtcToken(config)
       return NextResponse.json({
-        provider,
+        provider: 'telnyx',
         token,
         identity: `fx_${userId.replace(/-/g, '')}`,
         userId,
@@ -39,20 +46,17 @@ export async function GET(request: NextRequest) {
     const config = await getOrganizationTwilioConfiguration(organization.organization_id)
     const identity = `cf_${userId.replace(/-/g, '')}`
     const AccessToken = twilio.jwt.AccessToken
-    const VoiceGrant = AccessToken.VoiceGrant
-    const token = new AccessToken(
-      config.accountSid,
-      config.apiKeySid,
-      config.apiKeySecret,
-      { identity, ttl: 3600 },
-    )
-    token.addGrant(new VoiceGrant({
+    const token = new AccessToken(config.accountSid, config.apiKeySid, config.apiKeySecret, {
+      identity,
+      ttl: 3600,
+    })
+    token.addGrant(new AccessToken.VoiceGrant({
       outgoingApplicationSid: config.twimlAppSid,
       incomingAllow: true,
     }))
 
     return NextResponse.json({
-      provider,
+      provider: 'twilio',
       token: token.toJwt(),
       identity,
       userId,
@@ -63,7 +67,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to create Voice token.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

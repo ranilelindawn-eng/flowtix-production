@@ -1,22 +1,32 @@
 import { NextResponse } from 'next/server'
+
+import { getBillingAppUrl } from '@/lib/billing/config'
 import { requestSubscriptionCancellation } from '@/lib/billing/lifecycle'
 import { writeAuditEvent } from '@/lib/security/audit'
 import { getCurrentOrganization } from '@/lib/team'
 
+function redirect(path: string) {
+  return NextResponse.redirect(new URL(path, getBillingAppUrl()), 303)
+}
+
 export async function POST() {
   const organization = await getCurrentOrganization()
+  if (!organization) return redirect('/login')
+
   try {
     const result = await requestSubscriptionCancellation()
-    if (organization) {
-      await writeAuditEvent({
-        action: 'billing.subscription.cancellation_scheduled',
-        organizationId: organization.organization_id,
-        resourceType: 'organization_subscription',
-        metadata: result,
-      })
-    }
-    return NextResponse.redirect(new URL('/dashboard/billing?subscription=cancel_scheduled', process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'), 303)
+    await writeAuditEvent({
+      action: 'billing.subscription.cancellation_scheduled',
+      organizationId: organization.organization_id,
+      resourceType: 'organization_subscription',
+      metadata: result,
+    })
+    return redirect('/dashboard/billing?subscription=cancel_scheduled')
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Cancellation failed.' }, { status: 400 })
+    const message = error instanceof Error ? error.message : 'Cancellation failed.'
+    return NextResponse.json(
+      { error: message },
+      { status: message.includes('Only the workspace owner') ? 403 : 400, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }

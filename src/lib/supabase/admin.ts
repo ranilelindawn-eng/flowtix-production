@@ -70,6 +70,8 @@ type OrganizationSubscriptionRow = {
   grace_period_ends_at: string | null
   payment_failure_count: number
   last_payment_status: string | null
+  checkout_creation_token: string | null
+  checkout_creation_started_at: string | null
 }
 
 type SubscriptionPlanRow = {
@@ -241,6 +243,8 @@ type Database = {
           grace_period_ends_at?: string | null
           payment_failure_count?: number
           last_payment_status?: string | null
+          checkout_creation_token?: string | null
+          checkout_creation_started_at?: string | null
         }
         Update: Partial<OrganizationSubscriptionRow>
         Relationships: []
@@ -358,6 +362,72 @@ type Database = {
           failure_body?: Record<string, unknown> | null
         }
         Returns: undefined
+      }
+      register_pending_paymongo_checkout: {
+        Args: {
+          p_organization_id: string
+          p_checkout_id: string
+          p_plan_id: string
+          p_plan_code: string
+          p_amount: number
+          p_currency: string
+          p_expires_at: string
+        }
+        Returns: {
+          subscription_id?: string
+          payment_id?: string
+          checkout_id?: string
+          plan_code?: string
+        }
+      }
+      begin_paymongo_checkout_creation: {
+        Args: {
+          p_organization_id: string
+          p_plan_id: string
+          p_plan_code: string
+          p_amount: number
+          p_currency: string
+        }
+        Returns: {
+          subscription_id?: string
+          creation_token?: string
+          plan_id?: string
+          plan_code?: string
+        }
+      }
+      finalize_paymongo_checkout_creation: {
+        Args: {
+          p_organization_id: string
+          p_creation_token: string
+          p_checkout_id: string
+          p_plan_id: string
+          p_plan_code: string
+          p_amount: number
+          p_currency: string
+          p_expires_at: string
+        }
+        Returns: {
+          subscription_id?: string
+          payment_id?: string
+          checkout_id?: string
+          plan_code?: string
+        }
+      }
+      abandon_paymongo_checkout_creation: {
+        Args: {
+          p_organization_id: string
+          p_creation_token: string
+          p_reason?: string | null
+        }
+        Returns: boolean
+      }
+      maintain_paymongo_billing_runtime: {
+        Args: Record<string, never>
+        Returns: Record<string, unknown>
+      }
+      get_paymongo_billing_reconciliation: {
+        Args: { p_organization_id: string }
+        Returns: Record<string, unknown>
       }
       process_paymongo_webhook_event: {
         Args: {

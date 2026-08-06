@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import {
   ATTACHMENT_BUCKET, MAX_ATTACHMENT_BYTES, checksumFile, sanitizeAttachmentName,
@@ -12,8 +12,13 @@ const allowedEntityTypes = new Set<AttachmentEntityType>(['contact','company','o
 const allowedCategories = new Set<AttachmentCategory>(['general','contract','proposal','invoice','recording','transcript','image','document','other'])
 const value = (form: FormData, key: string) => form.get(key)?.toString().trim() ?? ''
 
-async function context() {
-  const membership = await requireOrganization()
+async function context(
+  permission:
+    | 'contacts.create'
+    | 'contacts.update'
+    | 'contacts.delete',
+) {
+  const membership = await requirePermission(permission)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Authentication required.')
@@ -21,7 +26,7 @@ async function context() {
 }
 
 export async function uploadAdvancedAttachment(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('contacts.create')
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a file to upload.')
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
@@ -66,7 +71,7 @@ export async function uploadAdvancedAttachment(formData: FormData) {
 
 
 export async function uploadAttachmentVersion(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('contacts.update')
   const attachmentId = value(formData, 'id')
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a replacement file.')
@@ -99,7 +104,7 @@ export async function uploadAttachmentVersion(formData: FormData) {
 }
 
 export async function archiveAttachment(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('contacts.update')
   const id = value(formData, 'id')
   const { error } = await supabase.from('attachments').update({ status: 'archived', archived_at: new Date().toISOString(), archived_by: user.id })
     .eq('id', id).eq('organization_id', membership.organization_id)
@@ -109,7 +114,7 @@ export async function archiveAttachment(formData: FormData) {
 }
 
 export async function restoreAttachment(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('contacts.update')
   const id = value(formData, 'id')
   const { error } = await supabase.from('attachments').update({ status: 'active', archived_at: null, archived_by: null })
     .eq('id', id).eq('organization_id', membership.organization_id)
@@ -119,7 +124,7 @@ export async function restoreAttachment(formData: FormData) {
 }
 
 export async function deleteAttachmentPermanently(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('contacts.delete')
   const id = value(formData, 'id')
   const { data: versions, error: loadError } = await supabase.from('attachment_versions').select('storage_path')
     .eq('attachment_id', id).eq('organization_id', membership.organization_id)

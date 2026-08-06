@@ -22,7 +22,7 @@ export default async function OrganizationPage() {
       </div>
       <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
         <h2 className="text-lg font-semibold text-white">Tenant isolation</h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Every team member is linked to this organization. Phase 4 policies scope team, invitation, plan, and billing records to the active organization.</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Every team member is linked to this organization. Team, invitation, subscription, billing, and customer records remain scoped to the active workspace.</p>
         <p className="mt-4 break-all rounded-xl bg-slate-950 p-4 font-mono text-xs text-slate-400">Organization ID: {membership.organization_id}</p>
       </div>
     </div>

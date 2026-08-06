@@ -19,9 +19,7 @@ function isAuthorized(request: Request) {
   const expected = process.env.INTERNAL_JOB_WORKER_SECRET?.trim()
 
   if (!expected) {
-    throw new Error(
-      'Missing INTERNAL_JOB_WORKER_SECRET environment variable.',
-    )
+    throw new Error('Missing INTERNAL_JOB_WORKER_SECRET environment variable.')
   }
 
   const authorization = request.headers.get('authorization')
@@ -34,13 +32,10 @@ function isAuthorized(request: Request) {
 
 function createWorkerClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()
-  const serviceRoleKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
 
   if (!url || !serviceRoleKey) {
-    throw new Error(
-      'Missing Supabase service-role configuration for maintenance.',
-    )
+    throw new Error('Missing Supabase service-role configuration for maintenance.')
   }
 
   return createClient(url, serviceRoleKey, {
@@ -56,50 +51,62 @@ async function handleMaintenance(request: Request) {
     if (!isAuthorized(request)) {
       return NextResponse.json(
         { error: 'Unauthorized maintenance request.' },
-        { status: 401 },
+        { status: 401, headers: { 'Cache-Control': 'no-store' } },
       )
     }
 
     const client = createWorkerClient()
-    const { data, error } = await client.rpc(
-      'recover_stale_background_jobs',
-    )
+    const { data, error } = await client.rpc('recover_stale_background_jobs')
 
     if (error) {
-      throw new Error(
-        `Unable to recover stale background jobs: ${error.message}`,
-      )
+      throw new Error(`Unable to recover stale background jobs: ${error.message}`)
     }
 
     const result = Array.isArray(data) ? data[0] ?? null : data
     const [
       { data: expiredLeases, error: leaseError },
-      { data: expiredReservations, error: reservationError },
+      { data: telephonyMaintenance, error: telephonyError },
       { data: monitoringSnapshots, error: monitoringError },
+      { data: billingMaintenance, error: billingError },
     ] = await Promise.all([
-      client.rpc('expire_call_ownership_leases', { target_organization: null, target_call: null }),
-      client.rpc('expire_call_queue_reservations', { target_organization: null, batch_size: 100 }),
+      client.rpc('expire_call_ownership_leases', {
+        target_organization: null,
+        target_call: null,
+      }),
+      client.rpc('maintain_telephony_runtime', {
+        target_organization: null,
+        batch_size: 250,
+      }),
       client.rpc('collect_all_telephony_monitoring_snapshots'),
+      client.rpc('maintain_paymongo_billing_runtime'),
     ])
-    if (leaseError) throw new Error(`Unable to expire ownership leases: ${leaseError.message}`)
-    if (reservationError) throw new Error(`Unable to expire queue reservations: ${reservationError.message}`)
-    if (monitoringError) throw new Error(`Unable to collect telephony monitoring snapshots: ${monitoringError.message}`)
 
-    return NextResponse.json({
-      ok: true,
-      processedAt: new Date().toISOString(),
-      expiredOwnershipLeases: Number(expiredLeases ?? 0),
-      expiredQueueReservations: Number(expiredReservations ?? 0),
-      telephonyMonitoringSnapshots: Number(monitoringSnapshots ?? 0),
-      recovered:
-        result && typeof result.recovered === 'number'
-          ? result.recovered
-          : Number(result?.recovered ?? 0),
-      deadLettered:
-        result && typeof result.dead_lettered === 'number'
-          ? result.dead_lettered
-          : Number(result?.dead_lettered ?? 0),
-    })
+    if (leaseError) {
+      throw new Error(`Unable to expire ownership leases: ${leaseError.message}`)
+    }
+    if (telephonyError) {
+      throw new Error(`Unable to maintain telephony runtime: ${telephonyError.message}`)
+    }
+    if (monitoringError) {
+      throw new Error(`Unable to collect telephony monitoring snapshots: ${monitoringError.message}`)
+    }
+    if (billingError) {
+      throw new Error(`Unable to maintain PayMongo billing runtime: ${billingError.message}`)
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        processedAt: new Date().toISOString(),
+        expiredOwnershipLeases: Number(expiredLeases ?? 0),
+        telephony: telephonyMaintenance ?? {},
+        telephonyMonitoringSnapshots: Number(monitoringSnapshots ?? 0),
+        paymongoBilling: billingMaintenance ?? {},
+        recovered: Number(result?.recovered ?? 0),
+        deadLettered: Number(result?.dead_lettered ?? 0),
+      },
+      { headers: { 'Cache-Control': 'no-store' } },
+    )
   } catch (error) {
     console.error('Background job maintenance failed.', error)
 
@@ -110,7 +117,7 @@ async function handleMaintenance(request: Request) {
             ? error.message
             : 'Background job maintenance failed.',
       },
-      { status: 500 },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
     )
   }
 }

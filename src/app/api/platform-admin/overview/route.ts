@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server'
-import { getPlatformAdminOverview } from '@/lib/platform-admin'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  try {
-    return NextResponse.json(await getPlatformAdminOverview())
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load administration data.' }, { status: 403 })
-  }
+  return NextResponse.json(
+    { error: 'Not found.' },
+    {
+      status: 404,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    },
+  )
 }

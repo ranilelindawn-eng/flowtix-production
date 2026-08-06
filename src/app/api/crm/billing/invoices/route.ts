@@ -2,10 +2,17 @@ import { NextResponse } from 'next/server'
 
 import { getInvoices } from '@/lib/billing/platform'
 
+function json(body: Record<string, unknown>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' },
+  })
+}
+
 export async function GET() {
   try {
-    return NextResponse.json({ invoices: await getInvoices() })
+    return json({ invoices: await getInvoices() })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load invoices.' }, { status: 403 })
+    return json({ error: error instanceof Error ? error.message : 'Unable to load invoices.' }, 403)
   }
 }

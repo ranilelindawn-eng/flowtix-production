@@ -126,21 +126,6 @@ const keyRows = [
 const fieldClass =
   'min-h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white outline-none transition focus:border-cyan-400/50'
 
-function describeTelnyxCall(call?: TelnyxCallLike | null) {
-  if (!call) return null
-
-  return {
-    id: call.id ?? null,
-    state: call.state ?? null,
-    direction: call.direction ?? null,
-    remotePartyNumber: call.remotePartyNumber ?? null,
-    cause: call.cause ?? null,
-    causeCode: call.causeCode ?? null,
-    sipCode: call.sipCode ?? null,
-    sipReason: call.sipReason ?? null,
-  }
-}
-
 function describeTelnyxError(payload?: unknown) {
   if (!payload || typeof payload !== 'object') {
     return { message: String(payload ?? 'Unknown Telnyx error') }
@@ -273,14 +258,6 @@ export default function DialerClient({
   const handleTelnyxNotification = useCallback((payload?: unknown) => {
     const notification = payload as TelnyxNotification | undefined
 
-    console.info('[Flowtix Telnyx] notification', {
-      type: notification?.type ?? null,
-      state: notification?.state ?? null,
-      sessionId: notification?.sessionId ?? null,
-      call: describeTelnyxCall(notification?.call),
-      errorName: notification?.errorName ?? null,
-      errorMessage: notification?.errorMessage ?? null,
-    })
 
     if (notification?.type !== 'callUpdate' || !notification.call) {
       if (notification?.errorMessage) setMessage(notification.errorMessage)
@@ -402,13 +379,6 @@ export default function DialerClient({
         }) as unknown as TelnyxClientLike
         client.remoteElement = 'flowtix-telnyx-remote-audio'
         client.on('telnyx.ready', () => {
-          console.info('[Flowtix Telnyx] ready', {
-            provider: payload.provider,
-            organizationId: payload.organizationId,
-            userId: payload.userId,
-            identity: payload.identity,
-            expiresIn: payload.expiresIn,
-          })
           setDeviceState('ready')
           setMessage('Telnyx softphone ready for inbound and outbound calls.')
         })
@@ -418,8 +388,8 @@ export default function DialerClient({
           setDeviceState('error')
           setMessage(error.message || 'Telnyx softphone connection failed.')
         })
-        client.on('telnyx.warning', (event?: unknown) => {
-          console.warn('[Flowtix Telnyx] warning', describeTelnyxError(event))
+        client.on('telnyx.warning', (_event?: unknown) => {
+          console.warn('[Flowtix Telnyx] warning', describeTelnyxError(_event))
         })
         client.on('telnyx.socket.close', (event?: unknown) => {
           console.warn('[Flowtix Telnyx] socket closed', event)
@@ -428,8 +398,7 @@ export default function DialerClient({
         client.on('telnyx.socket.error', (event?: unknown) => {
           console.error('[Flowtix Telnyx] socket error', event)
         })
-        client.on('telnyx.stats.report', (event?: unknown) => {
-          console.info('[Flowtix Telnyx] call report', event)
+        client.on('telnyx.stats.report', () => {
         })
         client.on('telnyx.notification', handleTelnyxNotification)
         telnyxClientRef.current = client
@@ -570,13 +539,6 @@ export default function DialerClient({
         const client = telnyxClientRef.current
         if (!client) throw new Error('Telnyx softphone is not connected.')
         const destinationNumber = phoneNumber.trim()
-        console.info('[Flowtix Telnyx] placing outbound call', {
-          destinationNumber,
-          callerNumber: selectedCallerId,
-          organizationId: tokenPayload.organizationId,
-          userId: tokenPayload.userId,
-          identity: tokenPayload.identity,
-        })
 
         const call = client.newCall({
           destinationNumber,
@@ -589,7 +551,6 @@ export default function DialerClient({
         })
         telnyxCallRef.current = call
         call.on?.('telnyx.notification', handleTelnyxNotification)
-        console.info('[Flowtix Telnyx] outbound call created', describeTelnyxCall(call))
         setCallState('connecting')
         setMessage('Connecting Telnyx call…')
       } else {
@@ -597,8 +558,8 @@ export default function DialerClient({
         const call = await deviceRef.current.connect({
           params: {
             To: phoneNumber.trim(),
-            CallFlowUserId: tokenPayload.userId,
-            CallFlowOrganizationId: tokenPayload.organizationId,
+            FlowtixUserId: tokenPayload.userId,
+            FlowtixOrganizationId: tokenPayload.organizationId,
             ContactId: initialContact?.id ?? '',
             CallerId: selectedCallerId,
             Record: String(isRecording),

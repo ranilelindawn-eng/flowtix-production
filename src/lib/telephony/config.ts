@@ -23,6 +23,29 @@ function requiredString(value: unknown, label: string): string {
   return value.trim()
 }
 
+
+function publicSiteUrl(): string {
+  const raw = requiredString(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL')
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new Error('NEXT_PUBLIC_SITE_URL must be an absolute URL.')
+  }
+  if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+    throw new Error('NEXT_PUBLIC_SITE_URL must use HTTPS in production.')
+  }
+  parsed.pathname = parsed.pathname.replace(/\/$/, '')
+  parsed.search = ''
+  parsed.hash = ''
+  return parsed.toString().replace(/\/$/, '')
+}
+
+function hasVoiceCapability(capabilities: unknown): boolean {
+  if (!capabilities || typeof capabilities !== 'object') return true
+  return (capabilities as Record<string, unknown>).voice !== false
+}
+
 function normalizeE164(value: unknown): string {
   const phone = requiredString(value, 'Default Twilio phone number')
   if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
@@ -83,19 +106,22 @@ export async function getOrganizationTwilioConfiguration(
         ? (selectedNumber.capabilities as Record<string, unknown>)
         : {}
 
-    if (!selectedNumber || capabilities.voice === false) {
+    if (!selectedNumber || !hasVoiceCapability(capabilities)) {
       throw new Error('The selected caller ID is not an active voice number in this workspace.')
     }
   } else {
     const { data: defaultNumber, error: numberError } = await admin
       .from('organization_phone_numbers')
-      .select('phone_number')
+      .select('phone_number,capabilities')
       .eq('organization_id', normalizedOrganizationId)
       .eq('provider', 'twilio')
       .eq('is_default', true)
       .maybeSingle()
 
     if (numberError) throw new Error(`Unable to load the default phone number: ${numberError.message}`)
+    if (defaultNumber && !hasVoiceCapability(defaultNumber.capabilities)) {
+      throw new Error('The default Twilio phone number is not voice-capable.')
+    }
     callerId = defaultNumber?.phone_number || (typeof integration.config?.phone_number === 'string' ? integration.config.phone_number : '')
   }
 
@@ -106,7 +132,7 @@ export async function getOrganizationTwilioConfiguration(
     apiKeySecret: requiredString(credentials.apiKeySecret, 'Twilio API Key Secret'),
     twimlAppSid: requiredString(credentials.twimlAppSid, 'Twilio TwiML App SID'),
     callerId: normalizeE164(callerId),
-    publicUrl: requiredString(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL').replace(/\/$/, ''),
+    publicUrl: publicSiteUrl(),
     integrationId: integration.id,
     organizationId: normalizedOrganizationId,
   }
@@ -172,18 +198,21 @@ export async function getOrganizationTelnyxConfiguration(
     const capabilities = selectedNumber?.capabilities && typeof selectedNumber.capabilities === 'object'
       ? selectedNumber.capabilities as Record<string, unknown>
       : {}
-    if (!selectedNumber || capabilities.voice === false) {
+    if (!selectedNumber || !hasVoiceCapability(capabilities)) {
       throw new Error('The selected caller ID is not an active Telnyx voice number in this workspace.')
     }
   } else {
     const { data: defaultNumber, error: numberError } = await admin
       .from('organization_phone_numbers')
-      .select('phone_number')
+      .select('phone_number,capabilities')
       .eq('organization_id', normalizedOrganizationId)
       .eq('provider', 'telnyx')
       .eq('is_default', true)
       .maybeSingle()
     if (numberError) throw new Error(`Unable to load the default Telnyx number: ${numberError.message}`)
+    if (defaultNumber && !hasVoiceCapability(defaultNumber.capabilities)) {
+      throw new Error('The default Telnyx phone number is not voice-capable.')
+    }
     callerId = defaultNumber?.phone_number || (typeof integration.config?.phone_number === 'string' ? integration.config.phone_number : '')
   }
 
@@ -192,7 +221,7 @@ export async function getOrganizationTelnyxConfiguration(
     telephonyCredentialId: requiredString(credentials.telephonyCredentialId, 'Telnyx Telephony Credential ID'),
     connectionId: requiredString(integration.config?.connection_id, 'Telnyx Credential Connection ID'),
     callerId: normalizeE164(callerId),
-    publicUrl: requiredString(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL').replace(/\/$/, ''),
+    publicUrl: publicSiteUrl(),
     integrationId: integration.id,
     organizationId: normalizedOrganizationId,
   }

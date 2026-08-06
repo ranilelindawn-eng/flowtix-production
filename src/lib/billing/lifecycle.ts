@@ -29,7 +29,7 @@ export type SubscriptionLifecycleEvent = {
 
 async function requireOwner() {
   const organization = await getCurrentOrganization()
-  if (!organization) throw new Error('Organization not found.')
+  if (!organization) throw new Error('Authentication is required.')
   if (organization.role !== 'owner') {
     throw new Error('Only the workspace owner can manage the subscription.')
   }
@@ -76,6 +76,7 @@ export async function getBillingHistory(limit = 50): Promise<{
   const organization = await getCurrentOrganization()
   if (!organization) return { payments: [], lifecycle: [] }
 
+  const safeLimit = Math.max(1, Math.min(100, Math.trunc(limit)))
   const admin = createAdminClient()
   const [paymentsResult, lifecycleResult] = await Promise.all([
     admin
@@ -83,13 +84,13 @@ export async function getBillingHistory(limit = 50): Promise<{
       .select('id,status,amount,currency,plan_code,provider_payment_id,provider_checkout_id,paid_at,refunded_at,failure_message,created_at')
       .eq('organization_id', organization.organization_id)
       .order('created_at', { ascending: false })
-      .limit(limit),
+      .limit(safeLimit),
     admin
       .from('subscription_lifecycle_events')
       .select('id,event_type,source,previous_status,new_status,created_at,metadata')
       .eq('organization_id', organization.organization_id)
       .order('created_at', { ascending: false })
-      .limit(limit),
+      .limit(safeLimit),
   ])
 
   if (paymentsResult.error) throw new Error(paymentsResult.error.message)

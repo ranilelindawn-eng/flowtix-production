@@ -10,33 +10,103 @@ export type ProviderConnection<T extends Record<string, unknown> = Record<string
   credentials: T
 }
 
+function requireOrganizationId(value: string): string {
+  const organizationId = value.trim()
+  if (!organizationId) throw new Error('Organization ID is required.')
+  return organizationId
+}
+
+function hasVoiceCapability(capabilities: unknown): boolean {
+  if (!capabilities || typeof capabilities !== 'object') return true
+  return (capabilities as Record<string, unknown>).voice !== false
+}
+
 export async function getOrganizationProviderConnection<T extends Record<string, unknown>>(
   organizationId: string,
   provider: ConfiguredTelephonyProviderName,
 ): Promise<ProviderConnection<T>> {
+  const normalizedOrganizationId = requireOrganizationId(organizationId)
   const admin = createTelephonyAdminClient()
-  const { data: integration, error } = await admin.from('organization_integrations')
-    .select('id,status,enabled,config').eq('organization_id', organizationId).eq('provider', provider).maybeSingle()
+  const { data: integration, error } = await admin
+    .from('organization_integrations')
+    .select('id,status,enabled,config')
+    .eq('organization_id', normalizedOrganizationId)
+    .eq('provider', provider)
+    .maybeSingle()
+
   if (error) throw new Error(`Unable to load the ${provider} integration: ${error.message}`)
-  if (!integration || !integration.enabled || integration.status !== 'connected') throw new Error(`Connect ${provider} for this workspace before using the cloud dialer.`)
-  const { data: secret, error: secretError } = await admin.from('organization_integration_secrets')
-    .select('encrypted_credentials').eq('organization_id', organizationId).eq('integration_id', integration.id).maybeSingle()
+  if (!integration || !integration.enabled || integration.status !== 'connected') {
+    throw new Error(`Connect and verify ${provider} for this workspace before using the cloud dialer.`)
+  }
+
+  const { data: secret, error: secretError } = await admin
+    .from('organization_integration_secrets')
+    .select('encrypted_credentials')
+    .eq('organization_id', normalizedOrganizationId)
+    .eq('integration_id', integration.id)
+    .maybeSingle()
+
   if (secretError) throw new Error(`Unable to load ${provider} credentials: ${secretError.message}`)
-  if (!secret?.encrypted_credentials) throw new Error(`The connected ${provider} credentials are unavailable.`)
-  return { provider, integrationId: integration.id, organizationId, config: (integration.config ?? {}) as Record<string, unknown>, credentials: decryptIntegrationSecret<T>(secret.encrypted_credentials) }
+  if (!secret?.encrypted_credentials) {
+    throw new Error(`The connected ${provider} credentials are unavailable.`)
+  }
+
+  return {
+    provider,
+    integrationId: integration.id,
+    organizationId: normalizedOrganizationId,
+    config: (integration.config ?? {}) as Record<string, unknown>,
+    credentials: decryptIntegrationSecret<T>(secret.encrypted_credentials),
+  }
 }
 
-export async function getOrganizationActiveTelephonyProvider(organizationId: string): Promise<ConfiguredTelephonyProviderName> {
+export async function getOrganizationActiveTelephonyProvider(
+  organizationId: string,
+): Promise<ConfiguredTelephonyProviderName> {
+  const normalizedOrganizationId = requireOrganizationId(organizationId)
   const admin = createTelephonyAdminClient()
-  const { data: defaultNumber, error } = await admin.from('organization_phone_numbers')
-    .select('provider').eq('organization_id', organizationId).eq('is_default', true).maybeSingle()
-  if (error) throw new Error(`Unable to load the active calling provider: ${error.message}`)
-  if (defaultNumber?.provider && isTelephonyProvider(defaultNumber.provider)) return defaultNumber.provider
 
-  const { data: integrations, error: integrationError } = await admin.from('organization_integrations')
-    .select('provider').eq('organization_id', organizationId).eq('enabled', true).eq('status', 'connected')
-  if (integrationError) throw new Error(`Unable to load calling providers: ${integrationError.message}`)
-  const provider = (integrations ?? []).map((row) => row.provider).find(isTelephonyProvider)
-  if (!provider) throw new Error('Connect a telephony provider and import an owned phone number before using the cloud dialer.')
-  return provider
+  const { data: defaultNumber, error: numberError } = await admin
+    .from('organization_phone_numbers')
+    .select('provider,capabilities')
+    .eq('organization_id', normalizedOrganizationId)
+    .eq('is_default', true)
+    .maybeSingle()
+
+  if (numberError) {
+    throw new Error(`Unable to load the active calling provider: ${numberError.message}`)
+  }
+
+  if (
+    defaultNumber?.provider &&
+    isTelephonyProvider(defaultNumber.provider) &&
+    hasVoiceCapability(defaultNumber.capabilities)
+  ) {
+    await getOrganizationProviderConnection(normalizedOrganizationId, defaultNumber.provider)
+    return defaultNumber.provider
+  }
+
+  const { data: numbers, error: fallbackNumberError } = await admin
+    .from('organization_phone_numbers')
+    .select('provider,capabilities,created_at')
+    .eq('organization_id', normalizedOrganizationId)
+    .order('created_at', { ascending: true })
+
+  if (fallbackNumberError) {
+    throw new Error(`Unable to load workspace phone numbers: ${fallbackNumberError.message}`)
+  }
+
+  for (const row of numbers ?? []) {
+    if (!isTelephonyProvider(row.provider) || !hasVoiceCapability(row.capabilities)) continue
+    try {
+      await getOrganizationProviderConnection(normalizedOrganizationId, row.provider)
+      return row.provider
+    } catch {
+      // Continue to the next owned voice number. A disconnected integration must not be selected.
+    }
+  }
+
+  throw new Error(
+    'Connect a telephony provider and import an owned voice-capable phone number before using the cloud dialer.',
+  )
 }

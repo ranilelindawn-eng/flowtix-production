@@ -1,18 +1,20 @@
 import Link from 'next/link'
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { createPipeline } from '../crm-actions'
 
 const field='min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
 
 export default async function PipelinesPage(){
- const membership=await requireOrganization(); const supabase=await createClient()
+ const membership=await requirePermission('opportunities.view'); const supabase=await createClient()
  const [{data:pipelines,error},{data:opportunities},{data:stages}]=await Promise.all([
   supabase.from('pipelines').select('id,name,description,pipeline_type,status,currency_code,stage_aging_enabled,stale_after_days,is_default,created_at').eq('organization_id',membership.organization_id).neq('status','archived').order('is_default',{ascending:false}).order('created_at',{ascending:false}),
   supabase.from('opportunities').select('id,pipeline_id,value,status').eq('organization_id',membership.organization_id),
   supabase.from('pipeline_stages').select('id,pipeline_id,is_active').eq('organization_id',membership.organization_id),
  ])
  if(error) throw new Error(`Failed to load pipelines: ${error.message}`)
+ if(opportunities === null) throw new Error('Failed to load pipeline opportunities.')
+ if(stages === null) throw new Error('Failed to load pipeline stages.')
  return <div className="space-y-6">
   <header><p className="text-sm uppercase tracking-[.24em] text-cyan-400">Revenue workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Pipelines</h1><p className="mt-2 text-sm text-slate-400">Configure revenue processes, stage governance, forecasting, and aging controls.</p></header>
   <form action={createPipeline} className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2 xl:grid-cols-6">

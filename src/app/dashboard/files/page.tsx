@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { listAttachments, type AttachmentCategory, type AttachmentEntityType } from '@/lib/attachments'
 import { archiveAttachment, deleteAttachmentPermanently, restoreAttachment, uploadAdvancedAttachment, uploadAttachmentVersion } from './actions'
@@ -11,16 +11,31 @@ const sizeLabel = (bytes: number) => bytes >= 1048576 ? `${(bytes / 1048576).toF
 
 export default async function FilesPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const params = await searchParams
-  const membership = await requireOrganization()
+  const membership = await requirePermission('contacts.view')
   const supabase = await createClient()
   const status = params.status === 'archived' ? 'archived' : 'active'
   const entityType = entityTypes.includes(params.entityType as AttachmentEntityType) ? params.entityType as AttachmentEntityType : undefined
   const category = categories.includes(params.category as AttachmentCategory) ? params.category as AttachmentCategory : undefined
   const [files, companies] = await Promise.all([
     listAttachments({ status, entityType, category, search: params.q }),
-    supabase.from('companies').select('id,name').eq('organization_id', membership.organization_id).is('merged_into_company_id', null).order('name'),
+    supabase
+      .from('companies')
+      .select('id,name')
+      .eq('organization_id', membership.organization_id)
+      .is('merged_into_company_id', null)
+      .order('name'),
   ])
-  const totalBytes = files.reduce((sum, file) => sum + Number(file.size_bytes), 0)
+
+  if (companies.error) {
+    throw new Error(
+      `Failed to load companies for attachment upload: ${companies.error.message}`,
+    )
+  }
+
+  const totalBytes = files.reduce(
+    (sum, file) => sum + Number(file.size_bytes),
+    0,
+  )
 
   return <div className="space-y-6">
     <header><p className="text-sm uppercase tracking-[.24em] text-cyan-400">CRM storage</p><h1 className="mt-2 text-3xl font-semibold text-white">Files & attachments</h1><p className="mt-2 text-sm text-slate-400">Private, tenant-isolated files with version metadata, checksums, categories, and short-lived download links.</p></header>

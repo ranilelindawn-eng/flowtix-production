@@ -32,6 +32,16 @@ type DeviceRow = {
   supports_inbound: boolean
   last_heartbeat_at: string | null
 }
+const MAX_ROUTING_DEPTH = 5
+const MAX_TOTAL_ROUTING_TARGETS = 50
+const MAX_SIMULTANEOUS_TARGETS = 10
+const DEFAULT_RING_TIMEOUT_SECONDS = 25
+
+function normalizeE164(value: string): string | null {
+  const normalized = value.trim()
+  return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : null
+}
+
 type RingGroupRow = {
   id: string
   name: string
@@ -215,7 +225,7 @@ async function loadRingGroupTargets(input: {
   tier: number
   visited: Set<string>
 }): Promise<{ group: RingGroupRow | null; targets: RoutingTarget[]; overflowChain: string[] }> {
-  if (input.visited.has(input.ringGroupId) || input.tier > 5) {
+  if (input.visited.has(input.ringGroupId) || input.tier > MAX_ROUTING_DEPTH) {
     return { group: null, targets: [], overflowChain: [] }
   }
   input.visited.add(input.ringGroupId)
@@ -257,7 +267,7 @@ async function loadRingGroupTargets(input: {
     providerCallId: input.providerCallId,
   })
   const primaryTargets = orderedMembers
-    .slice(0, group.max_routing_targets)
+    .slice(0, Math.min(group.max_routing_targets, MAX_TOTAL_ROUTING_TARGETS))
     .map((member) => targetFromMember(member, input.tier, group.id))
 
   let overflowTargets: RoutingTarget[] = []
@@ -298,11 +308,12 @@ async function loadRingGroupTargets(input: {
     )
   }
 
-  if (group.failover_number?.trim()) {
+  const failoverNumber = group.failover_number ? normalizeE164(group.failover_number) : null
+  if (failoverNumber) {
     overflowTargets.push({
       kind: 'number',
       userId: null,
-      phoneNumber: group.failover_number.trim(),
+      phoneNumber: failoverNumber,
       priority: Number.MAX_SAFE_INTEGER,
       weight: 1,
       tier: input.tier + 2,
@@ -312,30 +323,39 @@ async function loadRingGroupTargets(input: {
 
   return {
     group: group as RingGroupRow,
-    targets: [...primaryTargets, ...overflowTargets],
+    targets: [...primaryTargets, ...overflowTargets].slice(0, MAX_TOTAL_ROUTING_TARGETS),
     overflowChain,
   }
 }
 
 export async function buildInboundRoutingPlan(input: {
   organizationId: string
+  provider: string
   calledNumber: string
   providerCallId: string
 }): Promise<InboundRoutingPlan> {
+  const organizationId = input.organizationId.trim()
+  const provider = input.provider.trim().toLowerCase()
+  const calledNumber = normalizeE164(input.calledNumber)
+  if (!organizationId || !provider || !calledNumber || !input.providerCallId.trim()) {
+    throw new Error('A valid organization, provider, called number, and provider call ID are required.')
+  }
+
   const admin = createTelephonyAdminClient()
-  const { activeUsers, presenceByUser } = await activeOrganizationUsers(input.organizationId)
+  const { activeUsers, presenceByUser } = await activeOrganizationUsers(organizationId)
   const { data: phoneNumber, error: phoneError } = await admin
     .from('phone_numbers')
     .select('id, ring_group_id, queue_id, friendly_name')
-    .eq('organization_id', input.organizationId)
-    .eq('phone_number', input.calledNumber)
+    .eq('organization_id', organizationId)
+    .eq('provider', provider)
+    .eq('phone_number', calledNumber)
     .eq('is_active', true)
     .maybeSingle()
   if (phoneError) throw new Error(`Unable to resolve inbound phone number: ${phoneError.message}`)
 
   if (phoneNumber?.ring_group_id) {
     const loaded = await loadRingGroupTargets({
-      organizationId: input.organizationId,
+      organizationId: organizationId,
       ringGroupId: phoneNumber.ring_group_id,
       activeUsers,
       presenceByUser,
@@ -345,7 +365,7 @@ export async function buildInboundRoutingPlan(input: {
     })
     if (loaded.group) {
       return {
-        organizationId: input.organizationId,
+        organizationId: organizationId,
         phoneNumberId: phoneNumber.id,
         ringGroupId: loaded.group.id,
         queueId: loaded.group.failover_queue_id,
@@ -369,14 +389,14 @@ export async function buildInboundRoutingPlan(input: {
       admin
         .from('call_queues')
         .select('id, name, max_wait_seconds, max_size, priority_mode, overflow_queue_id, overflow_number, announce_position, announce_estimated_wait')
-        .eq('organization_id', input.organizationId)
+        .eq('organization_id', organizationId)
         .eq('id', phoneNumber.queue_id)
         .eq('is_active', true)
         .maybeSingle(),
       admin
         .from('queue_members')
         .select('user_id, priority')
-        .eq('organization_id', input.organizationId)
+        .eq('organization_id', organizationId)
         .eq('queue_id', phoneNumber.queue_id)
         .eq('is_active', true)
         .order('priority'),
@@ -389,7 +409,7 @@ export async function buildInboundRoutingPlan(input: {
         .filter((member) => activeUsers.has(member.user_id))
         .map((member) => member.user_id)
       return {
-        organizationId: input.organizationId,
+        organizationId: organizationId,
         phoneNumberId: phoneNumber.id,
         ringGroupId: null,
         queueId: queue.id,
@@ -413,7 +433,7 @@ export async function buildInboundRoutingPlan(input: {
   }
 
   const fallbackTargets = Array.from(activeUsers)
-    .slice(0, 10)
+    .slice(0, MAX_SIMULTANEOUS_TARGETS)
     .map((userId, priority) => ({
       kind: 'user' as const,
       userId,
@@ -424,13 +444,13 @@ export async function buildInboundRoutingPlan(input: {
       sourceRingGroupId: null,
     }))
   return {
-    organizationId: input.organizationId,
+    organizationId: organizationId,
     phoneNumberId: phoneNumber?.id ?? null,
     ringGroupId: null,
     queueId: null,
     routeType: 'organization_fallback',
     strategy: 'simultaneous',
-    timeoutSeconds: 25,
+    timeoutSeconds: DEFAULT_RING_TIMEOUT_SECONDS,
     targets: fallbackTargets,
     metadata: { phoneNumberName: phoneNumber?.friendly_name ?? null },
   }
@@ -494,6 +514,7 @@ export async function createInboundRoute(input: {
 
   const plan = await buildInboundRoutingPlan({
     organizationId: input.organizationId,
+    provider: input.provider,
     calledNumber: input.toNumber,
     providerCallId: input.providerCallId,
   })

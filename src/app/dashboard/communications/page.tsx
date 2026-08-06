@@ -1,17 +1,25 @@
-import { requireOrganization } from '@/lib/auth'
+import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { sendCommunication } from '../crm-actions'
 
 export default async function CommunicationsPage() {
-  const membership = await requireOrganization()
+  const membership = await requirePermission('campaigns.view')
   const supabase = await createClient()
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('communication_messages')
     .select('*')
     .eq('organization_id', membership.organization_id)
     .order('created_at', { ascending: false })
     .limit(100)
+
+  if (error) {
+    throw new Error(
+      `Failed to load communication history: ${error.message}`,
+    )
+  }
+
+  const messages = data ?? []
 
   const fieldClass =
     'min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
@@ -85,7 +93,7 @@ export default async function CommunicationsPage() {
             </thead>
 
             <tbody>
-              {data?.map((message) => (
+              {messages.map((message) => (
                 <tr
                   key={message.id}
                   className="border-t border-white/10"
@@ -120,6 +128,17 @@ export default async function CommunicationsPage() {
                   </td>
                 </tr>
               ))}
+              {messages.length === 0 ? (
+                <tr className="border-t border-white/10">
+                  <td
+                    colSpan={5}
+                    className="py-10 text-center text-sm text-slate-500"
+                  >
+                    No email or SMS messages have been sent from this
+                    workspace.
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>

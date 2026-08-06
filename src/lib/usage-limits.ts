@@ -149,6 +149,12 @@ export const getUsageSnapshot = cache(async (): Promise<UsageSnapshot | null> =>
   return membership ? loadUsageSnapshot(membership.organization_id) : null
 })
 
+function assertSubscriptionAllowsUsage(snapshot: UsageSnapshot): void {
+  if (!['active', 'trialing', 'past_due'].includes(snapshot.subscriptionStatus)) {
+    throw new UsageLimitError('calls', 0, 0, 'The workspace subscription is not active. Restore billing access to continue.')
+  }
+}
+
 function bucketFor(snapshot: UsageSnapshot, metric: CountUsageKey): UsageBucket {
   switch (metric) {
     case 'members': return snapshot.members
@@ -171,6 +177,7 @@ export async function assertUsageCapacity(
 
   const resolvedOrganizationId = await resolveOrganizationId(organizationId)
   const snapshot = await loadUsageSnapshot(resolvedOrganizationId)
+  assertSubscriptionAllowsUsage(snapshot)
   const bucket = bucketFor(snapshot, metric)
 
   if (bucket.limit !== null && bucket.used + increment > bucket.limit) {
@@ -191,6 +198,8 @@ export async function consumeMeteredUsage(
   }
 
   const resolvedOrganizationId = await resolveOrganizationId(organizationId)
+  const snapshot = await loadUsageSnapshot(resolvedOrganizationId)
+  assertSubscriptionAllowsUsage(snapshot)
   const supabase = await createClient()
 
   if (metric === 'ai_requests') {

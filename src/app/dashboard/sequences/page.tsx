@@ -1,4 +1,17 @@
-import { requireFeature } from '@/lib/auth'
+import Link from 'next/link'
+import {
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  LockKeyhole,
+  Workflow,
+} from 'lucide-react'
+
+import { requirePermission } from '@/lib/auth'
+import {
+  getCurrentEntitlements,
+  hasEntitlement,
+} from '@/lib/entitlements'
 import { createClient } from '@/lib/supabase/server'
 import { getTeamMembers } from '@/lib/team'
 
@@ -9,11 +22,109 @@ import {
   updateEnrollmentStatus,
 } from './actions'
 
-export default async function SequencesPage() {
-  const membership = await requireFeature(
-    'automation.sequences',
-    'campaigns.view',
+
+function SequencesLocked({
+  planName,
+  subscriptionStatus,
+}: {
+  planName: string
+  subscriptionStatus: string
+}) {
+  const statusLabel = subscriptionStatus
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <p className="text-sm uppercase tracking-[0.24em] text-cyan-400">
+          Sales automation
+        </p>
+        <h1 className="mt-2 text-3xl font-semibold text-white">
+          Sequences
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          Build coordinated follow-up workflows after automation sequences
+          are enabled for this organization.
+        </p>
+      </header>
+
+      <section className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/60">
+        <div className="border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-cyan-400/5 to-transparent p-6">
+          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-blue-500/10">
+                <LockKeyhole className="h-6 w-6 text-blue-300" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-white">
+                  Automation sequences are not included in the current plan
+                </h2>
+                <p className="mt-1 text-sm text-slate-400">
+                  Current plan: {planName} · Subscription: {statusLabel}
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/dashboard/billing?feature=automation.sequences"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-400"
+            >
+              <CreditCard className="h-4 w-4" />
+              View eligible plans
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-6 md:grid-cols-3">
+          {[
+            'Multi-step email, SMS, task, and call workflows',
+            'Retry-safe enrollment processing',
+            'Owner, schedule, and execution tracking',
+          ].map((feature) => (
+            <div
+              key={feature}
+              className="rounded-2xl border border-white/10 bg-white/[0.025] p-5"
+            >
+              <div className="flex items-start gap-2 text-sm font-semibold text-white">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                {feature}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-white/10 bg-white/[0.02] px-6 py-4">
+          <div className="flex items-center gap-3 text-sm text-slate-400">
+            <Workflow className="h-5 w-5 text-blue-300" />
+            Sequence actions and background execution remain entitlement
+            protected until the feature is active.
+          </div>
+        </div>
+      </section>
+    </div>
   )
+}
+
+export default async function SequencesPage() {
+  const membership = await requirePermission('campaigns.view')
+  const entitlements = await getCurrentEntitlements()
+
+  if (
+    !entitlements ||
+    !hasEntitlement(entitlements, 'automation.sequences')
+  ) {
+    return (
+      <SequencesLocked
+        planName={entitlements?.planName ?? 'No active plan'}
+        subscriptionStatus={
+          entitlements?.subscriptionStatus ?? 'inactive'
+        }
+      />
+    )
+  }
+
   const supabase = await createClient()
 
   const [sequenceResult, contactResult, enrollmentResult, team] =
@@ -39,6 +150,24 @@ export default async function SequencesPage() {
         .limit(200),
       getTeamMembers(),
     ])
+
+  if (sequenceResult.error) {
+    throw new Error(
+      `Failed to load sequences: ${sequenceResult.error.message}`,
+    )
+  }
+
+  if (contactResult.error) {
+    throw new Error(
+      `Failed to load sequence contacts: ${contactResult.error.message}`,
+    )
+  }
+
+  if (enrollmentResult.error) {
+    throw new Error(
+      `Failed to load sequence enrollments: ${enrollmentResult.error.message}`,
+    )
+  }
 
   const sequences = sequenceResult.data ?? []
   const contacts = contactResult.data ?? []

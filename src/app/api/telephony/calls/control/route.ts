@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { createClient } from '@/lib/supabase/server'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
+import { hasPermission } from '@/lib/permissions'
 import { getCurrentOrganization } from '@/lib/team'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import {
@@ -36,7 +38,14 @@ function conferenceTwiml(name: string): string {
 export async function POST(request: Request) {
   const body = await request.json() as RequestBody
   const organization = await getCurrentOrganization()
-  if (!organization || !body.callId || !body.action || !ACTIONS.includes(body.action)) {
+  if (!organization) return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 })
+  if (!hasPermission(organization.role, 'calls.update')) return NextResponse.json({ error: 'You do not have permission to control calls.' }, { status: 403 })
+  try {
+    await assertEntitlement('dialer.cloud', organization.organization_id)
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Calling is unavailable.' }, { status: isEntitlementError(error) ? 403 : 500 })
+  }
+  if (!body.callId || !body.action || !ACTIONS.includes(body.action)) {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
   }
 

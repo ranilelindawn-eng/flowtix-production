@@ -244,7 +244,9 @@ export async function deleteCompany(formData: FormData) {
 }
 
 export async function createPipeline(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context(
+    'opportunities.create',
+  )
   const name = text(formData, 'name')
   if (!name) throw new Error('Pipeline name is required.')
   const { data: pipeline, error } = await supabase.from('pipelines').insert({
@@ -279,7 +281,9 @@ export async function createPipeline(formData: FormData) {
 }
 
 export async function updatePipeline(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context(
+    'opportunities.update',
+  )
   const pipelineId = text(formData, 'id')
   const name = text(formData, 'name')
 
@@ -370,7 +374,9 @@ export async function archivePipelineStage(formData: FormData) {
 }
 
 export async function deletePipeline(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context(
+    'opportunities.delete',
+  )
   const pipelineId = text(formData, 'id')
 
   if (!pipelineId) throw new Error('Pipeline ID is required.')
@@ -645,7 +651,7 @@ export async function deleteOpportunity(formData: FormData) {
 }
 
 export async function createTag(formData: FormData) {
-  const { membership, supabase } = await context()
+  const { membership, supabase } = await context('contacts.create')
   const name = text(formData, 'name')
   if (!name) throw new Error('Tag name is required.')
   const { error } = await supabase.from('tags').insert({ organization_id: membership.organization_id, name, color: text(formData, 'color') || '#2563eb' })
@@ -654,7 +660,7 @@ export async function createTag(formData: FormData) {
 }
 
 export async function createTemplate(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('campaigns.create')
   const { error } = await supabase.from('message_templates').insert({
     organization_id: membership.organization_id,
     name: text(formData, 'name'),
@@ -668,7 +674,7 @@ export async function createTemplate(formData: FormData) {
 }
 
 export async function createSnippet(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('campaigns.create')
   const { error } = await supabase.from('snippets').insert({
     organization_id: membership.organization_id,
     name: text(formData, 'name'),
@@ -682,7 +688,9 @@ export async function createSnippet(formData: FormData) {
 
 export async function createSequence(formData: FormData) {
   await assertEntitlement('automation.sequences')
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context(
+    'campaigns.create',
+  )
   const { data, error } = await supabase.from('sequences').insert({
     organization_id: membership.organization_id,
     name: text(formData, 'name'),
@@ -705,7 +713,7 @@ export async function createSequence(formData: FormData) {
 }
 
 export async function sendCommunication(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const { membership, supabase, user } = await context('campaigns.create')
   const channel = text(formData, 'channel') as 'email' | 'sms'
   const recipient = text(formData, 'recipient')
   const subject = text(formData, 'subject')
@@ -781,8 +789,14 @@ export async function sendCommunication(formData: FormData) {
 }
 
 export async function createComment(formData: FormData) {
-  const { membership, supabase, user } = await context()
   const entityType = text(formData, 'entity_type')
+  const permission: Permission =
+    entityType === 'company'
+      ? 'companies.update'
+      : entityType === 'opportunity' || entityType === 'pipeline'
+        ? 'opportunities.update'
+        : 'contacts.update'
+  const { membership, supabase, user } = await context(permission)
   const entityId = text(formData, 'entity_id')
   const body = text(formData, 'body')
   if (!entityType || !entityId || !body) throw new Error('Comment details are required.')
@@ -807,11 +821,19 @@ export async function createComment(formData: FormData) {
 }
 
 export async function uploadAttachment(formData: FormData) {
-  const { membership, supabase, user } = await context()
+  const entityType = (
+    text(formData, 'entity_type') || 'company'
+  ) as AttachmentEntityType
+  const permission: Permission =
+    entityType === 'company'
+      ? 'companies.update'
+      : entityType === 'opportunity'
+        ? 'opportunities.update'
+        : 'contacts.update'
+  const { membership, supabase, user } = await context(permission)
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a file to upload.')
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
-  const entityType = (text(formData, 'entity_type') || 'company') as AttachmentEntityType
   const entityId = text(formData, 'entity_id')
   const category = (text(formData, 'category') || 'general') as AttachmentCategory
   if (!entityId) throw new Error('Attachment entity is required.')

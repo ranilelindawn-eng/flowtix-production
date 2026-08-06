@@ -365,16 +365,6 @@ export async function exchangeProviderCode(
     )
   }
 
-  console.log('ZOOM TOKEN RECEIVED', {
-    scope:
-      typeof body.scope === 'string'
-        ? body.scope
-        : null,
-    expiresIn:
-      typeof body.expires_in === 'number'
-        ? body.expires_in
-        : null,
-  })
 
   return body
 }
@@ -491,24 +481,6 @@ export async function fetchProviderIdentity(
   const body =
     await readJsonResponse(response)
 
-  console.log('ZOOM IDENTITY RESPONSE', {
-    status: response.status,
-    ok: response.ok,
-    zoomCode:
-      typeof body.code === 'number'
-        ? body.code
-        : null,
-    zoomMessage:
-      typeof body.message === 'string'
-        ? body.message
-        : null,
-    hasUserId:
-      typeof body.id === 'string',
-    tokenScope:
-      typeof tokenData.scope === 'string'
-        ? tokenData.scope
-        : null,
-  })
 
   if (
     !response.ok ||

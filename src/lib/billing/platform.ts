@@ -34,12 +34,36 @@ export type UsageBillingStatement = {
   created_at: string
 }
 
+export type BillingReconciliation = {
+  organizationId: string
+  subscriptionExists: boolean
+  subscriptionStatus: string | null
+  billingProvider: string | null
+  missingInvoices: number
+  invoiceAmountMismatches: number
+  orphanInvoices: number
+  orphanUsageStatements: number
+  duplicateCheckoutReferences: number
+  nonPayMongoPayments: number
+  nonPhpRecords: number
+  expiredPendingPayments: number
+  healthy: boolean
+  checkedAt: string
+}
+
 async function requireOwnerOrganization() {
   const organization = await getCurrentOrganization()
   if (!organization) throw new Error('Organization not found.')
   if (organization.role !== 'owner') {
     throw new Error('Only the workspace owner can manage billing.')
   }
+  return organization
+}
+
+async function requireBillingOrganization() {
+  await requirePermission('billing.view')
+  const organization = await getCurrentOrganization()
+  if (!organization) throw new Error('Organization not found.')
   return organization
 }
 
@@ -56,31 +80,60 @@ export async function schedulePlanChange(planCode: string, effective: 'immediate
 }
 
 export async function getInvoices(limit = 100): Promise<BillingInvoice[]> {
-  await requirePermission('billing.view')
-  const organization = await getCurrentOrganization()
-  if (!organization) return []
+  const organization = await requireBillingOrganization()
   const { data, error } = await createAdminClient()
     .from('billing_invoices')
     .select('id,invoice_number,status,currency,subtotal,tax,total,amount_paid,amount_due,period_start,period_end,due_at,paid_at,line_items,created_at')
     .eq('organization_id', organization.organization_id)
     .order('created_at', { ascending: false })
-    .limit(limit)
+    .limit(Math.min(Math.max(limit, 1), 250))
   if (error) throw new Error(error.message)
   return (data ?? []) as unknown as BillingInvoice[]
 }
 
+export async function getInvoiceById(invoiceId: string): Promise<BillingInvoice | null> {
+  const organization = await requireBillingOrganization()
+  const { data, error } = await createAdminClient()
+    .from('billing_invoices')
+    .select('id,invoice_number,status,currency,subtotal,tax,total,amount_paid,amount_due,period_start,period_end,due_at,paid_at,line_items,created_at')
+    .eq('organization_id', organization.organization_id)
+    .eq('id', invoiceId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as BillingInvoice | null
+}
+
 export async function getUsageBillingStatements(limit = 24): Promise<UsageBillingStatement[]> {
-  await requirePermission('billing.view')
-  const organization = await getCurrentOrganization()
-  if (!organization) return []
+  const organization = await requireBillingOrganization()
   const { data, error } = await createAdminClient()
     .from('usage_billing_statements')
     .select('id,period_start,period_end,status,currency,subtotal,line_items,invoice_id,created_at')
     .eq('organization_id', organization.organization_id)
     .order('period_start', { ascending: false })
-    .limit(limit)
+    .limit(Math.min(Math.max(limit, 1), 120))
   if (error) throw new Error(error.message)
   return (data ?? []) as unknown as UsageBillingStatement[]
+}
+
+export async function getUsageBillingStatementById(statementId: string): Promise<UsageBillingStatement | null> {
+  const organization = await requireBillingOrganization()
+  const { data, error } = await createAdminClient()
+    .from('usage_billing_statements')
+    .select('id,period_start,period_end,status,currency,subtotal,line_items,invoice_id,created_at')
+    .eq('organization_id', organization.organization_id)
+    .eq('id', statementId)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data as UsageBillingStatement | null
+}
+
+export async function getBillingReconciliation(): Promise<BillingReconciliation> {
+  const organization = await requireBillingOrganization()
+  const { data, error } = await createAdminClient().rpc('get_paymongo_billing_reconciliation', {
+    p_organization_id: organization.organization_id,
+  })
+  if (error) throw new Error(error.message)
+  return data as unknown as BillingReconciliation
 }
 
 export async function calculateCurrentUsageStatement() {

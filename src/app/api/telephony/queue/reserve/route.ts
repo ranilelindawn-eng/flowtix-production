@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
+import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 import { reserveNextQueueCall } from '@/lib/telephony/queues/service'
@@ -13,6 +15,11 @@ export async function POST(request: Request) {
     if (typeof userId !== 'string' || !organization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    if (!hasPermission(organization.role, 'calls.update')) {
+      return NextResponse.json({ error: 'You do not have permission to reserve queue calls.' }, { status: 403 })
+    }
+    await assertEntitlement('dialer.cloud', organization.organization_id)
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
     const queueId = typeof body.queueId === 'string' ? body.queueId.trim() : ''
@@ -29,7 +36,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to reserve queue call.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }
