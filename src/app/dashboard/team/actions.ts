@@ -392,7 +392,7 @@ export async function updateMemberRole(
     }
   }
 
-  const { error } = await supabase
+  const { data: updatedMember, error } = await supabase
     .from('organization_members')
     .update({
       role: newRole,
@@ -403,10 +403,24 @@ export async function updateMemberRole(
       'organization_id',
       organization.organization_id,
     )
+    .select('id, role')
+    .maybeSingle()
 
   if (error) {
     throw new Error(
       `Failed to update member role: ${error.message}`,
+    )
+  }
+
+  if (!updatedMember) {
+    throw new Error(
+      'The role update was blocked by database access policy. Apply the latest Flowtix team role management migration and try again.',
+    )
+  }
+
+  if (updatedMember.role !== newRole) {
+    throw new Error(
+      'The team member role was not saved correctly.',
     )
   }
 
