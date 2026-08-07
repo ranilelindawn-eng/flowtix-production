@@ -40,6 +40,102 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
+  if (
+    user &&
+    request.nextUrl.pathname.startsWith('/dashboard') &&
+    !request.nextUrl.pathname.startsWith('/dashboard/billing')
+  ) {
+    const { data: membershipData, error: membershipError } = await supabase.rpc(
+      'get_current_organization_membership',
+    )
+
+    if (!membershipError) {
+      const membership = Array.isArray(membershipData)
+        ? membershipData[0] ?? null
+        : membershipData
+      const organizationId =
+        membership &&
+        typeof membership === 'object' &&
+        'organization_id' in membership &&
+        typeof membership.organization_id === 'string'
+          ? membership.organization_id
+          : null
+
+      if (organizationId) {
+        const { data: entitlementData, error: entitlementError } = await supabase.rpc(
+          'organization_entitlements',
+          { target_org: organizationId },
+        )
+
+        if (!entitlementError) {
+          const entitlementRow = Array.isArray(entitlementData)
+            ? entitlementData[0] ?? null
+            : entitlementData
+          const subscriptionStatus =
+            entitlementRow &&
+            typeof entitlementRow === 'object' &&
+            'subscription_status' in entitlementRow &&
+            typeof entitlementRow.subscription_status === 'string'
+              ? entitlementRow.subscription_status
+              : 'inactive'
+          const entitlements =
+            entitlementRow &&
+            typeof entitlementRow === 'object' &&
+            'entitlements' in entitlementRow &&
+            Array.isArray(entitlementRow.entitlements)
+              ? entitlementRow.entitlements.filter(
+                  (value: unknown): value is string =>
+                    typeof value === 'string',
+                )
+              : []
+
+          const subscriptionAllowsAccess =
+            subscriptionStatus === 'active' ||
+            subscriptionStatus === 'trialing' ||
+            (subscriptionStatus === 'past_due' && entitlements.length > 0)
+
+          if (!subscriptionAllowsAccess) {
+            const billingUrl = request.nextUrl.clone()
+            billingUrl.pathname = '/dashboard/billing'
+            billingUrl.searchParams.set('access', 'subscription_required')
+            return NextResponse.redirect(billingUrl)
+          }
+
+          const featureByPath: Array<[string, string]> = [
+            ['/dashboard/sequences', 'automation.sequences'],
+            ['/dashboard/dialer', 'dialer.cloud'],
+            ['/dashboard/live-calls', 'dialer.cloud'],
+            ['/dashboard/telephony-monitoring', 'dialer.cloud'],
+            ['/dashboard/ring-groups', 'dialer.cloud'],
+            ['/dashboard/queues', 'dialer.cloud'],
+            ['/dashboard/recordings', 'dialer.cloud'],
+            ['/dashboard/transcripts', 'ai.transcription'],
+            ['/dashboard/ai', 'ai.chat'],
+            ['/dashboard/ai-analytics', 'ai.call_analysis'],
+            ['/dashboard/insights', 'ai.call_analysis'],
+            ['/dashboard/exports', 'reports.export'],
+            ['/dashboard/settings/api-keys', 'api.access'],
+            ['/dashboard/roles', 'security.advanced'],
+            ['/dashboard/security', 'security.advanced'],
+          ]
+
+          const requiredFeature = featureByPath.find(
+            ([path]) =>
+              request.nextUrl.pathname === path ||
+              request.nextUrl.pathname.startsWith(`${path}/`),
+          )?.[1]
+
+          if (requiredFeature && !entitlements.includes(requiredFeature)) {
+            const billingUrl = request.nextUrl.clone()
+            billingUrl.pathname = '/dashboard/billing'
+            billingUrl.searchParams.set('feature', requiredFeature)
+            return NextResponse.redirect(billingUrl)
+          }
+        }
+      }
+    }
+  }
+
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const bucket = `api:${ipAddress ?? 'unknown'}:${request.nextUrl.pathname}`
     const { data: allowed } = await supabase.rpc('consume_rate_limit', { p_bucket_key: bucket, p_limit: 300, p_window_seconds: 60 })

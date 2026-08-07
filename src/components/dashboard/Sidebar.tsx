@@ -35,6 +35,7 @@ import {
   Zap,
 } from 'lucide-react'
 
+import type { FeatureEntitlement } from '@/lib/entitlements'
 import type { Permission } from '@/lib/permissions'
 import { hasPermission } from '@/lib/permissions'
 import type { TeamRole } from '@/lib/team'
@@ -46,6 +47,7 @@ type NavItem = {
   icon: typeof Home
   exact?: boolean
   permission?: Permission
+  feature?: FeatureEntitlement
 }
 
 const navItems: NavItem[] = [
@@ -86,6 +88,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'sequences',
+    feature: 'automation.sequences',
     label: 'Sequences',
     href: '/dashboard/sequences',
     permission: 'campaigns.view',
@@ -156,6 +159,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'dialer',
+    feature: 'dialer.cloud',
     label: 'Dialer',
     href: '/dashboard/dialer',
     permission: 'calls.create',
@@ -163,6 +167,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'live-calls',
+    feature: 'dialer.cloud',
     label: 'Live Calls',
     href: '/dashboard/live-calls',
     permission: 'calls.view',
@@ -170,6 +175,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'telephony-monitoring',
+    feature: 'dialer.cloud',
     label: 'Telephony Monitoring',
     href: '/dashboard/telephony-monitoring',
     permission: 'calls.view_all',
@@ -177,6 +183,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'ring-groups',
+    feature: 'dialer.cloud',
     label: 'Ring Groups',
     href: '/dashboard/ring-groups',
     permission: 'team.view',
@@ -184,6 +191,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'queues',
+    feature: 'dialer.cloud',
     label: 'Queues',
     href: '/dashboard/queues',
     permission: 'team.view',
@@ -191,6 +199,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'recordings',
+    feature: 'dialer.cloud',
     label: 'Recordings',
     href: '/dashboard/recordings',
     permission: 'recordings.view',
@@ -198,6 +207,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'transcripts',
+    feature: 'ai.transcription',
     label: 'Transcripts',
     href: '/dashboard/transcripts',
     permission: 'transcripts.view',
@@ -212,6 +222,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'exports',
+    feature: 'reports.export',
     label: 'Exports',
     href: '/dashboard/exports',
     permission: 'reports.export',
@@ -261,6 +272,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'ai-analytics',
+    feature: 'ai.call_analysis',
     label: 'AI Analytics',
     href: '/dashboard/ai-analytics',
     permission: 'reports.view',
@@ -268,6 +280,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'ai-workspace',
+    feature: 'ai.chat',
     label: 'AI Workspace',
     href: '/dashboard/ai',
     permission: 'summaries.view',
@@ -275,6 +288,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'insights',
+    feature: 'ai.call_analysis',
     label: 'AI Insights',
     href: '/dashboard/insights',
     permission: 'insights.view',
@@ -303,6 +317,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'roles',
+    feature: 'security.advanced',
     label: 'Roles & Permissions',
     href: '/dashboard/roles',
     permission: 'team.update_roles',
@@ -317,6 +332,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'security-center',
+    feature: 'security.advanced',
     label: 'Security Center',
     href: '/dashboard/security',
     permission: 'settings.manage',
@@ -335,6 +351,7 @@ type SidebarProps = {
   role: TeamRole
   organizationName: string
   organizationLogoUrl: string | null
+  entitlements: readonly FeatureEntitlement[]
 }
 
 function getOrganizationInitial(name: string): string {
@@ -347,13 +364,14 @@ export default function Sidebar({
   role,
   organizationName,
   organizationLogoUrl,
+  entitlements,
 }: SidebarProps) {
   const pathname = usePathname() ?? '/dashboard'
 
   const visibleNavItems = navItems.filter(
     (item) =>
-      !item.permission ||
-      hasPermission(role, item.permission),
+      (!item.permission || hasPermission(role, item.permission)) &&
+      (!item.feature || entitlements.includes(item.feature)),
   )
 
   function isItemActive(item: NavItem): boolean {

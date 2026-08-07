@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/dashboard/Sidebar'
 import TopNav from '@/components/dashboard/TopNav'
 import SessionTracker from '@/components/security/SessionTracker'
+import { getCurrentEntitlements } from '@/lib/entitlements'
 import { getCurrentPlatformMembership } from '@/lib/platform/auth'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
@@ -45,7 +46,7 @@ export default async function DashboardLayout({
       ? claims.email
       : ''
 
-  const [profileResult, currentOrganization] =
+  const [profileResult, currentOrganization, entitlementSnapshot] =
     await Promise.all([
       supabase
         .from('profiles')
@@ -53,6 +54,7 @@ export default async function DashboardLayout({
         .eq('id', userId)
         .maybeSingle(),
       getCurrentOrganization(),
+      getCurrentEntitlements(),
     ])
 
   const {
@@ -122,6 +124,7 @@ export default async function DashboardLayout({
           organizationLogoUrl={
             organizationLogoUrl
           }
+          entitlements={entitlementSnapshot?.entitlements ?? []}
         />
       </div>
 
