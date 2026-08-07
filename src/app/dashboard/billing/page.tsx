@@ -127,12 +127,29 @@ export default async function BillingPage({
     typeof query.feature === 'string'
       ? query.feature
       : null
+  const trialState =
+    typeof query.trial === 'string'
+      ? query.trial
+      : null
 
   const paymongoPlanCode =
     getPayMongoPlanCode(subscription)
 
-  const pendingPlan =
+  const pendingCheckout =
     subscription?.status === 'pending' &&
+    subscription.pending_plan_id !== null &&
+    subscription.last_payment_status === 'pending' &&
+    subscription.pending_checkout_expires_at !== null
+
+  const trialActive =
+    subscription?.status === 'trialing'
+
+  const trialExpired =
+    subscription?.status === 'pending' &&
+    subscription?.last_payment_status === 'trial_expired'
+
+  const pendingPlan =
+    pendingCheckout &&
     paymongoPlanCode
       ? plans.find(
           (plan) =>
@@ -158,13 +175,17 @@ export default async function BillingPage({
     activePlan?.name ??
     'Starter'
 
-  const displayedStatus = pendingPlan
-    ? 'Pending payment'
-    : (
-        usage?.subscriptionStatus ??
-        subscription?.status ??
-        'active'
-      )
+  const displayedStatus = trialActive
+    ? '7-day free trial'
+    : trialExpired
+      ? 'Trial ended — payment required'
+      : pendingPlan
+        ? 'Pending payment'
+        : (
+            usage?.subscriptionStatus ??
+            subscription?.status ??
+            'active'
+          )
 
   // The cancellation button must only render for active paid subscriptions
   // that have a valid future period end.
@@ -191,6 +212,33 @@ export default async function BillingPage({
           limits through PayMongo.
         </p>
       </div>
+
+      {trialState === 'started' && trialActive ? (
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+          Your 7-day free trial is active. No payment was taken today.
+          {subscription?.trial_ends_at
+            ? ` Your trial ends ${new Date(subscription.trial_ends_at).toLocaleString('en-PH', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              })}.`
+            : ''}
+        </div>
+      ) : null}
+
+      {trialActive ? (
+        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-100">
+          You are using the {activePlan?.name ?? displayedPlanName} plan during
+          your free trial. Complete PayMongo checkout before the trial ends if
+          you want uninterrupted access afterward.
+        </div>
+      ) : null}
+
+      {trialExpired ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+          Your 7-day free trial has ended. Choose a plan below and complete
+          PayMongo checkout to restore paid workspace access.
+        </div>
+      ) : null}
 
       {requestedFeature ? (
         <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
@@ -324,6 +372,13 @@ export default async function BillingPage({
             browser.
           </p>
 
+          {trialActive ? (
+            <p className="mt-2 text-sm text-cyan-300">
+              These limits belong to your selected trial plan. Payment is not
+              required until you choose to continue after the trial.
+            </p>
+          ) : null}
+
           {pendingPlan ? (
             <p className="mt-2 text-sm text-amber-300">
               These usage limits belong to your
@@ -408,6 +463,7 @@ export default async function BillingPage({
 
             const isActivePlan =
               !pendingPlan &&
+              !trialExpired &&
               (activePlan?.id === plan.id ||
                 usage?.planCode === plan.code)
 

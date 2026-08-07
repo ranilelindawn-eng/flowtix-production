@@ -53,6 +53,9 @@ export type OrganizationSubscription = {
   grace_period_ends_at: string | null
   payment_failure_count: number
   last_payment_status: string | null
+  trial_started_at: string | null
+  trial_ends_at: string | null
+  trial_converted_at: string | null
   plan: SubscriptionPlan | null
 }
 

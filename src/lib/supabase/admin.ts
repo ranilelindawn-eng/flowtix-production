@@ -72,6 +72,9 @@ type OrganizationSubscriptionRow = {
   last_payment_status: string | null
   checkout_creation_token: string | null
   checkout_creation_started_at: string | null
+  trial_started_at: string | null
+  trial_ends_at: string | null
+  trial_converted_at: string | null
 }
 
 type SubscriptionPlanRow = {
@@ -245,6 +248,9 @@ type Database = {
           last_payment_status?: string | null
           checkout_creation_token?: string | null
           checkout_creation_started_at?: string | null
+          trial_started_at?: string | null
+          trial_ends_at?: string | null
+          trial_converted_at?: string | null
         }
         Update: Partial<OrganizationSubscriptionRow>
         Relationships: []
@@ -362,6 +368,24 @@ type Database = {
           failure_body?: Record<string, unknown> | null
         }
         Returns: undefined
+      }
+      start_flowtix_trial: {
+        Args: {
+          p_organization_id: string
+          p_plan_code: string
+          p_actor_user_id: string
+        }
+        Returns: {
+          subscription_id?: string
+          plan_id?: string
+          plan_code?: string
+          trial_started_at?: string
+          trial_ends_at?: string
+        }
+      }
+      process_expired_flowtix_trials: {
+        Args: Record<string, never>
+        Returns: number
       }
       register_pending_paymongo_checkout: {
         Args: {

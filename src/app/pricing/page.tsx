@@ -9,7 +9,7 @@ import {
 export const metadata: Metadata = {
   title: 'Pricing',
   description:
-    'Choose a Flowtix plan and start a 7-day free trial with secure PayMongo billing.',
+    'Choose a Flowtix plan and start a real 7-day free trial. No payment is taken until you choose to continue after the trial.',
 }
 
 type PricingPlan = {
@@ -116,20 +116,20 @@ export default function Page() {
     <MarketingShell>
       <MarketingHero
         eyebrow="Simple pricing"
-        title="Start free for 7 days. Pay only when your trial ends."
-        description="Create your Flowtix account, securely add your payment details through PayMongo, and begin your 7-day free trial. Cancel before the trial ends to avoid being charged."
+        title="Start free for 7 days. No charge today."
+        description="Create your Flowtix account and begin your selected plan immediately for 7 days. No payment is taken at signup. Before the trial ends, complete PayMongo checkout to keep the workspace active."
       />
 
       <ContentSection title="Plans">
         <div className="mb-10 flex flex-col gap-4 rounded-3xl border border-cyan-400/15 bg-cyan-400/[0.05] px-6 py-5 text-sm text-slate-300 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-semibold text-white">
-              Payment method required to begin the trial
+              No payment required to begin the trial
             </p>
             <p className="mt-1 leading-6 text-slate-400">
-              Starter, Professional, Business, and Enterprise subscriptions
-              start automatically after the 7-day trial unless you cancel
-              beforehand.
+              Starter, Professional, Business, and Enterprise trials begin
+              immediately. Complete PayMongo checkout before the trial ends to
+              continue using the workspace afterward.
             </p>
           </div>
 
@@ -201,7 +201,7 @@ export default function Page() {
               </Link>
 
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
-                Card required. Cancel during the 7-day trial to avoid the first monthly charge.
+                No charge today. Payment is required only if you continue after the 7-day trial.
               </p>
             </article>
           ))}

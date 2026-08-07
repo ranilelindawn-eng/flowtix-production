@@ -42,7 +42,18 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           <div className="mb-8 text-center">
             <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">{invitationSignup ? 'Workspace invitation' : 'Create account'}</p>
             <h1 className="mt-4 text-3xl font-semibold text-white">{invitationSignup ? 'Create your Flowtix account' : 'Join Flowtix'}</h1>
-            {invitationSignup ? <p className="mt-3 text-sm leading-6 text-slate-400">Create an account with the invited email below. You will return to the invitation after confirmation.</p> : null}
+            {invitationSignup ? (
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                Create an account with the invited email below. You will return
+                to the invitation after confirmation.
+              </p>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                Start your selected Flowtix plan free for 7 days. No payment is
+                taken today. Add payment before the trial ends to keep the
+                workspace active.
+              </p>
+            )}
           </div>
           <form action={signUp} className="space-y-6">
             <input type="hidden" name="next" value={next} />
@@ -56,7 +67,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               <span className="text-sm text-slate-300">Password</span>
               <input name="password" type="password" required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70" />
             </label>
-            <button type="submit" className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5">Sign up</button>
+            <button type="submit" className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5">{invitationSignup ? 'Sign up' : 'Start 7-Day Free Trial'}</button>
           </form>
           <p className="mt-6 text-center text-sm text-slate-400">
             Already have an account?{' '}

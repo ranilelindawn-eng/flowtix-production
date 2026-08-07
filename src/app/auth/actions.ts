@@ -2,8 +2,6 @@
 
 import { redirect } from 'next/navigation'
 
-import { createPayMongoCheckoutSession } from '@/lib/paymongo/client'
-import { getPayMongoPlan } from '@/lib/paymongo/plans'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -18,15 +16,6 @@ const allowedPlans = [
 
 type Plan = (typeof allowedPlans)[number]
 
-type CheckoutCreationLease = {
-  subscription_id?: string
-  creation_token?: string
-}
-
-type CheckoutRegistration = {
-  subscription_id?: string
-  payment_id?: string
-}
 
 const createAuthClient = async () => {
   const supabase = await createServerSupabaseClient()
@@ -149,145 +138,44 @@ async function waitForSubscription(
   )
 }
 
-async function createSignupCheckout({
-  email,
-  userId,
+async function startSignupTrial({
   organizationId,
+  userId,
   plan,
-  siteUrl,
-  hasSession,
 }: {
-  email: string
-  userId: string
   organizationId: string
+  userId: string
   plan: Plan
-  siteUrl: string
-  hasSession: boolean
 }) {
-  const selectedPlan = await getPayMongoPlan(plan)
-
-  if (!selectedPlan) {
-    throw new Error('The selected PayMongo plan is unavailable.')
-  }
-
   const admin = createAdminClient()
 
-  const { data: lease, error: leaseError } = await admin.rpc(
-    'begin_paymongo_checkout_creation',
+  const { data, error } = await admin.rpc(
+    'start_flowtix_trial',
     {
       p_organization_id: organizationId,
-      p_plan_id: selectedPlan.id,
-      p_plan_code: selectedPlan.code,
-      p_amount: selectedPlan.amount,
-      p_currency: 'PHP',
+      p_plan_code: plan,
+      p_actor_user_id: userId,
     },
   )
 
-  if (leaseError) {
+  if (error) {
     throw new Error(
-      `Unable to reserve PayMongo checkout creation: ${leaseError.message}`,
+      `Unable to start the 7-day trial: ${error.message}`,
     )
   }
 
-  const leaseResult = lease as CheckoutCreationLease | null
+  const trial = data as {
+    subscription_id?: string
+    trial_ends_at?: string
+  } | null
 
-  if (
-    !leaseResult?.subscription_id ||
-    !leaseResult.creation_token
-  ) {
+  if (!trial?.subscription_id || !trial.trial_ends_at) {
     throw new Error(
-      'PayMongo checkout reservation returned an invalid result.',
+      'Flowtix did not return a valid trial subscription.',
     )
   }
 
-  const creationToken = leaseResult.creation_token
-
-  try {
-    const billingSuccessPath =
-      '/dashboard/billing?checkout=success'
-
-    const successUrl = hasSession
-      ? `${siteUrl}${billingSuccessPath}`
-      : `${siteUrl}/login?next=${encodeURIComponent(
-          billingSuccessPath,
-        )}`
-
-    const { checkoutId, checkoutUrl } =
-      await createPayMongoCheckoutSession({
-        amount: selectedPlan.amount,
-        name: selectedPlan.name,
-        description: `${selectedPlan.name} monthly subscription`,
-        customerEmail: email,
-        metadata: {
-          organization_id: organizationId,
-          supabase_user_id: userId,
-          plan_code: selectedPlan.code,
-          signup_plan: plan,
-          billing_provider: 'paymongo',
-        },
-        successUrl,
-        cancelUrl: `${siteUrl}/pricing?checkout=cancelled`,
-      })
-
-    const checkoutExpiresAt = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    ).toISOString()
-
-    const {
-      data: registration,
-      error: registrationError,
-    } = await admin.rpc(
-      'finalize_paymongo_checkout_creation',
-      {
-        p_organization_id: organizationId,
-        p_creation_token: creationToken,
-        p_checkout_id: checkoutId,
-        p_plan_id: selectedPlan.id,
-        p_plan_code: selectedPlan.code,
-        p_amount: selectedPlan.amount,
-        p_currency: 'PHP',
-        p_expires_at: checkoutExpiresAt,
-      },
-    )
-
-    if (registrationError) {
-      throw new Error(
-        `Unable to finalize PayMongo checkout: ${registrationError.message}`,
-      )
-    }
-
-    const registrationResult =
-      registration as CheckoutRegistration | null
-
-    if (
-      !registrationResult?.subscription_id ||
-      !registrationResult.payment_id
-    ) {
-      throw new Error(
-        'PayMongo checkout finalization returned an invalid result.',
-      )
-    }
-
-    return checkoutUrl
-  } catch (error) {
-    try {
-      await admin.rpc(
-        'abandon_paymongo_checkout_creation',
-        {
-          p_organization_id: organizationId,
-          p_creation_token: creationToken,
-          p_reason:
-            error instanceof Error
-              ? error.message
-              : 'Unknown signup checkout error',
-        },
-      )
-    } catch {
-      // Preserve the original signup checkout error.
-    }
-
-    throw error
-  }
+  return trial
 }
 
 
@@ -374,7 +262,9 @@ export async function signUp(formData: FormData) {
     options: {
       emailRedirectTo:
         `${siteUrl}/auth/callback?next=${encodeURIComponent(
-          invitationSignup ? requestedNext : '/dashboard',
+          invitationSignup
+            ? requestedNext
+            : '/dashboard/billing?trial=started',
         )}`,
       data: invitationSignup
         ? {
@@ -419,18 +309,26 @@ export async function signUp(formData: FormData) {
 
   await waitForSubscription(organizationId)
 
-  const checkoutUrl = await createSignupCheckout({
-    email,
-    userId: data.user.id,
+  await startSignupTrial({
     organizationId,
+    userId: data.user.id,
     plan,
-    siteUrl,
-    hasSession: Boolean(data.session),
   })
 
   await writeAuditLog('auth.sign_up', 'user')
 
-  redirect(checkoutUrl)
+  const trialDestination =
+    '/dashboard/billing?trial=started'
+
+  if (data.session) {
+    redirect(trialDestination)
+  }
+
+  redirect(
+    `/login?trial=confirmation-required&next=${encodeURIComponent(
+      trialDestination,
+    )}`,
+  )
 }
 
 export async function signOut() {
