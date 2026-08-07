@@ -34,7 +34,7 @@ type Item = {
 
 const items: Item[] = [
   { label: 'Platform Dashboard', href: '/platform', icon: Gauge, permission: 'platform.dashboard.view' },
-  { label: 'Customers', href: '/platform/customers', icon: Users, permission: 'platform.customers.view', disabled: true },
+  { label: 'Customers', href: '/platform/customers', icon: Users, permission: 'platform.customers.view' },
   { label: 'Organizations', href: '/platform/organizations', icon: Building2, permission: 'platform.organizations.manage', disabled: true },
   { label: 'Subscriptions', href: '/platform/subscriptions', icon: CreditCard, permission: 'platform.subscriptions.manage', disabled: true },
   { label: 'Billing & PayMongo', href: '/platform/billing', icon: CreditCard, permission: 'platform.billing.view', disabled: true },
