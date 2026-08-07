@@ -15,10 +15,17 @@ import {
   UsersRound,
 } from 'lucide-react'
 
-import { hasPermission } from '@/lib/permissions'
+import { hasPermission, type Permission } from '@/lib/permissions'
 import type { TeamRole } from '@/lib/team'
 
-const links = [
+type SettingsLink = {
+  href: string
+  label: string
+  icon: typeof UserRound
+  permission?: Permission
+}
+
+const links: SettingsLink[] = [
   {
     href: '/dashboard/settings/profile',
     label: 'Profile',
@@ -28,31 +35,37 @@ const links = [
     href: '/dashboard/settings/organization',
     label: 'Organization',
     icon: Building2,
+    permission: 'organization.view',
   },
   {
     href: '/dashboard/settings/team',
     label: 'Team',
     icon: UsersRound,
+    permission: 'team.view',
   },
   {
     href: '/dashboard/settings/api-keys',
     label: 'API Keys',
     icon: KeyRound,
+    permission: 'api_keys.view',
   },
   {
     href: '/dashboard/settings/billing',
     label: 'Billing',
     icon: CreditCard,
+    permission: 'billing.view',
   },
   {
     href: '/dashboard/settings/integrations',
     label: 'Integrations',
     icon: Plug,
+    permission: 'settings.manage',
   },
   {
     href: '/dashboard/settings/phone-numbers',
     label: 'Phone Numbers',
     icon: Smartphone,
+    permission: 'settings.manage',
   },
   {
     href: '/dashboard/settings/security',
@@ -63,13 +76,13 @@ const links = [
     href: '/dashboard/settings/automation',
     label: 'Automation',
     icon: Workflow,
-    permission: 'automation.view' as const,
+    permission: 'automation.view',
   },
   {
     href: '/dashboard/settings/jobs',
     label: 'Background Jobs',
     icon: ListChecks,
-    permission: 'jobs.view' as const,
+    permission: 'jobs.view',
   },
 ]
 

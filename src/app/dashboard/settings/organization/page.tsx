@@ -1,20 +1,10 @@
 import OrganizationSettingsForm from '@/components/settings/OrganizationSettingsForm'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/team'
+import { requirePermission } from '@/lib/auth'
 
 export default async function OrganizationSettingsPage() {
-  const membership = await getCurrentOrganization()
+  const membership = await requirePermission('organization.view')
 
-  if (!membership) {
-    return (
-      <div className="rounded-xl border border-border bg-card p-6">
-        <h1 className="text-2xl font-semibold">Organization</h1>
-        <p className="mt-2 text-muted-foreground">
-          You are not currently connected to an active organization.
-        </p>
-      </div>
-    )
-  }
 
   const supabase = await createServerSupabaseClient()
 

@@ -9,6 +9,8 @@ import {
   Video,
 } from 'lucide-react'
 
+import { requirePermission } from '@/lib/auth'
+
 import {
   canManageSettings,
   requireSettingsContext,
@@ -236,6 +238,7 @@ export default async function IntegrationsPage({
 }: {
   searchParams: SearchParams
 }) {
+  await requirePermission('settings.manage')
   const params = await searchParams
 
   const {

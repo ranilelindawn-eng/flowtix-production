@@ -5,7 +5,7 @@ import type { TeamRole } from '@/lib/team'
 const roles: TeamRole[] = ['owner', 'admin', 'manager', 'agent']
 
 export default async function RolesPage() {
-  await requirePermission('team.view')
+  await requirePermission('team.update_roles')
   const permissions = Array.from(new Set(Object.values(rolePermissions).flat()))
 
   return (

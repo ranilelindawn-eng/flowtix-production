@@ -1,4 +1,5 @@
 import { getProductionReadinessOverview } from '@/lib/production'
+import { requirePlatformPermission } from '@/lib/platform/auth'
 
 function badge(status: string) {
   if (status === 'healthy' || status === 'ready' || status === 'passed') return 'bg-emerald-500/10 text-emerald-300 ring-emerald-400/20'
@@ -7,6 +8,7 @@ function badge(status: string) {
 }
 
 export default async function ProductionReadinessPage() {
+  await requirePlatformPermission('platform.settings.manage')
   const overview = await getProductionReadinessOverview()
   return <main className="space-y-8">
     <div><p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Production hardening</p><h1 className="mt-2 text-3xl font-semibold text-white">Launch readiness</h1><p className="mt-2 max-w-3xl text-slate-400">Operational health, validation, recovery, monitoring, logging, and launch controls for Flowtix.</p></div>

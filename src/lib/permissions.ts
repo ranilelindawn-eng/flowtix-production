@@ -197,8 +197,6 @@ const adminPermissions: readonly Permission[] = [
   'attendance.view_all',
   'attendance.clock',
 
-  'billing.view',
-
   'contacts.view',
   'contacts.create',
   'contacts.update',
@@ -240,57 +238,37 @@ const adminPermissions: readonly Permission[] = [
   'campaigns.view_own',
   'campaigns.view_all',
   'campaigns.assign',
-
   'campaigns.view',
   'campaigns.create',
   'campaigns.update',
   'campaigns.delete',
-
   'calls.view',
   'calls.create',
   'calls.update',
   'calls.delete',
-
   'recordings.view',
   'recordings.create',
   'recordings.delete',
-
   'transcripts.view',
   'transcripts.update',
-
   'summaries.view',
   'summaries.create',
-
   'insights.view',
-
   'reports.view',
   'reports.export',
-
   'settings.view',
   'settings.manage',
-
-  'api_keys.view',
-  'api_keys.manage',
-
-  'webhooks.view',
-  'webhooks.manage',
-
   'audit_logs.view',
-
-  'jobs.view',
-  'jobs.manage',
   'automation.view',
   'automation.manage',
 ]
 
 const managerPermissions: readonly Permission[] = [
   'organization.view',
-
   'team.view',
-
   'attendance.view_own',
+  'attendance.view_all',
   'attendance.clock',
-
   'contacts.view',
   'contacts.create',
   'contacts.update',
@@ -332,47 +310,28 @@ const managerPermissions: readonly Permission[] = [
   'campaigns.view_own',
   'campaigns.view_all',
   'campaigns.assign',
-
   'campaigns.view',
   'campaigns.create',
   'campaigns.update',
-  'campaigns.delete',
-
   'calls.view',
   'calls.create',
   'calls.update',
-
   'recordings.view',
   'recordings.create',
-
   'transcripts.view',
   'transcripts.update',
-
   'summaries.view',
   'summaries.create',
-
   'insights.view',
-
   'reports.view',
   'reports.export',
-
   'settings.view',
-
-  'audit_logs.view',
-
   'automation.view',
 ]
 
-
-
 const agentPermissions: readonly Permission[] = [
-  'organization.view',
-
-  'team.view',
-
   'attendance.view_own',
   'attendance.clock',
-
   'contacts.view',
   'contacts.create',
   'contacts.update',
@@ -395,23 +354,14 @@ const agentPermissions: readonly Permission[] = [
   'calendar.update',
   'calls.view_own',
   'campaigns.view_own',
-
   'campaigns.view',
-
   'calls.view',
   'calls.create',
   'calls.update',
-
   'recordings.view',
-
   'transcripts.view',
-
   'summaries.view',
-
   'insights.view',
-
-  'reports.view',
-
   'settings.view',
 ]
 

@@ -26,7 +26,6 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
-  Rocket,
   Tags,
   Target,
   TextQuote,
@@ -310,13 +309,6 @@ const navItems: NavItem[] = [
     icon: ShieldCheck,
   },
   {
-    id: 'production-readiness',
-    label: 'Production Readiness',
-    href: '/dashboard/production-readiness',
-    permission: 'settings.manage',
-    icon: Rocket,
-  },
-  {
     id: 'billing',
     label: 'Billing',
     href: '/dashboard/billing',
@@ -327,7 +319,7 @@ const navItems: NavItem[] = [
     id: 'security-center',
     label: 'Security Center',
     href: '/dashboard/security',
-    permission: 'settings.view',
+    permission: 'settings.manage',
     icon: LockKeyhole,
   },
   {
