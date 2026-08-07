@@ -46,6 +46,7 @@ declare
   raw_event_created_at text;
   affected_count integer := 0;
   sanitized_error text;
+  error_context text;
 begin
   if nullif(trim(p_event_id), '') is null then
     raise exception 'PayMongo event ID is required.';
@@ -466,14 +467,37 @@ begin
   );
 exception
   when others then
-    sanitized_error := left(regexp_replace(sqlerrm, E'[\n\r\t]+', ' ', 'g'), 2000);
+    get stacked diagnostics
+      error_context = pg_exception_context;
+
+    sanitized_error := left(
+      regexp_replace(
+        concat(
+          'SQLSTATE=', sqlstate,
+          '; MESSAGE=', sqlerrm,
+          '; CONTEXT=', coalesce(error_context, 'unknown')
+        ),
+        E'[\n\r\t]+',
+        ' ',
+        'g'
+      ),
+      4000
+    );
+
     update public.billing_payment_events
-    set status = 'failed', error_message = sanitized_error, updated_at = now()
-    where provider = 'paymongo' and provider_event_id = trim(p_event_id);
+    set status = 'failed',
+        error_message = sanitized_error,
+        updated_at = now()
+    where provider = 'paymongo'
+      and provider_event_id = trim(p_event_id);
+
     return jsonb_build_object(
       'status', 'failed',
       'reason', 'processing_error',
-      'error', case when p_livemode = false then sanitized_error else null end
+      'error', case
+        when p_livemode = false then sanitized_error
+        else null
+      end
     );
 end;
 $$;

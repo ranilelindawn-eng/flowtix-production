@@ -31,7 +31,7 @@ export async function updateSession(request: NextRequest) {
   if (user) {
     const fingerprint = createHash('sha256').update(`${user.id}:${userAgent}:${ipAddress ?? ''}`).digest('hex')
     const { data: revoked } = await supabase.from('user_sessions').select('id').eq('user_id', user.id).eq('session_fingerprint', fingerprint).not('revoked_at', 'is', null).maybeSingle()
-    if (revoked && request.nextUrl.pathname.startsWith('/dashboard')) {
+    if (revoked && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/platform'))) {
       await supabase.auth.signOut({ scope: 'local' })
       const loginUrl = request.nextUrl.clone()
       loginUrl.pathname = '/login'
