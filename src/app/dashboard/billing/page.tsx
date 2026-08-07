@@ -147,6 +147,11 @@ export default async function BillingPage({
   const activePlan =
     subscription?.plan ?? null
 
+  const checkoutPaymentConfirmed =
+    checkoutState === 'success' &&
+    subscription?.status === 'active' &&
+    !pendingPlan
+
   const displayedPlanName =
     pendingPlan?.name ??
     usage?.planName ??
@@ -199,10 +204,9 @@ export default async function BillingPage({
 
       {checkoutState === 'success' ? (
         <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
-          Checkout completed. Your payment is
-          being processed. Your selected plan
-          will activate after PayMongo confirms
-          the payment.
+          {checkoutPaymentConfirmed
+            ? 'Payment confirmed. Your selected plan is active.'
+            : 'Checkout completed. Your payment is being processed. Your selected plan will activate after PayMongo confirms the payment.'}
         </div>
       ) : null}
 
