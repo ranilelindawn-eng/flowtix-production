@@ -91,7 +91,7 @@ function mapValue(row: ValueRow): KpiValue | null {
   }
 }
 
-async function ensureDefinitions(organizationId: string): Promise<Map<string, string>> {
+async function ensureDefinitions(organizationId: string): Promise<Map<string, DefinitionRow>> {
   const supabase = await createClient()
   const payload = standardDefinitions.map(([key, name, category, valueFormat, direction], position) => ({
     organization_id: organizationId,
@@ -106,16 +106,16 @@ async function ensureDefinitions(organizationId: string): Promise<Map<string, st
   const { data, error } = await supabase
     .from('kpi_definitions')
     .upsert(payload, { onConflict: 'organization_id,key' })
-    .select('id,key')
+    .select('id,key,name,description,category,value_format,direction,target_value,is_active,position')
   if (error) throw new Error(`Unable to prepare KPI definitions: ${error.message}`)
-  return new Map((data ?? []).map((row) => [String(row.key), String(row.id)]))
+  return new Map(((data ?? []) as DefinitionRow[]).map((row) => [row.key, row]))
 }
 
 export async function collectKpiSnapshot(period: KpiPeriod): Promise<KpiSnapshot> {
   const membership = await requirePermission('reports.view')
   const report = await getReportsData(period as ReportRange)
   const supabase = await createClient()
-  const definitionIds = await ensureDefinitions(membership.organization_id)
+  const definitions = await ensureDefinitions(membership.organization_id)
   const connectRate = report.totalCalls > 0 ? (report.connectedCalls / report.totalCalls) * 100 : 0
   const totalActivities = report.activity.calls + report.activity.notes + report.activity.tasks + report.activity.emails + report.activity.sms + report.activity.comments
   const values: Record<string, number> = {
@@ -164,16 +164,16 @@ export async function collectKpiSnapshot(period: KpiPeriod): Promise<KpiSnapshot
   }
 
   const insertValues = Object.entries(values).flatMap(([key, value]) => {
-    const definitionId = definitionIds.get(key)
-    if (!definitionId) return []
-    const previousValue = previousValues.get(definitionId)
+    const definition = definitions.get(key)
+    if (!definition) return []
+    const previousValue = previousValues.get(definition.id)
     const changePercent = previousValue === undefined || previousValue === 0
       ? null
       : ((value - previousValue) / Math.abs(previousValue)) * 100
     return [{
       organization_id: membership.organization_id,
       snapshot_id: snapshot.id,
-      definition_id: definitionId,
+      definition_id: definition.id,
       value,
       previous_value: previousValue ?? null,
       change_percent: changePercent,
@@ -182,9 +182,36 @@ export async function collectKpiSnapshot(period: KpiPeriod): Promise<KpiSnapshot
   })
   const { error: valuesError } = await supabase.from('kpi_values').insert(insertValues)
   if (valuesError) throw new Error(`Unable to store KPI values: ${valuesError.message}`)
-  const overview = await getKpiOverview(period, false)
-  if (!overview.snapshot) throw new Error('KPI snapshot was created but could not be reloaded.')
-  return overview.snapshot
+
+  const definitionsById = new Map(Array.from(definitions.values()).map((definition) => [definition.id, definition]))
+  const snapshotValues: KpiValue[] = insertValues.flatMap((row) => {
+    const definition = definitionsById.get(row.definition_id)
+    if (!definition) return []
+    const mapped = toDefinition(definition)
+    return [{
+      definitionId: row.definition_id,
+      key: mapped.key,
+      name: mapped.name,
+      category: mapped.category,
+      valueFormat: mapped.valueFormat,
+      direction: mapped.direction,
+      targetValue: mapped.targetValue,
+      value: row.value,
+      previousValue: row.previous_value,
+      changePercent: row.change_percent,
+    }]
+  })
+
+  snapshotValues.sort((a, b) => standardDefinitions.findIndex(([key]) => key === a.key) - standardDefinitions.findIndex(([key]) => key === b.key))
+
+  return {
+    id: snapshot.id,
+    period: snapshot.period as KpiPeriod,
+    periodStart: snapshot.period_start,
+    periodEnd: snapshot.period_end,
+    capturedAt: snapshot.captured_at,
+    values: snapshotValues,
+  }
 }
 
 export async function getKpiOverview(period: KpiPeriod, collectWhenMissing = true): Promise<KpiOverview> {
