@@ -5,6 +5,7 @@ export type {
   AIPromptDefinition,
   AIPromptExecutionMetadata,
   AIPromptKey,
+  AIPromptUsageContext,
   AIPromptVariables,
   RenderedAIPrompt,
 } from './types'

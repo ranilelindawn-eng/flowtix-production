@@ -1,5 +1,5 @@
 export const AI_USAGE_FEATURES = [
-  'chat', 'summary', 'sentiment', 'coaching', 'task_generation', 'email_generation',
+  'chat', 'summary', 'sentiment', 'coaching', 'call_analysis', 'task_generation', 'email_generation',
   'transcript_processing', 'transcription',
 ] as const
 

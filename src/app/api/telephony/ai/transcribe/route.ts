@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 
 import { transcribeAI } from '@/lib/ai/service'
+import {
+  completeAIUsage,
+  failAIUsage,
+  isAIUsageControlError,
+  reserveAIUsage,
+} from '@/lib/ai/usage/service'
 
 import {
   assertEntitlement,
@@ -9,7 +15,6 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
 import { getCurrentOrganization } from '@/lib/team'
-import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
 
 export async function POST(request: Request) {
   try {
@@ -48,12 +53,7 @@ export async function POST(request: Request) {
       )
     }
 
-    await consumeMeteredUsage(
-      'ai_requests',
-      1,
-      organization.organization_id,
-      `transcription:${recordingId}`,
-    )
+
 
     const config =
       await getOrganizationTwilioConfiguration(
@@ -78,9 +78,33 @@ export async function POST(request: Request) {
     }
 
     const audio = await audioResponse.blob()
-    const result = await transcribeAI({
-      file: new File([audio], 'call.mp3', { type: 'audio/mpeg' }),
+    const reservation = await reserveAIUsage(supabase, {
+      organizationId: organization.organization_id,
+      feature: 'transcription',
+      idempotencyKey: `transcription:${recordingId}`,
     })
+
+    let result: Awaited<ReturnType<typeof transcribeAI>>
+    try {
+      result = await transcribeAI({
+        file: new File([audio], 'call.mp3', { type: 'audio/mpeg' }),
+      })
+      await completeAIUsage(supabase, reservation.id, {
+        provider: result.provider,
+        model: result.model,
+        requestId: result.requestId,
+        latencyMs: result.latencyMs,
+        costMicros: null,
+        metadata: {
+          recordingId,
+          callId: recording.call_id,
+          costCalculated: false,
+        },
+      })
+    } catch (transcriptionError) {
+      await failAIUsage(supabase, reservation.id, transcriptionError)
+      throw transcriptionError
+    }
     const { data: claims } =
       await supabase.auth.getClaims()
 
@@ -112,7 +136,7 @@ export async function POST(request: Request) {
             : 'Transcription failed.',
       },
       {
-        status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500,
+        status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500,
       },
     )
   }

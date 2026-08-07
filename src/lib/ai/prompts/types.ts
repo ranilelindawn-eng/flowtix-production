@@ -1,4 +1,7 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+
 import type { AICapability } from '@/lib/ai/types'
+import type { AIUsageFeature } from '@/lib/ai/usage/types'
 
 export type AIPromptKey =
   | 'chat.general'
@@ -52,13 +55,23 @@ export type AIPromptExecutionMetadata = {
   latencyMs: number
 }
 
+export type AIPromptUsageContext = {
+  supabase: SupabaseClient
+  organizationId: string
+  feature: AIUsageFeature
+  idempotencyKey: string
+  metadata?: Record<string, unknown>
+}
+
 export type PromptTextInput = {
   promptKey: AIPromptKey
   variables?: AIPromptVariables
   messages: Array<{ role: 'user' | 'assistant'; content: string }>
+  usage?: AIPromptUsageContext
 }
 
 export type PromptStructuredInput = {
   promptKey: AIPromptKey
   variables: AIPromptVariables
+  usage?: AIPromptUsageContext
 }

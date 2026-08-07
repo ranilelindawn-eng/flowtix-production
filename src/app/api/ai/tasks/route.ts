@@ -9,7 +9,7 @@ import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
-import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
+import { isAIUsageControlError } from '@/lib/ai/usage/service'
 
 function optionalId(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -45,20 +45,16 @@ export async function POST(request: Request) {
     }
 
     const { supabase, userId } = await authenticatedUserId()
-    await consumeMeteredUsage(
-      'ai_requests',
-      1,
-      organization.organization_id,
-      deriveWindowedIdempotencyKey(
+    const usageKey = deriveWindowedIdempotencyKey(
         'ai.tasks.generate',
         { organizationId: organization.organization_id, context, contactId, callId, transcriptId },
         300,
-      ),
-    )
+      )
 
     const result = await generateAITaskSuggestions(supabase, {
       organizationId: organization.organization_id,
       userId,
+      usageIdempotencyKey: usageKey,
       context,
       contactId,
       callId,
@@ -68,7 +64,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Task generation failed.' },
-      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
+      { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }
 }

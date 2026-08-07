@@ -108,6 +108,7 @@ export async function analyzeSentiment(
   input: {
     organizationId: string
     userId: string
+    usageIdempotencyKey: string
     text?: string | null
     transcriptId?: string | null
     callId?: string | null
@@ -165,6 +166,12 @@ export async function analyzeSentiment(
 
   const generated = await generatePromptStructured<AISentimentResult>({
     promptKey: 'sentiment.analyze',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'sentiment',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
     variables: { content, language },
   })
   const result = validate(generated.value)

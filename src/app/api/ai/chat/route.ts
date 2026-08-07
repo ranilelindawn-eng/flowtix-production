@@ -6,7 +6,7 @@ import { buildConversationContext } from '@/lib/ai/memory/service'
 import { generatePromptText, type AIPromptKey } from '@/lib/ai/prompts'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
-import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
+import { isAIUsageControlError } from '@/lib/ai/usage/service'
 
 const MAX_MESSAGE_LENGTH = 20_000
 const AGENT_PROMPT_KEYS: Record<string, AIPromptKey> = {
@@ -47,12 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Message must be ${MAX_MESSAGE_LENGTH.toLocaleString()} characters or fewer.` }, { status: 400 })
     }
 
-    await consumeMeteredUsage(
-      'ai_requests',
-      1,
-      organization.organization_id,
-      deriveWindowedIdempotencyKey('ai.chat', { conversationId: body.conversationId, message, agentKey }, 120),
-    )
+    const usageKey = deriveWindowedIdempotencyKey('ai.chat', { conversationId: body.conversationId, message, agentKey }, 120)
 
     let conversation: ConversationRow | null = null
     const conversationId = typeof body.conversationId === 'string' ? body.conversationId.trim() : ''
@@ -108,6 +103,16 @@ export async function POST(request: Request) {
 
     const generated = await generatePromptText({
       promptKey: AGENT_PROMPT_KEYS[conversation.agent_key] ?? 'chat.general',
+      usage: {
+        supabase,
+        organizationId: organization.organization_id,
+        feature: 'chat',
+        idempotencyKey: usageKey,
+        metadata: {
+          conversationId: conversation.id,
+          agentKey: conversation.agent_key,
+        },
+      },
       variables: {
         contactCount: contactCount ?? 0,
         companyCount: companyCount ?? 0,
@@ -161,7 +166,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI chat failed.' },
-      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
+      { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }
 }

@@ -168,6 +168,50 @@ create table if not exists public.contacts (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.contact_notes (
+  id uuid not null primary key default gen_random_uuid(),
+  organization_id uuid not null
+    references public.organizations(id)
+    on delete cascade,
+  contact_id uuid not null
+    references public.contacts(id)
+    on delete cascade,
+  body text not null,
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint contact_notes_body_check
+    check (char_length(trim(body)) between 1 and 5000)
+);
+
+create table if not exists public.contact_tasks (
+  id uuid not null primary key default gen_random_uuid(),
+  organization_id uuid not null
+    references public.organizations(id)
+    on delete cascade,
+  contact_id uuid not null
+    references public.contacts(id)
+    on delete cascade,
+  title text not null,
+  description text,
+  due_at timestamptz,
+  status text not null default 'pending',
+  priority text not null default 'medium',
+  assigned_to uuid references auth.users(id) on delete set null,
+  created_by uuid not null references auth.users(id),
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint contact_tasks_title_check
+    check (char_length(trim(title)) between 1 and 200),
+  constraint contact_tasks_status_check
+    check (status in ('pending', 'completed', 'cancelled')),
+  constraint contact_tasks_priority_check
+    check (priority in ('low', 'medium', 'high'))
+);
+
 create table if not exists public.campaigns (
   id uuid not null primary key default gen_random_uuid(),
   organization_id uuid not null
@@ -321,6 +365,27 @@ create index if not exists idx_contacts_organization_id
 
 create index if not exists idx_contacts_created_by
   on public.contacts(created_by);
+
+create index if not exists contact_notes_contact_id_idx
+  on public.contact_notes(contact_id);
+
+create index if not exists contact_notes_created_at_idx
+  on public.contact_notes(created_at desc);
+
+create index if not exists contact_notes_organization_id_idx
+  on public.contact_notes(organization_id);
+
+create index if not exists contact_tasks_contact_id_idx
+  on public.contact_tasks(contact_id);
+
+create index if not exists contact_tasks_due_at_idx
+  on public.contact_tasks(due_at);
+
+create index if not exists contact_tasks_organization_id_idx
+  on public.contact_tasks(organization_id);
+
+create index if not exists contact_tasks_status_idx
+  on public.contact_tasks(status);
 
 create index if not exists idx_campaigns_organization_id
   on public.campaigns(organization_id);

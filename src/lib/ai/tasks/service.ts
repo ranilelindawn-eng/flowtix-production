@@ -98,6 +98,7 @@ export async function generateAITaskSuggestions(
   input: {
     organizationId: string
     userId: string
+    usageIdempotencyKey: string
     context: string
     contactId?: string | null
     callId?: string | null
@@ -141,6 +142,12 @@ export async function generateAITaskSuggestions(
 
   const generated = await generatePromptStructured<AITaskGenerationResult>({
     promptKey: 'tasks.suggest',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'task_generation',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
     variables: { context },
   })
   const tasks = validate(generated.value)

@@ -154,6 +154,7 @@ export async function generateCallCoaching(
   input: {
     organizationId: string
     userId: string
+    usageIdempotencyKey: string
     transcriptId: string
     focus?: string | null
     agentUserId?: string | null
@@ -233,6 +234,12 @@ export async function generateCallCoaching(
 
   const generated = await generatePromptStructured<AICoachingResult>({
     promptKey: 'coaching.call',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'coaching',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
     variables: {
       language: String(transcript.language ?? 'en'),
       agentName,

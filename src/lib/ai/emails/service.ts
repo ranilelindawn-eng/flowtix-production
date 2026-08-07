@@ -98,6 +98,7 @@ export async function generateAIEmail(
   input: {
     organizationId: string
     userId: string
+    usageIdempotencyKey: string
     recipient?: string | null
     recipientEmail?: string | null
     purpose: string
@@ -153,6 +154,12 @@ export async function generateAIEmail(
 
   const generated = await generatePromptStructured<GeneratedAIEmail>({
     promptKey: 'email.generate',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'email_generation',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
     variables: {
       recipient: recipient || 'Customer',
       recipientEmail: recipientEmail || 'Not provided',

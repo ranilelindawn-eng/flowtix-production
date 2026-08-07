@@ -121,7 +121,12 @@ function generationKey(organizationId: string, transcriptId: string, sourceHash:
 
 export async function processTranscript(
   supabase: SupabaseClient,
-  input: { organizationId: string; userId: string; transcriptId: string },
+  input: {
+    organizationId: string
+    userId: string
+    transcriptId: string
+    usageIdempotencyKey: string
+  },
 ): Promise<{ runId: string; reused: boolean; result: TranscriptProcessingResult }> {
   const { data, error } = await supabase
     .from('transcripts')
@@ -227,6 +232,12 @@ export async function processTranscript(
   try {
     const generated = await generatePromptStructured<unknown>({
       promptKey: 'transcript.process',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'transcript_processing',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
       variables: { language: transcript.language, transcript: content },
     })
     const result = validateResult(generated.value, transcript.language)

@@ -80,6 +80,7 @@ export async function generateTranscriptSummary(
   input: {
     organizationId: string
     userId: string
+    usageIdempotencyKey: string
     transcriptId: string
     requestedTitle?: string | null
   },
@@ -124,6 +125,12 @@ export async function generateTranscriptSummary(
 
   const generated = await generatePromptStructured<AITranscriptSummary>({
     promptKey: 'summary.transcript',
+    usage: {
+      supabase,
+      organizationId: input.organizationId,
+      feature: 'summary',
+      idempotencyKey: input.usageIdempotencyKey,
+    },
     variables: {
       transcript: content,
       language: transcript.language,

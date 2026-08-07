@@ -10,6 +10,32 @@ type ReservationRow = {
   idempotency_key: string
 }
 
+const SECRET_PATTERNS: RegExp[] = [
+  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /\bBasic\s+[A-Za-z0-9+/=]+/gi,
+  /(["']?(?:api[_-]?key|token|secret|password|authorization|credential)["']?\s*[:=]\s*["']?)[^"',\s}]+/gi,
+]
+
+function sanitizedUsageError(error: unknown): {
+  code: string
+  message: string
+} {
+  const code = error instanceof Error ? error.name : 'UNKNOWN_ERROR'
+  let message =
+    error instanceof Error ? error.message : 'Unknown AI execution error.'
+
+  for (const pattern of SECRET_PATTERNS) {
+    message = message.replace(pattern, (_match, prefix?: string) =>
+      prefix ? `${prefix}[REDACTED]` : '[REDACTED]',
+    )
+  }
+
+  return {
+    code: code.slice(0, 200),
+    message: message.replace(/\s+/g, ' ').trim().slice(0, 2000),
+  }
+}
+
 export class AIUsageControlError extends Error {
   readonly code = 'AI_USAGE_CONTROLLED'
   readonly status = 402
@@ -59,13 +85,26 @@ export async function completeAIUsage(supabase: SupabaseClient, reservationId: s
   if (error) normalizeError(error)
 }
 
-export async function failAIUsage(supabase: SupabaseClient, reservationId: string, error: unknown): Promise<void> {
-  const message = error instanceof Error ? error.message : 'Unknown AI execution error.'
+export async function failAIUsage(
+  supabase: SupabaseClient,
+  reservationId: string,
+  error: unknown,
+): Promise<void> {
+  const sanitized = sanitizedUsageError(error)
+
   await supabase.rpc('finalize_ai_usage', {
-    reservation_id: reservationId, result_status: 'failed', result_provider: null, result_model: null,
-    actual_input_tokens: null, actual_output_tokens: null, result_cost_micros: null, result_request_id: null,
-    result_latency_ms: null, result_error_code: error instanceof Error ? error.name : 'UNKNOWN_ERROR',
-    result_error_message: message, result_metadata: {},
+    reservation_id: reservationId,
+    result_status: 'failed',
+    result_provider: null,
+    result_model: null,
+    actual_input_tokens: null,
+    actual_output_tokens: null,
+    result_cost_micros: null,
+    result_request_id: null,
+    result_latency_ms: null,
+    result_error_code: sanitized.code,
+    result_error_message: sanitized.message,
+    result_metadata: {},
   })
 }
 

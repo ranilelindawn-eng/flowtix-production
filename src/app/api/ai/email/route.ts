@@ -5,7 +5,7 @@ import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
-import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
+import { isAIUsageControlError } from '@/lib/ai/usage/service'
 
 function optionalId(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null
@@ -49,20 +49,16 @@ export async function POST(request: Request) {
     if (context.length > 30_000) return NextResponse.json({ error: 'Context must be 30,000 characters or fewer.' }, { status: 400 })
 
     const { supabase, userId } = await authenticatedContext()
-    await consumeMeteredUsage(
-      'ai_requests',
-      1,
-      organization.organization_id,
-      deriveWindowedIdempotencyKey(
+    const usageKey = deriveWindowedIdempotencyKey(
         'ai.email.generate',
         { organizationId: organization.organization_id, recipient, recipientEmail, purpose, context, tone, contactId, callId, transcriptId },
         300,
-      ),
-    )
+      )
 
     const result = await generateAIEmail(supabase, {
       organizationId: organization.organization_id,
       userId,
+      usageIdempotencyKey: usageKey,
       recipient,
       recipientEmail,
       purpose,
@@ -76,7 +72,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Email generation failed.' },
-      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
+      { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }
 }

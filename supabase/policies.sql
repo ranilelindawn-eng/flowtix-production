@@ -62,6 +62,8 @@ alter table public.organizations enable row level security;
 alter table public.profiles enable row level security;
 alter table public.organization_members enable row level security;
 alter table public.contacts enable row level security;
+alter table public.contact_notes enable row level security;
+alter table public.contact_tasks enable row level security;
 alter table public.campaigns enable row level security;
 alter table public.campaign_members enable row level security;
 alter table public.calls enable row level security;

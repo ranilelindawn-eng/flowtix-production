@@ -5,7 +5,7 @@ import { generateTranscriptSummary } from '@/lib/ai/summaries/service'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { deriveWindowedIdempotencyKey } from '@/lib/idempotency'
 import { createClient } from '@/lib/supabase/server'
-import { consumeMeteredUsage, isUsageLimitError } from '@/lib/usage-limits'
+import { isAIUsageControlError } from '@/lib/ai/usage/service'
 
 export async function POST(request: Request) {
   try {
@@ -29,20 +29,16 @@ export async function POST(request: Request) {
     const userId = claimsData?.claims?.sub
     if (typeof userId !== 'string' || !userId) throw new Error('Unable to verify the authenticated user.')
 
-    await consumeMeteredUsage(
-      'ai_requests',
-      1,
-      organization.organization_id,
-      deriveWindowedIdempotencyKey(
+    const usageKey = deriveWindowedIdempotencyKey(
         'ai.summary.transcript',
         { organizationId: organization.organization_id, transcriptId },
         300,
-      ),
-    )
+      )
 
     const result = await generateTranscriptSummary(supabase, {
       organizationId: organization.organization_id,
       userId,
+      usageIdempotencyKey: usageKey,
       transcriptId,
       requestedTitle: title || null,
     })
@@ -51,7 +47,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'AI summary generation failed.' },
-      { status: isEntitlementError(error) ? 403 : isUsageLimitError(error) ? 402 : 500 },
+      { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }
 }
