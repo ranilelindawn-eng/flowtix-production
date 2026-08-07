@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { buildConversationContext } from '@/lib/ai/memory/service'
@@ -165,7 +167,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'AI chat failed.' },
+      { error: customerAIErrorMessage(error, 'Flowtix AI could not complete your request. Please try again.') },
       { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }

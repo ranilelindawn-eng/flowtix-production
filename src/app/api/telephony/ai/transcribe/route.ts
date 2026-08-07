@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { transcribeAI } from '@/lib/ai/service'
 import {
   completeAIUsage,
@@ -130,10 +132,10 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Transcription failed.',
+        error: customerAIErrorMessage(
+          error,
+          'AI transcription could not be completed. Please try again.',
+        ),
       },
       {
         status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500,

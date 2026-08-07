@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { requirePermission } from '@/lib/auth'
 import { generateTranscriptSummary } from '@/lib/ai/summaries/service'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: result.reused ? 200 : 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'AI summary generation failed.' },
+      { error: customerAIErrorMessage(error, 'The AI summary could not be generated. Please try again.') },
       { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }

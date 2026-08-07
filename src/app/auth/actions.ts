@@ -160,10 +160,13 @@ async function createSignupCheckout({
     throw new Error('The selected PayMongo plan is unavailable.')
   }
 
+  const billingSuccessPath =
+    '/dashboard/billing?checkout=success'
+
   const successUrl = hasSession
-    ? `${siteUrl}/dashboard?payment=success`
-    : `${siteUrl}/login?payment=success&next=${encodeURIComponent(
-        '/dashboard',
+    ? `${siteUrl}${billingSuccessPath}`
+    : `${siteUrl}/login?next=${encodeURIComponent(
+        billingSuccessPath,
       )}`
 
   const { checkoutId, checkoutUrl } =

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { requireOrganization } from '@/lib/auth'
 import { analyzeSentiment } from '@/lib/ai/sentiment/service'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
@@ -56,7 +58,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: result.reused ? 200 : 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'AI sentiment analysis failed.' },
+      { error: customerAIErrorMessage(error, 'AI sentiment analysis could not be completed. Please try again.') },
       { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }

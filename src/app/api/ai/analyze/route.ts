@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { getAIProviderLabel, type AIAnalysis } from '@/lib/ai/provider'
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ analysis: data })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'AI analysis failed.' },
+      { error: customerAIErrorMessage(error, 'AI analysis could not be completed. Please try again.') },
       { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }

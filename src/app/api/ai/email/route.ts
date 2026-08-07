@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+import { customerAIErrorMessage } from '@/lib/ai/errors'
+
 import { generateAIEmail, updateAIEmailStatus } from '@/lib/ai/emails/service'
 import { requireOrganization } from '@/lib/auth'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: result.reused ? 200 : 201 })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Email generation failed.' },
+      { error: customerAIErrorMessage(error, 'The AI email could not be generated. Please try again.') },
       { status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500 },
     )
   }
