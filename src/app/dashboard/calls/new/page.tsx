@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { requirePermission } from '@/lib/auth'
 import { createCall } from '@/app/dashboard/calls/actions'
 import CallForm from '@/components/calls/CallForm'
 import { getAssignableMembers } from '@/lib/ownership'
@@ -10,6 +11,7 @@ import {
 } from '@/lib/calls'
 
 export default async function NewCallPage() {
+  await requirePermission('calls.create')
   const membership = await getCurrentOrganization()
   if (!membership) throw new Error('Unable to determine the current organization.')
   const [contacts, campaigns, owners] = await Promise.all([

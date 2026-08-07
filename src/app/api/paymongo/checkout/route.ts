@@ -121,7 +121,7 @@ export async function POST(request: Request) {
         plan_code: plan.code,
         billing_provider: 'paymongo',
       },
-      successUrl: `${appUrl}/dashboard?payment=success`,
+      successUrl: `${appUrl}/dashboard/billing?checkout=success`,
       cancelUrl: `${appUrl}/dashboard/billing?checkout=cancelled`,
     })
 

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
 import SummaryForm from '@/components/summaries/SummaryForm'
 import {
   getSummary,
@@ -16,6 +17,7 @@ type EditSummaryPageProps = {
 export default async function EditSummaryPage({
   params,
 }: EditSummaryPageProps) {
+  await requirePermission('summaries.create')
   const { id } = await params
 
   const [summary, transcripts] = await Promise.all([

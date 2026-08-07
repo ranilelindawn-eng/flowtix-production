@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
 import TranscriptForm from '@/components/transcripts/TranscriptForm'
 import {
   getTranscript,
@@ -16,6 +17,7 @@ type EditTranscriptPageProps = {
 export default async function EditTranscriptPage({
   params,
 }: EditTranscriptPageProps) {
+  await requirePermission('transcripts.update')
   const { id } = await params
 
   const [transcript, recordings] = await Promise.all([

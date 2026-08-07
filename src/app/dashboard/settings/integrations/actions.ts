@@ -3,6 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
 import { decryptIntegrationSecret, encryptIntegrationSecret } from '@/lib/integrations/crypto'
+import {
+  deleteEncryptedIntegrationSecret,
+  getEncryptedIntegrationSecret,
+  upsertEncryptedIntegrationSecret,
+} from '@/lib/integrations/secret-store'
 import { createGoogleCalendarEvent, sendGmailMessage, updateIntegrationHealth } from '@/lib/integrations/google-client'
 import twilio from 'twilio'
 import { isTelephonyProvider } from '@/lib/telephony/provider'
@@ -80,14 +85,12 @@ export async function saveCredentialIntegration(formData: FormData) {
   }, { onConflict: 'organization_id,provider' }).select('id').single()
   if (error || !integration) throw new Error(error?.message || 'Unable to save integration.')
 
-  const { error: secretError } = await supabase.from('organization_integration_secrets').upsert({
-    integration_id: integration.id,
-    organization_id: organizationId,
-    encrypted_credentials: encryptIntegrationSecret(credentials),
-    credential_version: 1,
-    updated_at: new Date().toISOString(),
-  }, { onConflict: 'integration_id' })
-  if (secretError) throw new Error(secretError.message)
+  await upsertEncryptedIntegrationSecret({
+    integrationId: integration.id,
+    organizationId,
+    encryptedCredentials: encryptIntegrationSecret(credentials),
+    credentialVersion: 1,
+  })
   revalidatePath('/dashboard/settings/integrations')
 }
 
@@ -101,9 +104,10 @@ export async function disconnectIntegration(formData: FormData) {
     .select('id').eq('organization_id', organizationId).eq('provider', provider).maybeSingle()
   if (integrationError) throw new Error(integrationError.message)
   if (integration) {
-    const { error: secretError } = await supabase.from('organization_integration_secrets')
-      .delete().eq('organization_id', organizationId).eq('integration_id', integration.id)
-    if (secretError) throw new Error(secretError.message)
+    await deleteEncryptedIntegrationSecret({
+      organizationId,
+      integrationId: integration.id,
+    })
   }
 
   const { error } = await supabase.from('organization_integrations').upsert({
@@ -180,15 +184,14 @@ export async function testTwilioIntegration() {
   if (integrationError) throw new Error(integrationError.message)
   if (!integration) throw new Error('Connect Twilio before testing it.')
 
-  const { data: secret, error: secretError } = await supabase
-    .from('organization_integration_secrets')
-    .select('encrypted_credentials')
-    .eq('organization_id', organizationId)
-    .eq('integration_id', integration.id)
-    .maybeSingle()
+  const encryptedCredentials = await getEncryptedIntegrationSecret({
+    organizationId,
+    integrationId: integration.id,
+  })
 
-  if (secretError) throw new Error(secretError.message)
-  if (!secret?.encrypted_credentials) throw new Error('Twilio credentials are unavailable.')
+  if (!encryptedCredentials) {
+    throw new Error('Twilio credentials are unavailable.')
+  }
 
   try {
     const credentials = decryptIntegrationSecret<{
@@ -197,7 +200,7 @@ export async function testTwilioIntegration() {
       apiKeySid?: string
       apiKeySecret?: string
       twimlAppSid?: string
-    }>(secret.encrypted_credentials)
+    }>(encryptedCredentials)
 
     if (!credentials.accountSid || !credentials.authToken) {
       throw new Error('Twilio Account SID and Auth Token are required.')
@@ -259,18 +262,17 @@ async function loadTwilioConnection() {
   if (integrationError) throw new Error(integrationError.message)
   if (!integration) throw new Error('Connect Twilio before importing phone numbers.')
 
-  const { data: secret, error: secretError } = await supabase
-    .from('organization_integration_secrets')
-    .select('encrypted_credentials')
-    .eq('organization_id', organizationId)
-    .eq('integration_id', integration.id)
-    .maybeSingle()
+  const encryptedCredentials = await getEncryptedIntegrationSecret({
+    organizationId,
+    integrationId: integration.id,
+  })
 
-  if (secretError) throw new Error(secretError.message)
-  if (!secret?.encrypted_credentials) throw new Error('Twilio credentials are unavailable.')
+  if (!encryptedCredentials) {
+    throw new Error('Twilio credentials are unavailable.')
+  }
 
   const credentials = decryptIntegrationSecret<{ accountSid?: string; authToken?: string }>(
-    secret.encrypted_credentials,
+    encryptedCredentials,
   )
   if (!credentials.accountSid || !credentials.authToken) {
     throw new Error('Twilio Account SID and Auth Token are required.')

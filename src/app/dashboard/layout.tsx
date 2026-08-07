@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/dashboard/Sidebar'
 import TopNav from '@/components/dashboard/TopNav'
 import SessionTracker from '@/components/security/SessionTracker'
+import { getCurrentPlatformMembership } from '@/lib/platform/auth'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
@@ -30,6 +31,13 @@ export default async function DashboardLayout({
     userId.length === 0
   ) {
     redirect('/login')
+  }
+
+  const platformMembership =
+    await getCurrentPlatformMembership()
+
+  if (platformMembership) {
+    redirect('/platform')
   }
 
   const claimEmail =

@@ -1,11 +1,13 @@
 import Link from 'next/link'
 
+import { requirePermission } from '@/lib/auth'
 import { createCampaign } from '@/app/dashboard/campaigns/actions'
 import CampaignForm from '@/components/campaigns/CampaignForm'
 import { getAssignableMembers } from '@/lib/ownership'
 import { getCurrentOrganization } from '@/lib/team'
 
 export default async function NewCampaignPage() {
+  await requirePermission('campaigns.create')
   const membership = await getCurrentOrganization()
   if (!membership) throw new Error('Unable to determine the current organization.')
   const owners = await getAssignableMembers(membership)

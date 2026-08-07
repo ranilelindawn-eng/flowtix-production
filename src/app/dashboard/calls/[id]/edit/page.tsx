@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
 import { updateCall } from '@/app/dashboard/calls/actions'
 import CallForm from '@/components/calls/CallForm'
 import { getAssignableMembers } from '@/lib/ownership'
@@ -20,6 +21,7 @@ type EditCallPageProps = {
 export default async function EditCallPage({
   params,
 }: EditCallPageProps) {
+  await requirePermission('calls.update')
   const { id } = await params
 
   const membership = await getCurrentOrganization()

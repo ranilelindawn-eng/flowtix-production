@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { encryptIntegrationSecret } from '@/lib/integrations/crypto'
+import { upsertEncryptedIntegrationSecret } from '@/lib/integrations/secret-store'
 import { getGoogleOAuthConfig, verifyGoogleState } from '@/lib/integrations/google-oauth'
 import { getProductionOrigin } from '@/lib/integrations/oauth-state'
 
@@ -110,17 +111,12 @@ export async function GET(request: NextRequest) {
 
     if (integrationError || !integration) throw new Error(integrationError?.message || 'Unable to save Google integration.')
 
-    const { error: secretError } = await supabase
-      .from('organization_integration_secrets')
-      .upsert({
-        integration_id: integration.id,
-        organization_id: state.organizationId,
-        encrypted_credentials: encrypted,
-        credential_version: 1,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'integration_id' })
-
-    if (secretError) throw new Error(`Unable to save encrypted Google credentials: ${secretError.message}`)
+    await upsertEncryptedIntegrationSecret({
+      integrationId: integration.id,
+      organizationId: state.organizationId,
+      encryptedCredentials: encrypted,
+      credentialVersion: 1,
+    })
     return redirect({ connected: state.provider })
   } catch (error) {
     console.error('Google integration callback failed:', error)

@@ -26,7 +26,9 @@ export async function requirePermission(
   const organization = await requireOrganization()
 
   if (!hasPermission(organization.role, permission)) {
-    redirect('/dashboard')
+    redirect(
+      `/dashboard/access-denied?permission=${encodeURIComponent(permission)}`,
+    )
   }
 
   return organization
@@ -58,7 +60,7 @@ export async function requireOwner(): Promise<CurrentOrganizationMembership> {
   const organization = await requireOrganization()
 
   if (organization.role !== 'owner') {
-    redirect('/dashboard')
+    redirect('/dashboard/access-denied?role=owner')
   }
 
   return organization
@@ -71,7 +73,7 @@ export async function requireAdmin(): Promise<CurrentOrganizationMembership> {
     organization.role !== 'owner' &&
     organization.role !== 'admin'
   ) {
-    redirect('/dashboard')
+    redirect('/dashboard/access-denied?role=admin')
   }
 
   return organization
@@ -85,7 +87,7 @@ export async function requireManager(): Promise<CurrentOrganizationMembership> {
     organization.role !== 'admin' &&
     organization.role !== 'manager'
   ) {
-    redirect('/dashboard')
+    redirect('/dashboard/access-denied?role=manager')
   }
 
   return organization

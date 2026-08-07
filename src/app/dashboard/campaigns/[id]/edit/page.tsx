@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
 import CampaignForm from '@/components/campaigns/CampaignForm'
 import { getCampaign } from '@/lib/campaigns'
 import { getAssignableMembers } from '@/lib/ownership'
@@ -16,6 +17,7 @@ type EditCampaignPageProps = {
 export default async function EditCampaignPage({
   params,
 }: EditCampaignPageProps) {
+  await requirePermission('campaigns.update')
   const { id } = await params
 
   const membership = await getCurrentOrganization()

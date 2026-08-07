@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { requirePermission } from '@/lib/auth'
 import OwnerSelect from '@/components/ownership/OwnerSelect'
 import { getAssignableMembers } from '@/lib/ownership'
 import { getCurrentOrganization } from '@/lib/team'
@@ -9,6 +10,7 @@ import { createCompany } from '../../crm-actions'
 const input = 'min-h-11 w-full rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
 
 export default async function NewCompanyPage() {
+  await requirePermission('companies.create')
   const membership = await getCurrentOrganization()
   if (!membership) throw new Error('Unable to determine the current organization.')
   const owners = await getAssignableMembers(membership)

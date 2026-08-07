@@ -95,7 +95,7 @@ export async function requirePlatformPermission(
   const membership = await requirePlatformAccess()
 
   if (!hasPlatformPermission(membership.role, permission)) {
-    redirect('/platform')
+    redirect('/platform/access-denied')
   }
 
   return membership

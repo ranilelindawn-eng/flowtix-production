@@ -1,5 +1,6 @@
 import { cache } from 'react'
 
+import { getCurrentPlatformMembership } from '@/lib/platform/auth'
 import { createClient } from '@/lib/supabase/server'
 
 export type TeamRole = 'owner' | 'admin' | 'manager' | 'agent'
@@ -163,6 +164,13 @@ export const getCurrentOrganization = cache(
       return null
     }
 
+    const platformMembership =
+      await getCurrentPlatformMembership()
+
+    if (platformMembership) {
+      return null
+    }
+
     const { data, error } = await supabase.rpc(
       'get_current_organization_membership',
     )
@@ -188,6 +196,15 @@ export async function setActiveOrganization(
 
   if (!normalizedOrganizationId) {
     throw new Error('Organization ID is required.')
+  }
+
+  const platformMembership =
+    await getCurrentPlatformMembership()
+
+  if (platformMembership) {
+    throw new Error(
+      'Flowtix Platform staff accounts cannot select a customer workspace.',
+    )
   }
 
   const supabase = await createClient()

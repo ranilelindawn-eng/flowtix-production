@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { encryptIntegrationSecret } from '@/lib/integrations/crypto'
+import { upsertEncryptedIntegrationSecret } from '@/lib/integrations/secret-store'
 import { getProductionOrigin, verifyIntegrationState } from '@/lib/integrations/oauth-state'
 import { exchangeProviderCode, fetchProviderIdentity, type ExternalOAuthProvider } from '@/lib/integrations/provider-oauth'
 
@@ -50,14 +51,12 @@ export async function GET(request: NextRequest) {
     }, { onConflict: 'organization_id,provider' }).select('id').single()
     if (error || !integration) throw new Error(error?.message || 'Unable to save integration.')
 
-    const { error: secretError } = await supabase.from('organization_integration_secrets').upsert({
-      integration_id: integration.id,
-      organization_id: state.organizationId,
-      encrypted_credentials: encrypted,
-      credential_version: 1,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'integration_id' })
-    if (secretError) throw new Error(secretError.message)
+    await upsertEncryptedIntegrationSecret({
+      integrationId: integration.id,
+      organizationId: state.organizationId,
+      encryptedCredentials: encrypted,
+      credentialVersion: 1,
+    })
     return go('connected', provider)
   } catch (error) {
     console.error('OAuth integration callback failed:', error)
