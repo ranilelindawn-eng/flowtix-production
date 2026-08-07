@@ -225,11 +225,19 @@ export default async function BillingPage({
         </div>
       ) : null}
 
+      {trialState === 'plan-changed' && trialActive ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          Trial plan changed successfully. No payment was taken, and your
+          original 7-day trial end date is unchanged.
+        </div>
+      ) : null}
+
       {trialActive ? (
         <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-sm text-blue-100">
           You are using the {activePlan?.name ?? displayedPlanName} plan during
-          your free trial. Complete PayMongo checkout before the trial ends if
-          you want uninterrupted access afterward.
+          your free trial. You can switch trial plans without being charged,
+          and your original trial end date will not change. When the trial
+          ends, complete PayMongo checkout to continue.
         </div>
       ) : null}
 
@@ -559,7 +567,9 @@ export default async function BillingPage({
                         type="submit"
                         className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
                       >
-                        Choose {plan.name}
+                        {trialActive
+                          ? `Use ${plan.name} for trial`
+                          : `Choose ${plan.name}`}
                       </button>
                     </form>
                   ) : (

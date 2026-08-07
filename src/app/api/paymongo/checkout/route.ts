@@ -27,6 +27,15 @@ type CheckoutRegistration = {
   payment_id?: string
 }
 
+type TrialPlanSwitchResult = {
+  applied?: boolean
+  changed?: boolean
+  subscription_id?: string
+  plan_id?: string
+  plan_code?: string
+  trial_ends_at?: string
+}
+
 export async function POST(request: Request) {
   let idempotency: IdempotencyHandle | null = null
   let organizationId: string | null = null
@@ -70,6 +79,54 @@ export async function POST(request: Request) {
       )
     }
 
+    const admin = createAdminClient()
+
+    const {
+      data: trialSwitch,
+      error: trialSwitchError,
+    } = await admin.rpc(
+      'switch_flowtix_trial_plan_if_active',
+      {
+        p_organization_id: organizationId,
+        p_plan_id: plan.id,
+        p_plan_code: plan.code,
+      },
+    )
+
+    if (trialSwitchError) {
+      throw new Error(
+        `Unable to change the trial plan: ${trialSwitchError.message}`,
+      )
+    }
+
+    const trialSwitchResult =
+      trialSwitch as TrialPlanSwitchResult | null
+
+    if (trialSwitchResult?.applied) {
+      await writeAuditEvent({
+        action: 'billing.trial.plan_changed',
+        organizationId,
+        resourceType: 'organization_subscription',
+        resourceId:
+          trialSwitchResult.subscription_id ?? undefined,
+        metadata: {
+          plan_code: plan.code,
+          plan_id: plan.id,
+          changed: trialSwitchResult.changed === true,
+          trial_ends_at:
+            trialSwitchResult.trial_ends_at ?? null,
+          charged: false,
+        },
+      })
+
+      const appUrl = getBillingAppUrl()
+
+      return NextResponse.redirect(
+        `${appUrl}/dashboard/billing?trial=plan-changed`,
+        303,
+      )
+    }
+
     idempotency = await beginIdempotentOperation({
       organizationId,
       scope: 'billing.paymongo.checkout',
@@ -89,7 +146,6 @@ export async function POST(request: Request) {
       })
     }
 
-    const admin = createAdminClient()
     const { data: lease, error: leaseError } = await admin.rpc(
       'begin_paymongo_checkout_creation',
       {

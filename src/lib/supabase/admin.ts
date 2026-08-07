@@ -387,6 +387,22 @@ type Database = {
         Args: Record<string, never>
         Returns: number
       }
+      switch_flowtix_trial_plan_if_active: {
+        Args: {
+          p_organization_id: string
+          p_plan_id: string
+          p_plan_code: string
+        }
+        Returns: {
+          applied?: boolean
+          changed?: boolean
+          subscription_id?: string
+          plan_id?: string
+          plan_code?: string
+          trial_ends_at?: string
+          reason?: string
+        }
+      }
       register_pending_paymongo_checkout: {
         Args: {
           p_organization_id: string
