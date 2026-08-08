@@ -166,7 +166,6 @@ type PlivoConstructor = new (options?: Record<string, unknown>) => PlivoSdkLike
 type RelayConstructor = new (options: {
   project: string
   token: string
-  host?: string
 }) => SignalWireClientLike
 
 declare global {
@@ -652,7 +651,6 @@ export default function DialerClient({
         const client = new Relay({
           project: payload.projectId,
           token: payload.token,
-          host: payload.host,
         })
         client.remoteElement = 'flowtix-signalwire-remote-audio'
         client.localElement = 'flowtix-signalwire-local-audio'
