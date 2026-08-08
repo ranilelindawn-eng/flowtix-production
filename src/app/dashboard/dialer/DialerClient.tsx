@@ -168,7 +168,6 @@ type RelayConstructor = new (options: {
 
 declare global {
   interface Window {
-    Relay?: RelayConstructor
     Plivo?: PlivoConstructor
   }
 }
@@ -579,12 +578,20 @@ export default function DialerClient({
       }
 
       if (selectedProvider === 'signalwire') {
-        const payload = await fetchToken('signalwire')
+        const [signalWireModule, payload] = await Promise.all([
+          import('@signalwire/js'),
+          fetchToken('signalwire'),
+        ])
         if (!payload.projectId) throw new Error('SignalWire Project ID is unavailable.')
-        await loadBrowserScript('https://cdn.signalwire.com/@signalwire/js@1')
-        if (!window.Relay) throw new Error('SignalWire Relay browser SDK did not initialize.')
 
-        const client = new window.Relay({
+        const Relay = (
+          signalWireModule as unknown as { Relay?: RelayConstructor }
+        ).Relay
+        if (!Relay) {
+          throw new Error('SignalWire Relay browser SDK did not initialize.')
+        }
+
+        const client = new Relay({
           project: payload.projectId,
           token: payload.token,
         })
