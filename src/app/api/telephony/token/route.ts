@@ -80,7 +80,7 @@ async function createSignalWireRelayJwt(input: {
     },
     body: JSON.stringify({
       resource: identity,
-      expires_in: 60,
+      expires_in: 3600,
     }),
     cache: 'no-store',
   })
@@ -103,6 +103,7 @@ async function createSignalWireRelayJwt(input: {
     projectId,
     token: payload.jwt_token.trim(),
     identity,
+    host: new URL(spaceUrl).host,
   }
 }
 
@@ -172,6 +173,7 @@ export async function GET(request: NextRequest) {
         token: relay.token,
         projectId: relay.projectId,
         identity: relay.identity,
+        host: relay.host,
         userId,
         organizationId: organization.organization_id,
         callerId,

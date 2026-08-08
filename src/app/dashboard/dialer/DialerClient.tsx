@@ -59,6 +59,7 @@ type TokenPayload = {
   token: string
   projectId?: string
   username?: string
+  host?: string
   callerId?: string
   userId: string
   organizationId: string
@@ -128,7 +129,8 @@ type SignalWireCallLike = TelnyxCallLike & {
 type SignalWireClientLike = {
   remoteElement?: string
   localElement?: string
-  connect: () => void
+  connected?: boolean
+  connect: () => void | Promise<void>
   disconnect: () => void
   on: (event: string, handler: (payload?: unknown) => void) => SignalWireClientLike
   newCall: (options: {
@@ -164,6 +166,7 @@ type PlivoConstructor = new (options?: Record<string, unknown>) => PlivoSdkLike
 type RelayConstructor = new (options: {
   project: string
   token: string
+  host?: string
 }) => SignalWireClientLike
 
 declare global {
@@ -248,6 +251,39 @@ function describeTelnyxError(payload?: unknown) {
     sessionId: event.sessionId ?? null,
     type: event.type ?? null,
   }
+}
+
+function describeProviderError(payload?: unknown): string {
+  if (payload instanceof Error) return payload.message
+  if (typeof payload === 'string' && payload.trim()) return payload.trim()
+
+  if (payload && typeof payload === 'object') {
+    const record = payload as Record<string, unknown>
+    const nested =
+      record.error && typeof record.error === 'object'
+        ? (record.error as Record<string, unknown>)
+        : null
+
+    for (const candidate of [
+      record.message,
+      record.reason,
+      record.errorMessage,
+      nested?.message,
+      nested?.reason,
+    ]) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim()
+      }
+    }
+
+    try {
+      return JSON.stringify(payload)
+    } catch {
+      // Fall through.
+    }
+  }
+
+  return 'Unknown provider error'
 }
 
 function getDefaultFollowUpDate() {
@@ -582,7 +618,9 @@ export default function DialerClient({
           import('@signalwire/js'),
           fetchToken('signalwire'),
         ])
-        if (!payload.projectId) throw new Error('SignalWire Project ID is unavailable.')
+        if (!payload.projectId) {
+          throw new Error('SignalWire Project ID is unavailable.')
+        }
 
         const Relay = (
           signalWireModule as unknown as { Relay?: RelayConstructor }
@@ -591,26 +629,76 @@ export default function DialerClient({
           throw new Error('SignalWire Relay browser SDK did not initialize.')
         }
 
+        let settled = false
+        const markReady = () => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(connectTimeout)
+          window.clearInterval(connectionPoll)
+          setDeviceState('ready')
+          setMessage('SignalWire softphone ready for inbound and outbound calls.')
+        }
+        const markFailed = (payload?: unknown) => {
+          if (settled) return
+          settled = true
+          window.clearTimeout(connectTimeout)
+          window.clearInterval(connectionPoll)
+          const detail = describeProviderError(payload)
+          console.error('[Flowtix SignalWire] connection failed', payload)
+          setDeviceState('error')
+          setMessage(`SignalWire softphone connection failed: ${detail}`)
+        }
+
         const client = new Relay({
           project: payload.projectId,
           token: payload.token,
+          host: payload.host,
         })
         client.remoteElement = 'flowtix-signalwire-remote-audio'
         client.localElement = 'flowtix-signalwire-local-audio'
-        client.on('signalwire.ready', () => {
-          setDeviceState('ready')
-          setMessage('SignalWire softphone ready for inbound and outbound calls.')
+
+        const connectTimeout = window.setTimeout(() => {
+          if (client.connected === true) {
+            markReady()
+            return
+          }
+          markFailed(
+            'Timed out waiting for SignalWire to establish the browser session.',
+          )
+        }, 15000)
+
+        const connectionPoll = window.setInterval(() => {
+          if (client.connected === true) {
+            markReady()
+          }
+        }, 500)
+
+        client.on('signalwire.ready', markReady)
+        client.on('signalwire.socket.open', () => {
+          if (client.connected === true) markReady()
         })
-        client.on('signalwire.socket.close', () => setDeviceState('offline'))
-        client.on('signalwire.error', (error?: unknown) => {
-          console.error('[Flowtix SignalWire] error', error)
-          setDeviceState('error')
-          setMessage('SignalWire softphone connection failed.')
+        client.on('signalwire.socket.error', markFailed)
+        client.on('signalwire.error', markFailed)
+        client.on('signalwire.socket.close', (event?: unknown) => {
+          if (!settled) {
+            markFailed(event ?? 'SignalWire socket closed before becoming ready.')
+            return
+          }
+          setDeviceState('offline')
         })
         client.on('signalwire.notification', handleSignalWireNotification)
+
         signalWireClientRef.current = client
         setTokenPayload(payload)
-        client.connect()
+
+        try {
+          await Promise.resolve(client.connect())
+          if (client.connected === true) {
+            markReady()
+          }
+        } catch (error) {
+          markFailed(error)
+        }
         return
       }
 
