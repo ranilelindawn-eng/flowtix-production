@@ -663,7 +663,7 @@ export default function DialerClient({
             return
           }
           markFailed(
-            'Timed out waiting for SignalWire to establish the browser session.',
+            'Timed out waiting for SignalWire session authentication/readiness. Check the browser console and SignalWire logs for the underlying websocket or authorization error.',
           )
         }, 15000)
 
@@ -677,11 +677,19 @@ export default function DialerClient({
         client.on('signalwire.socket.open', () => {
           if (client.connected === true) markReady()
         })
-        client.on('signalwire.socket.error', markFailed)
+        client.on('signalwire.socket.error', (event?: unknown) => {
+          console.warn(
+            '[Flowtix SignalWire] websocket transport error event',
+            event,
+          )
+        })
         client.on('signalwire.error', markFailed)
         client.on('signalwire.socket.close', (event?: unknown) => {
           if (!settled) {
-            markFailed(event ?? 'SignalWire socket closed before becoming ready.')
+            console.warn(
+              '[Flowtix SignalWire] socket closed before ready',
+              event,
+            )
             return
           }
           setDeviceState('offline')
