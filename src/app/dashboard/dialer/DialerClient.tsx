@@ -39,6 +39,21 @@ type DialerClientProps = {
   callerIds?: DialerPhoneNumber[]
 }
 
+function providerDisplayName(
+  provider: DialerPhoneNumber['provider'],
+): string {
+  switch (provider) {
+    case 'telnyx':
+      return 'Telnyx'
+    case 'signalwire':
+      return 'SignalWire'
+    case 'plivo':
+      return 'Plivo'
+    default:
+      return 'Twilio'
+  }
+}
+
 type TokenPayload = {
   provider: 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
   token: string
@@ -512,14 +527,7 @@ export default function DialerClient({
     }
 
     setDeviceState('connecting')
-    const providerLabel =
-      selectedProvider === 'telnyx'
-        ? 'Telnyx'
-        : selectedProvider === 'signalwire'
-          ? 'SignalWire'
-          : selectedProvider === 'plivo'
-            ? 'Plivo'
-            : 'Twilio'
+    const providerLabel = providerDisplayName(selectedProvider)
     setMessage(`Connecting ${providerLabel} browser softphone…`)
 
     try {
@@ -1135,7 +1143,7 @@ export default function DialerClient({
                     value={number.phoneNumber}
                     className="bg-white text-slate-950"
                   >
-                    {number.friendlyName} · {number.phoneNumber} · {number.provider === 'telnyx' ? 'Telnyx' : 'Twilio'}
+                    {number.friendlyName} · {number.phoneNumber} · {providerDisplayName(number.provider)}
                     {number.isDefault ? ' · Default' : ''}
                   </option>
                 ))}
