@@ -29,7 +29,7 @@ export type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
-  provider: 'twilio' | 'telnyx'
+  provider: 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
 }
 
 function DialerLocked({
@@ -152,7 +152,7 @@ export default async function DialerPage({
       'id,provider,phone_number,friendly_name,is_default,capabilities',
     )
     .eq('organization_id', organization.organization_id)
-    .in('provider', ['twilio', 'telnyx'])
+    .in('provider', ['twilio', 'telnyx', 'signalwire', 'plivo'])
     .order('is_default', { ascending: false })
     .order('friendly_name', { ascending: true })
 
@@ -177,7 +177,11 @@ export default async function DialerPage({
       friendlyName: row.friendly_name,
       isDefault: row.is_default,
       provider:
-        row.provider === 'telnyx' ? 'telnyx' : 'twilio',
+        row.provider === 'telnyx' ||
+        row.provider === 'signalwire' ||
+        row.provider === 'plivo'
+          ? row.provider
+          : 'twilio',
     }))
 
   return (

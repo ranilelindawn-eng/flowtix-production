@@ -175,7 +175,7 @@ const cards: Card[] = [
     provider: 'signalwire',
     name: 'SignalWire',
     description:
-      'Use the subscriber SignalWire project and space.',
+      'Connect the subscriber SignalWire project and space. Flowtix securely creates short-lived browser JWTs for WebRTC calling.',
     icon: Phone,
     method: 'credentials',
     fields: [
@@ -191,15 +191,6 @@ const cards: Card[] = [
       {
         name: 'config_space_url',
         label: 'Space URL',
-      },
-      {
-        name: 'relayProject',
-        label: 'Browser Project (optional)',
-      },
-      {
-        name: 'relayToken',
-        label: 'Browser Token (optional)',
-        type: 'password',
       },
     ],
   },
