@@ -362,6 +362,26 @@ export default function DialerClient({
   const plivoSdkRef = useRef<PlivoSdkLike | null>(null)
   const plivoCallRegisteredRef = useRef(false)
 
+  // These refs keep call-registration data current without making the browser
+  // softphone connection effect depend on the dialed phone number. Otherwise
+  // every digit typed rebuilds registerBrowserCall -> connectDevice -> useEffect,
+  // disconnecting an already-ready WebRTC session while the user is dialing.
+  const phoneNumberRef = useRef(phoneNumber)
+  const selectedCallerIdRef = useRef(selectedCallerId)
+  const initialContactIdRef = useRef(initialContact?.id ?? null)
+
+  useEffect(() => {
+    phoneNumberRef.current = phoneNumber
+  }, [phoneNumber])
+
+  useEffect(() => {
+    selectedCallerIdRef.current = selectedCallerId
+  }, [selectedCallerId])
+
+  useEffect(() => {
+    initialContactIdRef.current = initialContact?.id ?? null
+  }, [initialContact?.id])
+
   const selectedProvider =
     callerIds.find((number) => number.phoneNumber === selectedCallerId)?.provider ??
     callerIds[0]?.provider ??
@@ -505,21 +525,24 @@ export default function DialerClient({
     provider: 'telnyx' | 'signalwire' | 'plivo'
     providerCallId: string
   }) => {
-    if (!selectedCallerId || !/^\+[1-9]\d{7,14}$/.test(phoneNumber.trim())) return
+    const fromNumber = selectedCallerIdRef.current
+    const toNumber = phoneNumberRef.current.trim()
+    if (!fromNumber || !/^\+[1-9]\d{7,14}$/.test(toNumber)) return
+
     const response = await fetch('/api/telephony/browser-call', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         provider: input.provider,
         providerCallId: input.providerCallId,
-        fromNumber: selectedCallerId,
-        toNumber: phoneNumber.trim(),
-        contactId: initialContact?.id ?? null,
+        fromNumber,
+        toNumber,
+        contactId: initialContactIdRef.current,
       }),
     })
     const result = await response.json() as { error?: string }
     if (!response.ok) throw new Error(result.error ?? 'Unable to register browser call.')
-  }, [initialContact?.id, phoneNumber, selectedCallerId])
+  }, [])
 
   const updatePresence = useCallback(async (payload: Record<string, unknown>) => {
     const response = await fetch('/api/telephony/presence', {
@@ -594,10 +617,8 @@ export default function DialerClient({
       plivoSdkRef.current?.client.logout?.()
       telnyxClientRef.current = null
       telnyxCallRef.current = null
-      signalWireClientRef.current?.disconnect?.()
       signalWireClientRef.current = null
       signalWireCallRef.current = null
-      plivoSdkRef.current?.client.logout?.()
       plivoSdkRef.current = null
       plivoCallRegisteredRef.current = false
 
@@ -902,6 +923,11 @@ export default function DialerClient({
   }, [callState, isOnHold])
 
   async function placeCall() {
+    if (deviceState !== 'ready') {
+      setMessage('Wait for the browser softphone to be online before placing a call.')
+      return
+    }
+
     if (!selectedCallerId) {
       setMessage('Import and select an owned voice number before placing calls.')
       return
