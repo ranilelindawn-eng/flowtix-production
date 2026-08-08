@@ -174,6 +174,28 @@ declare global {
   }
 }
 
+function ensureUnmanagedAudioElement(id: string, muted = false): HTMLAudioElement {
+  const existing = document.getElementById(id)
+  if (existing instanceof HTMLAudioElement) {
+    existing.autoplay = true
+    existing.muted = muted
+    return existing
+  }
+
+  const audio = document.createElement('audio')
+  audio.id = id
+  audio.autoplay = true
+  audio.muted = muted
+  audio.setAttribute('playsinline', '')
+  audio.style.display = 'none'
+  document.body.appendChild(audio)
+  return audio
+}
+
+function removeUnmanagedAudioElement(id: string) {
+  document.getElementById(id)?.remove()
+}
+
 const loadedScripts = new Map<string, Promise<void>>()
 
 function loadBrowserScript(src: string): Promise<void> {
@@ -648,6 +670,12 @@ export default function DialerClient({
           setMessage(`SignalWire softphone connection failed: ${detail}`)
         }
 
+        // Keep SignalWire media elements outside React's managed DOM. The Relay SDK
+        // resolves these IDs to HTMLMediaElements internally; React-managed nodes carry
+        // Fiber references that can become circular if an SDK transport serializes them.
+        ensureUnmanagedAudioElement('flowtix-signalwire-remote-audio')
+        ensureUnmanagedAudioElement('flowtix-signalwire-local-audio', true)
+
         const client = new Relay({
           project: payload.projectId,
           token: payload.token,
@@ -847,6 +875,9 @@ export default function DialerClient({
       void sendDeviceHeartbeat('offline')
       void deviceRef.current?.destroy()
       telnyxClientRef.current?.disconnect?.()
+      signalWireClientRef.current?.disconnect?.()
+      removeUnmanagedAudioElement('flowtix-signalwire-remote-audio')
+      removeUnmanagedAudioElement('flowtix-signalwire-local-audio')
     }
   }, [connectDevice, sendDeviceHeartbeat])
 
@@ -858,30 +889,6 @@ export default function DialerClient({
     }, 25_000)
     return () => window.clearInterval(heartbeatTimer)
   }, [deviceState, sendDeviceHeartbeat])
-
-  useEffect(() => {
-    if (!tokenPayload) return
-
-    const activity: AgentActivityState = ['connecting', 'ringing', 'incoming'].includes(
-      callState,
-    )
-      ? 'ringing'
-      : callState === 'connected'
-        ? 'busy'
-        : callState === 'ended'
-          ? 'wrap_up'
-          : 'idle'
-
-    const presenceTimer = window.setTimeout(() => {
-      void updatePresence({
-        action: 'activity',
-        state: activity,
-        wrapUpSeconds: 30,
-      }).catch(() => undefined)
-    }, 0)
-
-    return () => window.clearTimeout(presenceTimer)
-  }, [callState, tokenPayload, updatePresence])
 
   useEffect(() => {
     if (callState !== 'connected' || isOnHold) return
@@ -1163,8 +1170,6 @@ export default function DialerClient({
   return (
     <div className="space-y-6">
       <audio id="flowtix-telnyx-remote-audio" autoPlay className="hidden" />
-      <audio id="flowtix-signalwire-remote-audio" autoPlay className="hidden" />
-      <audio id="flowtix-signalwire-local-audio" autoPlay muted className="hidden" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">

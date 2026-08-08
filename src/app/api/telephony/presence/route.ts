@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     const provider = typeof body.provider === 'string' ? body.provider.trim().toLowerCase() : 'browser'
-    if (!['browser', 'twilio', 'telnyx'].includes(provider)) {
+    if (!['browser', 'twilio', 'telnyx', 'signalwire', 'plivo'].includes(provider)) {
       return NextResponse.json({ error: 'Unsupported device provider.' }, { status: 400 })
     }
 
