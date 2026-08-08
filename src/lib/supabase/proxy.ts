@@ -152,7 +152,7 @@ export async function updateSession(request: NextRequest) {
     'permissions-policy': 'camera=(), microphone=(self), geolocation=()',
     'cross-origin-opener-policy': 'same-origin',
     'cross-origin-resource-policy': 'same-origin',
-    'content-security-policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paymongo.com https://api.twilio.com https://api.telnyx.com; media-src 'self' blob: https:; form-action 'self' https://checkout.paymongo.com; upgrade-insecure-requests",
+    'content-security-policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paymongo.com https://api.twilio.com https://api.telnyx.com https://*.signalwire.com wss://*.signalwire.com; media-src 'self' blob: https:; form-action 'self' https://checkout.paymongo.com; upgrade-insecure-requests",
   }
   Object.entries(securityHeaders).forEach(([key,value]) => response.headers.set(key,value))
   return response
