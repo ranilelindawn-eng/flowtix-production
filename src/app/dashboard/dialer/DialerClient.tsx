@@ -581,7 +581,7 @@ export default function DialerClient({
       if (selectedProvider === 'signalwire') {
         const payload = await fetchToken('signalwire')
         if (!payload.projectId) throw new Error('SignalWire Project ID is unavailable.')
-        await loadBrowserScript('https://unpkg.com/@signalwire/js@^1')
+        await loadBrowserScript('https://cdn.signalwire.com/@signalwire/js@1')
         if (!window.Relay) throw new Error('SignalWire Relay browser SDK did not initialize.')
 
         const client = new window.Relay({
