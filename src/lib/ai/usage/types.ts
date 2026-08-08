@@ -1,6 +1,6 @@
 export const AI_USAGE_FEATURES = [
   'chat', 'summary', 'sentiment', 'coaching', 'call_analysis', 'task_generation', 'email_generation',
-  'transcript_processing', 'transcription',
+  'transcript_processing', 'transcription', 'post_call_follow_up',
 ] as const
 
 export type AIUsageFeature = (typeof AI_USAGE_FEATURES)[number]

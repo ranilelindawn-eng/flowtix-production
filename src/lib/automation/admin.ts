@@ -31,6 +31,10 @@ export type AutomationSummary = {
   reservedCampaignMembers: number
   queuedCommunications: number
   failedCommunications: number
+  pendingPostCallDispatches: number
+  failedPostCallDispatches: number
+  postCallEmails: number
+  postCallSms: number
 }
 
 function numberValue(value: unknown) {
@@ -111,6 +115,10 @@ export async function getAutomationSummary(
     campaignMembers,
     queuedMessages,
     failedMessages,
+    pendingPostCallDispatches,
+    failedPostCallDispatches,
+    postCallEmails,
+    postCallSms,
   ] = await Promise.all([
     supabase
       .from('sequences')
@@ -142,6 +150,28 @@ export async function getAutomationSummary(
       .select('id', { count: 'exact', head: true })
       .eq('organization_id', organizationId)
       .eq('status', 'failed'),
+    supabase
+      .from('background_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('queue', 'post_call')
+      .in('status', ['queued', 'scheduled', 'processing', 'retrying']),
+    supabase
+      .from('background_jobs')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('queue', 'post_call')
+      .in('status', ['failed', 'dead_letter']),
+    supabase
+      .from('communication_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('source', 'post_call_email'),
+    supabase
+      .from('communication_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', organizationId)
+      .eq('source', 'post_call_sms'),
   ])
 
   return {
@@ -151,5 +181,9 @@ export async function getAutomationSummary(
     reservedCampaignMembers: campaignMembers.count ?? 0,
     queuedCommunications: queuedMessages.count ?? 0,
     failedCommunications: failedMessages.count ?? 0,
+    pendingPostCallDispatches: pendingPostCallDispatches.count ?? 0,
+    failedPostCallDispatches: failedPostCallDispatches.count ?? 0,
+    postCallEmails: postCallEmails.count ?? 0,
+    postCallSms: postCallSms.count ?? 0,
   }
 }

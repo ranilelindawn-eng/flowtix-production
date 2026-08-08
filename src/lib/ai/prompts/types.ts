@@ -11,6 +11,7 @@ export type AIPromptKey =
   | 'chat.marketing'
   | 'call.analysis'
   | 'email.generate'
+  | 'post_call.follow_up'
   | 'tasks.suggest'
   | 'summary.transcript'
   | 'sentiment.analyze'

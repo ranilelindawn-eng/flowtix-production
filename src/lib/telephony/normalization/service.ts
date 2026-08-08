@@ -1,3 +1,7 @@
+import {
+  enqueueCanonicalPostCallDispatch,
+  evaluateCanonicalPostCallTrigger,
+} from '@/lib/automation/post-call/trigger'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import type { NormalizedCallEvent } from './types'
 
@@ -121,6 +125,44 @@ export async function applyNormalizedCallEvent(input: {
     .eq('id', call.id)
     .eq('organization_id', input.organizationId)
   if (updateError) throw new Error(`Unable to update provider call: ${updateError.message}`)
+
+  if (
+    event.eventType === 'call.status' &&
+    terminalStatuses.has(event.status)
+  ) {
+    try {
+      const trigger = await evaluateCanonicalPostCallTrigger({
+        organizationId: input.organizationId,
+        callId: call.id,
+        previousStatus: call.status,
+        status: event.status,
+        occurredAt,
+      })
+
+      if (trigger.eligible) {
+        const job = await enqueueCanonicalPostCallDispatch(trigger)
+
+        console.info('Canonical post-call automation job queued.', {
+          organizationId: trigger.organizationId,
+          callId: trigger.callId,
+          status: trigger.status,
+          emailEnabled: trigger.emailEnabled,
+          smsEnabled: trigger.smsEnabled,
+          delaySeconds: trigger.delaySeconds,
+          jobId: job?.id ?? null,
+          jobStatus: job?.status ?? null,
+          scheduledAt: job?.scheduled_at ?? null,
+        })
+      }
+    } catch (triggerError) {
+      // A post-call automation evaluation failure must never roll back or
+      // invalidate an otherwise valid telephony lifecycle update.
+      console.error(
+        'Unable to evaluate canonical post-call automation trigger:',
+        triggerError,
+      )
+    }
+  }
 
   return { duplicate: false, callId: call.id }
 }

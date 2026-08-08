@@ -1,6 +1,7 @@
 import { executeCalendarSync } from '@/lib/calendar/sync'
 import { executeIntegrationMaintenance } from '@/lib/integrations/maintenance'
 import { executeCampaignMember } from '@/lib/campaigns/engine'
+import { executePostCallDispatch } from '@/lib/automation/post-call/dispatcher'
 import { deliverCommunication } from '@/lib/communications/delivery'
 import type { JobHandler } from '@/lib/jobs/types'
 import { executeSequenceStep } from '@/lib/sequences/engine'
@@ -59,4 +60,12 @@ registerJobHandler('exports.generate', async ({ job, heartbeat }) => {
   await heartbeat()
   const { processExport } = await import('@/lib/exports/processor')
   return processExport(job.payload)
+})
+
+registerJobHandler('automation.post_call.dispatch', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return executePostCallDispatch({
+    dispatchJobId: job.id,
+    payload: job.payload,
+  })
 })

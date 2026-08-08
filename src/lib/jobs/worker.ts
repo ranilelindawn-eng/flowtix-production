@@ -11,6 +11,7 @@ import {
 const DEFAULT_QUEUES = [
   'default',
   'communications',
+  'post_call',
   'sequences',
   'campaigns',
   'telephony',

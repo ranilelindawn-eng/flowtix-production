@@ -13,6 +13,8 @@ export type AutomationSource =
   | 'campaign'
   | 'api'
   | 'system'
+  | 'post_call_email'
+  | 'post_call_sms'
 
 type BusinessWindow = {
   start: string

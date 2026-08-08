@@ -28,7 +28,14 @@ type CommunicationMessage = {
   status: string
   attempt_count: number
   usage_consumed_at: string | null
-  source: 'manual' | 'sequence' | 'campaign' | 'api' | 'system'
+  source:
+    | 'manual'
+    | 'sequence'
+    | 'campaign'
+    | 'api'
+    | 'system'
+    | 'post_call_email'
+    | 'post_call_sms'
 }
 
 type ProviderResult = {
@@ -158,6 +165,14 @@ async function consumeMessageUsage(message: CommunicationMessage) {
         'USAGE_LIMIT_REACHED',
       )
     }
+
+    if (error.message.includes('SUBSCRIPTION_ACCESS_REQUIRED')) {
+      throw new NonRetryableJobError(
+        'The organization subscription does not currently allow communication usage.',
+        'SUBSCRIPTION_ACCESS_REQUIRED',
+      )
+    }
+
     throw new Error(`Unable to consume communication usage: ${error.message}`)
   }
 
@@ -181,6 +196,10 @@ async function sendEmail(message: CommunicationMessage): Promise<ProviderResult>
     })
     return { provider: 'gmail', messageId: gmail.id, sender: gmail.sender }
   } catch (gmailError) {
+    if (message.source === 'post_call_email') {
+      throw gmailError
+    }
+
     const apiKey = process.env.RESEND_API_KEY?.trim()
     const from = process.env.RESEND_FROM_EMAIL?.trim()
     if (!apiKey || !from) {
