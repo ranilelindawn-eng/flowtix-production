@@ -2,11 +2,15 @@ import Link from 'next/link'
 import ContactForm from '@/components/contacts/ContactForm'
 import { createContact } from '@/app/dashboard/contacts/actions'
 import { requirePermission } from '@/lib/auth'
+import { getContactCompanyOptions } from '@/lib/contacts'
 import { getAssignableMembers, canAssignOtherMembers } from '@/lib/ownership'
 
 export default async function NewContactPage() {
   const membership = await requirePermission('contacts.create')
-  const owners = await getAssignableMembers(membership)
+  const [owners, companies] = await Promise.all([
+    getAssignableMembers(membership),
+    getContactCompanyOptions(),
+  ])
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -33,6 +37,7 @@ export default async function NewContactPage() {
             id: owner.membershipId,
             full_name: owner.name,
           }))}
+          companyOptions={companies}
           canAssignOthers={canAssignOtherMembers(membership.role)}
         />
       </div>

@@ -3,6 +3,7 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  Download,
   Mail,
   Phone,
   Plus,
@@ -108,7 +109,10 @@ export default async function ContactsPage({
 }: ContactsPageProps) {
   const resolvedSearchParams = await searchParams
 
-  await requirePermission('contacts.view')
+  const organization = await requirePermission('contacts.view')
+  const canManageCsv =
+    organization.role === 'owner' ||
+    organization.role === 'admin'
 
   const search = getSingleParam(
     resolvedSearchParams.search,
@@ -179,13 +183,24 @@ export default async function ContactsPage({
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/dashboard/contacts/import"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
-          >
-            <Upload aria-hidden="true" className="size-4" />
-            Import CSV
-          </Link>
+          {canManageCsv ? (
+            <>
+              <a
+                href="/api/contacts/import/sample"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
+              >
+                <Download aria-hidden="true" className="size-4" />
+                Download sample CSV
+              </a>
+              <Link
+                href="/dashboard/contacts/import"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white"
+              >
+                <Upload aria-hidden="true" className="size-4" />
+                Import CSV
+              </Link>
+            </>
+          ) : null}
           <Link
             href="/dashboard/contacts/new"
             className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"

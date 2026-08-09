@@ -30,7 +30,7 @@ export default async function CompanyPage({
       .maybeSingle(),
     supabase
       .from('contacts')
-      .select('id,first_name,last_name,email,phone,job_title')
+      .select('id,first_name,last_name,email,phone,title')
       .eq('organization_id', membership.organization_id)
       .eq('company_id', id),
     supabase
@@ -39,7 +39,6 @@ export default async function CompanyPage({
       .eq('organization_id', membership.organization_id)
       .eq('entity_type', 'company')
       .eq('entity_id', id)
-      .eq('status', 'active')
       .order('created_at', { ascending: false }),
     supabase
       .from('attachments')
@@ -111,7 +110,7 @@ export default async function CompanyPage({
                 </p>
 
                 <p className="mt-1 text-sm text-slate-400">
-                  {contact.job_title || 'Contact'} ·{' '}
+                  {contact.title || 'Contact'} ·{' '}
                   {contact.email || contact.phone || 'No contact details'}
                 </p>
               </Link>
@@ -214,7 +213,7 @@ export default async function CompanyPage({
                 key={comment.id}
                 className="rounded-xl border border-white/10 p-3"
               >
-                <p className="whitespace-pre-wrap text-sm text-slate-200">
+                <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-slate-200">
                   {comment.body}
                 </p>
 

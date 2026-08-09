@@ -15,12 +15,14 @@ import {
   Play,
   Radio,
   RefreshCw,
+  Search,
   Send,
   StopCircle,
   UserRoundCheck,
 } from 'lucide-react'
 
 import {
+  getAssignedDialerContacts,
   saveDialerContactUpdate,
   type DialerContact,
 } from './actions'
@@ -37,6 +39,7 @@ type DialerClientProps = {
   initialContact?: DialerContact | null
   initialPhoneNumber?: string
   callerIds?: DialerPhoneNumber[]
+  assignedContacts?: DialerContact[]
 }
 
 function providerDisplayName(
@@ -320,10 +323,18 @@ export default function DialerClient({
   initialContact = null,
   initialPhoneNumber = '',
   callerIds = [],
+  assignedContacts = [],
 }: DialerClientProps) {
   const [phoneNumber, setPhoneNumber] = useState(
     initialContact?.phoneNumber ?? initialPhoneNumber,
   )
+  const [activeContact, setActiveContact] =
+    useState<DialerContact | null>(initialContact)
+  const [contactSearch, setContactSearch] = useState('')
+  const [contactResults, setContactResults] =
+    useState<DialerContact[]>(assignedContacts)
+  const [contactSearchState, setContactSearchState] =
+    useState<'idle' | 'loading' | 'error'>('idle')
   const [selectedCallerId, setSelectedCallerId] = useState(
     callerIds.find((number) => number.isDefault)?.phoneNumber ??
       callerIds[0]?.phoneNumber ??
@@ -368,7 +379,7 @@ export default function DialerClient({
   // disconnecting an already-ready WebRTC session while the user is dialing.
   const phoneNumberRef = useRef(phoneNumber)
   const selectedCallerIdRef = useRef(selectedCallerId)
-  const initialContactIdRef = useRef(initialContact?.id ?? null)
+  const initialContactIdRef = useRef(activeContact?.id ?? null)
 
   useEffect(() => {
     phoneNumberRef.current = phoneNumber
@@ -379,8 +390,24 @@ export default function DialerClient({
   }, [selectedCallerId])
 
   useEffect(() => {
-    initialContactIdRef.current = initialContact?.id ?? null
-  }, [initialContact?.id])
+    initialContactIdRef.current = activeContact?.id ?? null
+  }, [activeContact?.id])
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setContactSearchState('loading')
+      void getAssignedDialerContacts(contactSearch)
+        .then((contacts) => {
+          setContactResults(contacts)
+          setContactSearchState('idle')
+        })
+        .catch(() => {
+          setContactSearchState('error')
+        })
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [contactSearch])
 
   const selectedProvider =
     callerIds.find((number) => number.phoneNumber === selectedCallerId)?.provider ??
@@ -988,7 +1015,7 @@ export default function DialerClient({
             To: phoneNumber.trim(),
             FlowtixUserId: tokenPayload.userId,
             FlowtixOrganizationId: tokenPayload.organizationId,
-            ContactId: initialContact?.id ?? '',
+            ContactId: activeContact?.id ?? '',
             CallerId: selectedCallerId,
             Record: String(isRecording),
           },
@@ -1142,10 +1169,10 @@ export default function DialerClient({
   }
 
   async function saveClientUpdate(openContactAfterSave = false) {
-    if (!initialContact) {
+    if (!activeContact) {
       setSaveState('error')
       setSaveMessage(
-        'Open the dialer from a CRM contact before saving an update.',
+        'Select an assigned CRM contact before saving an update.',
       )
       return
     }
@@ -1160,7 +1187,7 @@ export default function DialerClient({
           : undefined
 
       await saveDialerContactUpdate({
-        contactId: initialContact.id,
+        contactId: activeContact.id,
         outcome: callOutcome,
         leadStatus,
         notes: callNotes,
@@ -1177,7 +1204,7 @@ export default function DialerClient({
       setCallNotes('')
 
       if (openContactAfterSave) {
-        window.location.assign(`/dashboard/contacts/${initialContact.id}`)
+        window.location.assign(`/dashboard/contacts/${activeContact.id}`)
       }
     } catch (error) {
       setSaveState('error')
@@ -1311,59 +1338,145 @@ export default function DialerClient({
               </div>
             </div>
           ) : (
-            <>
-              <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-                <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  Phone number
-                </label>
-                <input
-                  value={phoneNumber}
-                  onChange={(event) => setPhoneNumber(event.target.value)}
-                  disabled={active}
-                  placeholder="+14155550123"
-                  className="mt-3 w-full bg-transparent text-center text-3xl font-semibold tracking-wide text-white outline-none placeholder:text-slate-700"
-                />
-                {initialContact && (
-                  <p className="mt-2 text-center text-sm text-slate-400">
-                    {initialContact.name}
+            <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.72fr)]">
+              <div>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+                  <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Phone number
+                  </label>
+                  <input
+                    value={phoneNumber}
+                    onChange={(event) => {
+                      setPhoneNumber(event.target.value)
+                      if (
+                        activeContact &&
+                        event.target.value !== activeContact.phoneNumber
+                      ) {
+                        setActiveContact(null)
+                      }
+                    }}
+                    disabled={active}
+                    placeholder="+14155550123"
+                    className="mt-3 w-full bg-transparent text-center text-3xl font-semibold tracking-wide text-white outline-none placeholder:text-slate-700"
+                  />
+                  {activeContact && (
+                    <p className="mt-2 text-center text-sm text-cyan-300">
+                      {activeContact.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="mx-auto mt-6 grid max-w-sm grid-cols-3 gap-3">
+                  {keyRows.flat().map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => sendDigit(key)}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] py-4 text-xl font-semibold text-white hover:bg-white/10"
+                    >
+                      {key}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mt-7 flex justify-center">
+                  {!active ? (
+                    <button
+                      type="button"
+                      onClick={() => void placeCall()}
+                      disabled={deviceState !== 'ready' || !selectedCallerId}
+                      className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
+                    >
+                      <Phone className="h-7 w-7" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={hangUp}
+                      className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/20"
+                    >
+                      <PhoneOff className="h-7 w-7" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <aside className="min-h-[420px] rounded-3xl border border-white/10 bg-white/[0.025] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    My assigned contacts
                   </p>
-                )}
-              </div>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">
+                    Select a CRM contact to load the number without leaving the dialer.
+                  </p>
+                </div>
 
-              <div className="mx-auto mt-6 grid max-w-sm grid-cols-3 gap-3">
-                {keyRows.flat().map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => sendDigit(key)}
-                    className="rounded-2xl border border-white/10 bg-white/[0.03] py-4 text-xl font-semibold text-white hover:bg-white/10"
-                  >
-                    {key}
-                  </button>
-                ))}
-              </div>
+                <label className="relative mt-4 block">
+                  <span className="sr-only">Search assigned contacts</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="search"
+                    value={contactSearch}
+                    onChange={(event) => setContactSearch(event.target.value)}
+                    disabled={active}
+                    placeholder="Search name or number"
+                    className="min-h-10 w-full rounded-xl border border-white/10 bg-slate-950/60 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/40"
+                  />
+                </label>
 
-              <div className="mt-7 flex justify-center">
-                {!active ? (
-                  <button
-                    type="button"
-                    onClick={() => void placeCall()}
-                    disabled={deviceState !== 'ready' || !selectedCallerId}
-                    className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
-                  >
-                    <Phone className="h-7 w-7" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={hangUp}
-                    className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/20"
-                  >
-                    <PhoneOff className="h-7 w-7" />
-                  </button>
-                )}
-              </div>
-            </>
+                <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                  {contactSearchState === 'loading' ? (
+                    <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Loading contacts…
+                    </div>
+                  ) : null}
+
+                  {contactSearchState === 'error' ? (
+                    <p className="px-2 py-3 text-xs text-rose-300">
+                      Unable to load assigned contacts.
+                    </p>
+                  ) : null}
+
+                  {contactSearchState !== 'loading' &&
+                  contactResults.length === 0 ? (
+                    <p className="px-2 py-3 text-xs leading-5 text-slate-500">
+                      No assigned contacts with a phone number were found.
+                    </p>
+                  ) : null}
+
+                  {contactResults.map((contact) => {
+                    const selected = activeContact?.id === contact.id
+
+                    return (
+                      <button
+                        key={contact.id}
+                        type="button"
+                        disabled={active}
+                        onClick={() => {
+                          setActiveContact(contact)
+                          setPhoneNumber(contact.phoneNumber)
+                          setSaveState('idle')
+                          setSaveMessage('')
+                        }}
+                        className={`w-full rounded-2xl border px-3 py-3 text-left transition disabled:opacity-50 ${
+                          selected
+                            ? 'border-cyan-400/30 bg-cyan-400/10'
+                            : 'border-white/10 bg-slate-950/40 hover:bg-white/[0.06]'
+                        }`}
+                      >
+                        <p className="truncate text-sm font-semibold text-white">
+                          {contact.name}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-slate-400">
+                          {contact.phoneNumber}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </aside>
+            </div>
           )}
         </section>
 
@@ -1446,24 +1559,24 @@ export default function DialerClient({
               <CalendarClock className="mt-1 h-5 w-5 text-cyan-300" />
             </div>
 
-            {initialContact ? (
+            {activeContact ? (
               <div className="mt-4 rounded-xl border border-cyan-400/20 bg-cyan-400/5 px-3 py-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-cyan-300">
                   Selected client
                 </p>
                 <p className="mt-1 font-semibold text-white">
-                  {initialContact.name}
+                  {activeContact.name}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {initialContact.phoneNumber}
-                  {initialContact.company
-                    ? ` · ${initialContact.company}`
+                  {activeContact.phoneNumber}
+                  {activeContact.company
+                    ? ` · ${activeContact.company}`
                     : ''}
                 </p>
               </div>
             ) : (
               <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-3 text-sm text-amber-100">
-                Open this dialer from a contact profile to enable CRM updates.
+                Select one of your assigned contacts to enable CRM updates.
               </div>
             )}
 
@@ -1473,7 +1586,7 @@ export default function DialerClient({
                 <select
                   value={callOutcome}
                   onChange={(event) => setCallOutcome(event.target.value)}
-                  disabled={!initialContact || saveState === 'saving'}
+                  disabled={!activeContact || saveState === 'saving'}
                   className={`${fieldClass} mt-2`}
                 >
                   <option value="connected" className="bg-white text-slate-950">Connected</option>
@@ -1492,7 +1605,7 @@ export default function DialerClient({
                 <select
                   value={leadStatus}
                   onChange={(event) => setLeadStatus(event.target.value)}
-                  disabled={!initialContact || saveState === 'saving'}
+                  disabled={!activeContact || saveState === 'saving'}
                   className={`${fieldClass} mt-2`}
                 >
                   <option value="new" className="bg-white text-slate-950">New</option>
@@ -1511,7 +1624,7 @@ export default function DialerClient({
               <textarea
                 value={callNotes}
                 onChange={(event) => setCallNotes(event.target.value)}
-                disabled={!initialContact || saveState === 'saving'}
+                disabled={!activeContact || saveState === 'saving'}
                 rows={4}
                 maxLength={5000}
                 placeholder="What happened during the call?"
@@ -1526,7 +1639,7 @@ export default function DialerClient({
                 onChange={(event) =>
                   setCreateFollowUpTask(event.target.checked)
                 }
-                disabled={!initialContact || saveState === 'saving'}
+                disabled={!activeContact || saveState === 'saving'}
                 className="mt-1 h-4 w-4 rounded border-white/20 bg-transparent"
               />
               <span>
@@ -1546,7 +1659,7 @@ export default function DialerClient({
                   type="datetime-local"
                   value={followUpAt}
                   onChange={(event) => setFollowUpAt(event.target.value)}
-                  disabled={!initialContact || saveState === 'saving'}
+                  disabled={!activeContact || saveState === 'saving'}
                   className={`${fieldClass} mt-2`}
                 />
               </label>
@@ -1571,7 +1684,7 @@ export default function DialerClient({
               <button
                 type="button"
                 onClick={() => void saveClientUpdate(false)}
-                disabled={!initialContact || saveState === 'saving'}
+                disabled={!activeContact || saveState === 'saving'}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {saveState === 'saving' ? (
@@ -1585,7 +1698,7 @@ export default function DialerClient({
               <button
                 type="button"
                 onClick={() => void saveClientUpdate(true)}
-                disabled={!initialContact || saveState === 'saving'}
+                disabled={!activeContact || saveState === 'saving'}
                 className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ExternalLink className="h-4 w-4" />

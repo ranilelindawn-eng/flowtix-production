@@ -236,12 +236,13 @@ export default async function PipelineDetailsPage({
         </button>
       </form>
 
-      <div
-        className="grid min-w-max gap-4 overflow-x-auto pb-3"
-        style={{
-          gridTemplateColumns: `repeat(${Math.max(stages?.length ?? 0, 1)}, minmax(300px, 1fr))`,
-        }}
-      >
+      <div className="w-full max-w-full overflow-x-auto pb-3">
+        <div
+          className="grid min-w-max gap-4"
+          style={{
+            gridTemplateColumns: `repeat(${Math.max(stages?.length ?? 0, 1)}, minmax(300px, 1fr))`,
+          }}
+        >
         {stages?.map((stage) => {
           const deals =
             opportunities?.filter(
@@ -403,6 +404,7 @@ export default async function PipelineDetailsPage({
             No stages found for this pipeline.
           </div>
         )}
+        </div>
       </div>
     </div>
   )

@@ -294,7 +294,12 @@ export default async function SequencesPage() {
                             <form action={updateEnrollmentStatus}>
                               <input type="hidden" name="enrollment_id" value={enrollment.id} />
                               <input type="hidden" name="status" value="active" />
-                              <button className="rounded border border-white/10 px-2 py-1 text-xs">Resume</button>
+                              <button
+                                disabled={sequence.status !== 'active'}
+                                className="rounded border border-white/10 px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                Resume
+                              </button>
                             </form>
                           ) : (
                             <form action={updateEnrollmentStatus}>

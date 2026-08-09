@@ -91,6 +91,32 @@ export async function updateEnrollmentStatus(formData: FormData) {
   }
 
   const now = new Date().toISOString()
+
+  if (status === 'active') {
+    const { data: enrollment, error: enrollmentLookupError } = await supabase
+      .from('sequence_enrollments')
+      .select('sequence_id')
+      .eq('id', enrollmentId)
+      .eq('organization_id', membership.organization_id)
+      .maybeSingle()
+
+    if (enrollmentLookupError) throw new Error(enrollmentLookupError.message)
+    if (!enrollment) throw new Error('Sequence enrollment not found.')
+
+    const { data: sequence, error: sequenceLookupError } = await supabase
+      .from('sequences')
+      .select('status')
+      .eq('id', enrollment.sequence_id)
+      .eq('organization_id', membership.organization_id)
+      .maybeSingle()
+
+    if (sequenceLookupError) throw new Error(sequenceLookupError.message)
+    if (!sequence) throw new Error('Sequence not found.')
+    if (sequence.status !== 'active') {
+      throw new Error('Cannot resume an enrollment while its sequence is not active.')
+    }
+  }
+
   const update =
     status === 'active'
       ? {

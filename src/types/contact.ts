@@ -14,6 +14,7 @@ export type Contact = {
   last_name: string
   preferred_name: string | null
   company: string | null
+  company_id: string | null
   email: string
   phone: string | null
   title: string | null

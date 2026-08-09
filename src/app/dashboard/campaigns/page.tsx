@@ -267,6 +267,7 @@ export default async function CampaignsPage({
 
       <section className="rounded-3xl border border-white/10 bg-[#0B1726]/90 p-5 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
         <form
+          key={`${search}:${status}:${sort}`}
           method="get"
           className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_200px_220px_auto]"
         >

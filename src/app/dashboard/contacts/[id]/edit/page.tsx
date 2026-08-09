@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 
 import ContactForm from '@/components/contacts/ContactForm';
 import { updateContact } from '@/app/dashboard/contacts/actions';
-import { getContact } from '@/lib/contacts';
+import { getContact, getContactCompanyOptions } from '@/lib/contacts';
 import { requirePermission } from '@/lib/auth';
 import { getAssignableMembers, canAssignOtherMembers } from '@/lib/ownership';
 
@@ -18,9 +18,10 @@ export default async function EditContactPage({
 }: EditContactPageProps) {
   const { id } = await params;
   const membership = await requirePermission('contacts.update');
-  const [contact, owners] = await Promise.all([
+  const [contact, owners, companies] = await Promise.all([
     getContact(id),
     getAssignableMembers(membership),
+    getContactCompanyOptions(),
   ]);
 
   if (!contact) {
@@ -85,6 +86,7 @@ export default async function EditContactPage({
             id: owner.membershipId,
             full_name: owner.name,
           }))}
+          companyOptions={companies}
           canAssignOthers={canAssignOtherMembers(membership.role)}
         />
       </section>

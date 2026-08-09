@@ -111,6 +111,72 @@ export async function searchDialerContacts(
     .slice(0, MAX_DIALER_SEARCH_RESULTS)
 }
 
+
+const MAX_ASSIGNED_DIALER_CONTACTS = 50
+
+/**
+ * Loads the dialer contact directory for the signed-in user.
+ *
+ * Agents are explicitly restricted to contacts assigned to their current
+ * organization membership. Owners/admins/managers retain their existing
+ * organization-wide contact visibility so supervisory calling workflows are
+ * not broken. RLS remains an additional database boundary.
+ */
+export async function getAssignedDialerContacts(
+  query = '',
+): Promise<DialerContact[]> {
+  const organization = await requirePermission('contacts.view')
+  const supabase = await createClient()
+  const normalizedQuery = query
+    .trim()
+    .replace(/[(),]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 120)
+
+  let contactQuery = supabase
+    .from('contacts')
+    .select('id,first_name,last_name,email,phone,company,metadata')
+    .eq('organization_id', organization.organization_id)
+    .is('merged_into_contact_id', null)
+
+  if (organization.role === 'agent') {
+    contactQuery = contactQuery.eq(
+      'owner_membership_id',
+      organization.membership_id,
+    )
+  }
+
+  if (normalizedQuery) {
+    const pattern = `%${normalizedQuery}%`
+    contactQuery = contactQuery.or(
+      [
+        `first_name.ilike.${pattern}`,
+        `last_name.ilike.${pattern}`,
+        `phone.ilike.${pattern}`,
+      ].join(','),
+    )
+  }
+
+  const { data, error } = await contactQuery
+    .order('updated_at', { ascending: false })
+    .limit(MAX_ASSIGNED_DIALER_CONTACTS)
+
+  if (error) {
+    throw new Error(
+      `Unable to load assigned dialer contacts: ${error.message}`,
+    )
+  }
+
+  return (data ?? [])
+    .map((contact) =>
+      mapDialerContact(contact as ContactForDialer),
+    )
+    .filter(
+      (contact): contact is DialerContact =>
+        contact !== null,
+    )
+}
+
 export async function getDialerContactById(
   contactId: string,
 ): Promise<DialerContact | null> {
@@ -120,11 +186,19 @@ export async function getDialerContactById(
     return null
   }
 
+  const organization = await requirePermission('contacts.view')
   const contact = await getContactById(
     normalizedContactId,
   )
 
   if (!contact) {
+    return null
+  }
+
+  if (
+    organization.role === 'agent' &&
+    contact.owner_membership_id !== organization.membership_id
+  ) {
     return null
   }
 
@@ -231,12 +305,21 @@ export async function saveDialerContactUpdate(input: {
     throw new Error('Authentication required.')
   }
 
-  const { data: contact, error: contactError } = await supabase
+  let contactQuery = supabase
     .from('contacts')
-    .select('id,organization_id,first_name,last_name,email')
+    .select('id,organization_id,first_name,last_name,email,owner_membership_id')
     .eq('id', contactId)
     .eq('organization_id', organization.organization_id)
-    .maybeSingle()
+
+  if (organization.role === 'agent') {
+    contactQuery = contactQuery.eq(
+      'owner_membership_id',
+      organization.membership_id,
+    )
+  }
+
+  const { data: contact, error: contactError } =
+    await contactQuery.maybeSingle()
 
   if (contactError) {
     throw new Error(`Failed to load contact: ${contactError.message}`)

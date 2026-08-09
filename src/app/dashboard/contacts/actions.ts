@@ -21,6 +21,7 @@ type ContactValues = {
   first_name: string
   last_name: string
   company: string
+  company_id: string
   email: string
   phone: string
   job_title: string
@@ -141,6 +142,7 @@ export async function createContact(formData: FormData) {
     first_name: getString(formData, 'first_name'),
     last_name: getString(formData, 'last_name'),
     company: getString(formData, 'company'),
+    company_id: getString(formData, 'company_id'),
     email: getString(formData, 'email'),
     phone: getString(formData, 'phone'),
     job_title: getString(formData, 'job_title'),
@@ -185,6 +187,7 @@ export async function updateContact(formData: FormData) {
     first_name: getString(formData, 'first_name'),
     last_name: getString(formData, 'last_name'),
     company: getString(formData, 'company'),
+    company_id: getString(formData, 'company_id'),
     email: getString(formData, 'email'),
     phone: getString(formData, 'phone'),
     job_title: getString(formData, 'job_title'),

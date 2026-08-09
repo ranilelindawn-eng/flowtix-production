@@ -85,15 +85,28 @@ export async function POST(request: Request) {
     }
 
     if (contactId) {
-      const { data: contact, error: contactError } = await admin
+      let contactQuery = admin
         .from('contacts')
-        .select('id')
+        .select('id,owner_membership_id')
         .eq('id', contactId)
         .eq('organization_id', organization.organization_id)
-        .maybeSingle()
+
+      if (organization.role === 'agent') {
+        contactQuery = contactQuery.eq(
+          'owner_membership_id',
+          organization.membership_id,
+        )
+      }
+
+      const { data: contact, error: contactError } =
+        await contactQuery.maybeSingle()
+
       if (contactError) throw new Error(contactError.message)
       if (!contact) {
-        return NextResponse.json({ error: 'The selected contact is unavailable.' }, { status: 400 })
+        return NextResponse.json(
+          { error: 'The selected contact is unavailable or is not assigned to you.' },
+          { status: 403 },
+        )
       }
     }
 

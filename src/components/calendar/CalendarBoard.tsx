@@ -130,7 +130,13 @@ export default function CalendarBoard({
   )
 
   const [cursor, setCursor] = useState(() => new Date())
-  const [view, setView] = useState<ViewMode>('month')
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window === 'undefined') return 'month'
+
+    const savedView = window.localStorage.getItem('flowtix-calendar-view')
+
+    return savedView === 'agenda' ? 'agenda' : 'month'
+  })
   const [selected, setSelected] = useState<CalendarEvent | null>(null)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
@@ -138,6 +144,11 @@ export default function CalendarBoard({
   const [attendeeInput, setAttendeeInput] = useState('')
   const [attendeeError, setAttendeeError] = useState('')
   const [pending, startTransition] = useTransition()
+
+  function changeView(nextView: ViewMode) {
+    setView(nextView)
+    window.localStorage.setItem('flowtix-calendar-view', nextView)
+  }
 
   const monthCells = useMemo(() => {
     const first = new Date(
@@ -348,7 +359,7 @@ export default function CalendarBoard({
               <button
                 key={mode}
                 type="button"
-                onClick={() => setView(mode)}
+                onClick={() => changeView(mode)}
                 className={
                   view === mode
                     ? 'rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white'

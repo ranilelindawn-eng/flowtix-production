@@ -12,6 +12,7 @@ type ContactFormValues = {
   first_name: string
   last_name: string
   company: string
+  company_id: string
   email: string
   phone: string
   job_title: string
@@ -38,6 +39,7 @@ type ContactRow = {
   first_name: string | null
   last_name: string | null
   company: string | null
+  company_id: string | null
   email: string | null
   phone: string | null
   title: string | null
@@ -180,6 +182,7 @@ function mapContact(row: ContactRow): Contact {
     first_name: row.first_name ?? '',
     last_name: row.last_name ?? '',
     company: row.company,
+    company_id: row.company_id,
     email: row.email ?? '',
     phone: row.phone,
     title: row.title,
@@ -336,6 +339,7 @@ export async function getContacts(
         first_name,
         last_name,
         company,
+        company_id,
         email,
         phone,
         title,
@@ -446,6 +450,7 @@ export async function getContactById(
       first_name,
       last_name,
       company,
+      company_id,
       email,
       phone,
       title,
@@ -501,6 +506,71 @@ export async function getContact(
   id: string,
 ): Promise<Contact | null> {
   return getContactById(id)
+}
+
+export type ContactCompanyOption = {
+  id: string
+  name: string
+}
+
+export async function getContactCompanyOptions(): Promise<ContactCompanyOption[]> {
+  const organization = await getCurrentOrganization()
+
+  if (!organization) {
+    return []
+  }
+
+  const supabase = await createServerSupabaseClient()
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id,name')
+    .eq('organization_id', organization.organization_id)
+    .order('name', { ascending: true })
+
+  if (error) {
+    throw new Error(`Failed to load companies for contact assignment: ${error.message}`)
+  }
+
+  return (data ?? []).map((company) => ({
+    id: company.id,
+    name: company.name,
+  }))
+}
+
+async function resolveContactCompany(
+  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  organizationId: string,
+  companyId: string,
+  legacyCompanyName: string,
+): Promise<{ company_id: string | null; company: string | null }> {
+  const normalizedCompanyId = companyId.trim()
+
+  if (!normalizedCompanyId) {
+    return {
+      company_id: null,
+      company: legacyCompanyName.trim() || null,
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('companies')
+    .select('id,name')
+    .eq('id', normalizedCompanyId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(`Failed to validate the selected company: ${error.message}`)
+  }
+
+  if (!data) {
+    throw new Error('The selected company was not found or is not accessible.')
+  }
+
+  return {
+    company_id: data.id,
+    company: data.name,
+  }
 }
 
 export async function getContactOwners(): Promise<ContactProfile[]> {
@@ -575,11 +645,19 @@ export async function createContact(
     values.owner_membership_id,
   )
 
+  const company = await resolveContactCompany(
+    supabase,
+    organization.organization_id,
+    values.company_id,
+    values.company,
+  )
+
   const payload = {
     organization_id: organization.organization_id,
     first_name: firstName,
     last_name: lastName,
-    company: values.company.trim() || null,
+    company: company.company,
+    company_id: company.company_id,
     email,
     phone: values.phone.trim() || null,
     title: values.job_title.trim() || null,
@@ -649,10 +727,18 @@ export async function updateContact(
     values.owner_membership_id,
   )
 
+  const company = await resolveContactCompany(
+    supabase,
+    organization.organization_id,
+    values.company_id,
+    values.company,
+  )
+
   const payload = {
     first_name: firstName,
     last_name: lastName,
-    company: values.company.trim() || null,
+    company: company.company,
+    company_id: company.company_id,
     email,
     phone: values.phone.trim() || null,
     title: values.job_title.trim() || null,

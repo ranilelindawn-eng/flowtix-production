@@ -543,6 +543,27 @@ export async function deliverCommunication(
       throw new Error(`Unable to save communication delivery: ${updateError.message}`)
     }
 
+    const { error: timelineError } = await client
+      .from('crm_timeline_events')
+      .insert({
+        organization_id: message.organization_id,
+        contact_id: message.contact_id,
+        event_type: 'activity',
+        event_action: 'sent',
+        title: message.subject || 'Email sent',
+        description: message.body,
+        source_table: 'communication_messages',
+        source_id: message.id,
+        occurred_at: sentAt,
+      })
+
+    if (timelineError) {
+  console.error(
+    'Unable to create communication timeline event:',
+    timelineError.message,
+  )
+}
+
     return {
       messageId: message.id,
       provider: result.provider,

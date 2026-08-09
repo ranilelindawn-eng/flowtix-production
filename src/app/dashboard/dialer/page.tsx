@@ -15,7 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 
 import DialerClient from './DialerClient'
-import { getDialerContactById } from './actions'
+import { getAssignedDialerContacts, getDialerContactById } from './actions'
 
 type DialerPageProps = {
   searchParams?: Promise<{
@@ -140,10 +140,12 @@ export default async function DialerPage({
   const contactId = params?.contactId?.trim() ?? ''
   const initialPhoneNumber = params?.phone?.trim() ?? ''
 
-  const initialContact =
+  const [initialContact, assignedContacts] = await Promise.all([
     contactId.length > 0
-      ? await getDialerContactById(contactId)
-      : null
+      ? getDialerContactById(contactId)
+      : Promise.resolve(null),
+    getAssignedDialerContacts(),
+  ])
 
   const supabase = await createClient()
   const { data: phoneNumberRows, error: phoneNumberError } = await supabase
@@ -189,6 +191,7 @@ export default async function DialerPage({
       initialContact={initialContact}
       initialPhoneNumber={initialPhoneNumber}
       callerIds={callerIds}
+      assignedContacts={assignedContacts}
     />
   )
 }

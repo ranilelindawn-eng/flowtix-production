@@ -9,6 +9,7 @@ type ContactFormState = {
   first_name: string
   last_name: string
   company: string
+  company_id: string
   email: string
   phone: string
   mobile: string
@@ -34,12 +35,18 @@ export type ContactOwnerOption = {
   full_name: string
 }
 
+export type ContactCompanyOption = {
+  id: string
+  name: string
+}
+
 type ContactFormProps = {
   initialValues?: Partial<Contact>
   action: (formData: FormData) => Promise<void>
   hiddenId?: string
   submitLabel: string
   ownerOptions: ContactOwnerOption[]
+  companyOptions: ContactCompanyOption[]
   canAssignOthers: boolean
 }
 
@@ -49,12 +56,14 @@ export default function ContactForm({
   hiddenId,
   submitLabel,
   ownerOptions,
+  companyOptions,
   canAssignOthers,
 }: ContactFormProps) {
   const [form, setForm] = useState<ContactFormState>({
     first_name: initialValues.first_name ?? '',
     last_name: initialValues.last_name ?? '',
     company: initialValues.company ?? '',
+    company_id: initialValues.company_id ?? '',
     email: initialValues.email ?? '',
     phone: initialValues.phone ?? '',
     mobile: initialValues.metadata?.mobile ?? '',
@@ -78,7 +87,7 @@ export default function ContactForm({
   })
 
   return (
-    <form action={action} method="post" className="space-y-6">
+    <form action={action} className="space-y-6">
       {hiddenId ? <input type="hidden" name="id" value={hiddenId} /> : null}
 
 
@@ -109,13 +118,42 @@ export default function ContactForm({
 
         <label className="block">
           <span className="text-sm text-slate-300">Company</span>
-          <input
-            name="company"
-            value={form.company}
-            onChange={(event) => setForm((prev) => ({ ...prev, company: event.target.value }))}
-            type="text"
+          <input type="hidden" name="company" value={form.company} />
+          <select
+            name="company_id"
+            value={form.company_id}
+            onChange={(event) => {
+              const companyId = event.target.value
+              const selectedCompany = companyOptions.find((company) => company.id === companyId)
+
+              setForm((previous) => ({
+                ...previous,
+                company_id: companyId,
+                company: selectedCompany?.name ?? '',
+              }))
+            }}
             className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
-          />
+          >
+            <option value="" className="bg-[#07111F] text-white">
+              {form.company && !form.company_id
+                ? `${form.company} (unlinked)`
+                : 'No linked company'}
+            </option>
+            {companyOptions.map((company) => (
+              <option
+                key={company.id}
+                value={company.id}
+                className="bg-[#07111F] text-white"
+              >
+                {company.name}
+              </option>
+            ))}
+          </select>
+          {form.company && !form.company_id ? (
+            <p className="mt-2 text-xs text-amber-300/80">
+              This existing company value is text only. Select a company above to link this contact to a company record.
+            </p>
+          ) : null}
         </label>
 
         <label className="block">
