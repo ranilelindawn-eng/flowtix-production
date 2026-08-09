@@ -558,11 +558,8 @@ export async function deliverCommunication(
       })
 
     if (timelineError) {
-  console.error(
-    'Unable to create communication timeline event:',
-    timelineError.message,
-  )
-}
+      throw new Error(`Unable to create communication timeline event: ${timelineError.message}`)
+    }
 
     return {
       messageId: message.id,

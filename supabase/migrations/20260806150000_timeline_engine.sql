@@ -79,63 +79,153 @@ as $$
 declare
   row_data jsonb := case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end;
   old_data jsonb := case when tg_op='INSERT' then '{}'::jsonb else to_jsonb(old) end;
-  org_id uuid; contact_id_value uuid; company_id_value uuid; opportunity_id_value uuid;
-  source_uuid uuid; actor_id uuid; owner_id uuid;
-  event_kind text; action_name text; event_title text; event_description text;
-  happened_at timestamptz; event_visibility text; revision_value text; key_value text;
+
+  org_id uuid;
+  contact_id_value uuid;
+  company_id_value uuid;
+  opportunity_id_value uuid;
+
+  source_uuid uuid;
+  actor_id uuid;
+  owner_id uuid;
+
+  event_kind text;
+  action_name text;
+  event_title text;
+  event_description text;
+
+  happened_at timestamptz;
+  event_visibility text;
+
+  revision_value text;
+  key_value text;
+
 begin
+
+  -- communication_messages are only CRM timeline events after successful delivery.
+  -- queued/processing/failed background delivery records stay in Email & SMS history only.
+  if tg_table_name = 'communication_messages' then
+    if coalesce(row_data->>'status','') not in ('sent','delivered') then
+      return case when tg_op='DELETE' then old else new end;
+    end if;
+  end if;
+
   org_id := nullif(row_data->>'organization_id','')::uuid;
   source_uuid := nullif(row_data->>'id','')::uuid;
+
   contact_id_value := nullif(row_data->>'contact_id','')::uuid;
   company_id_value := nullif(row_data->>'company_id','')::uuid;
-  opportunity_id_value := case when tg_table_name='opportunities' then source_uuid else nullif(row_data->>'opportunity_id','')::uuid end;
+  opportunity_id_value := nullif(row_data->>'opportunity_id','')::uuid;
+
   actor_id := coalesce(nullif(row_data->>'created_by','')::uuid, auth.uid());
   owner_id := nullif(row_data->>'owner_membership_id','')::uuid;
-  if contact_id_value is not null and not exists(select 1 from public.contacts where id=contact_id_value) then contact_id_value := null; end if;
-  if company_id_value is not null and not exists(select 1 from public.companies where id=company_id_value) then company_id_value := null; end if;
-  if opportunity_id_value is not null and not exists(select 1 from public.opportunities where id=opportunity_id_value) then opportunity_id_value := null; end if;
-  event_visibility := coalesce(row_data->>'visibility','organization');
-  action_name := lower(tg_op);
 
-  if tg_table_name='calls' then
+  event_visibility := coalesce(row_data->>'visibility','organization');
+
+  if tg_table_name='communication_messages' then
+
+    event_kind := 'system';
+
+    event_title :=
+      case
+        when row_data->>'channel'='email' then 'Email sent'
+        when row_data->>'channel'='sms' then 'SMS sent'
+        else 'Communication sent'
+      end;
+
+    event_description := row_data->>'body';
+
+    happened_at :=
+      coalesce(
+        nullif(row_data->>'sent_at','')::timestamptz,
+        nullif(row_data->>'created_at','')::timestamptz,
+        now()
+      );
+
+  elsif tg_table_name='calls' then
     event_kind := 'call';
     event_title := initcap(coalesce(row_data->>'direction','')) || ' call';
     event_description := coalesce(row_data->>'notes', row_data->>'status');
     happened_at := coalesce(nullif(row_data->>'started_at','')::timestamptz, nullif(row_data->>'created_at','')::timestamptz, now());
+
   elsif tg_table_name='contact_notes' then
-    event_kind := 'note'; event_title := 'Contact note'; event_description := row_data->>'body';
+    event_kind := 'note';
+    event_title := 'Contact note';
+    event_description := row_data->>'body';
     happened_at := coalesce(nullif(row_data->>'created_at','')::timestamptz, now());
+
   elsif tg_table_name='contact_tasks' then
-    event_kind := 'task'; event_title := coalesce(row_data->>'title','Task'); event_description := row_data->>'description';
+    event_kind := 'task';
+    event_title := coalesce(row_data->>'title','Task');
+    event_description := row_data->>'description';
     happened_at := coalesce(nullif(row_data->>'due_at','')::timestamptz, nullif(row_data->>'created_at','')::timestamptz, now());
+
   elsif tg_table_name='crm_activities' then
-    event_kind := 'activity'; event_title := coalesce(row_data->>'subject','CRM activity'); event_description := row_data->>'body';
+    event_kind := 'activity';
+    event_title := coalesce(row_data->>'subject','CRM activity');
+    event_description := row_data->>'body';
     happened_at := coalesce(nullif(row_data->>'occurred_at','')::timestamptz, now());
+
   elsif tg_table_name='calendar_events' then
-    event_kind := 'calendar'; event_title := coalesce(row_data->>'title','Calendar event'); event_description := row_data->>'description';
+    event_kind := 'calendar';
+    event_title := coalesce(row_data->>'title','Calendar event');
+    event_description := row_data->>'description';
     happened_at := coalesce(nullif(row_data->>'starts_at','')::timestamptz, now());
+
   elsif tg_table_name='opportunities' then
-    event_kind := 'opportunity'; event_title := coalesce(row_data->>'name','Opportunity'); event_description := row_data->>'next_step';
+    event_kind := 'opportunity';
+    event_title := coalesce(row_data->>'name','Opportunity');
+    event_description := row_data->>'next_step';
     happened_at := coalesce(nullif(row_data->>'updated_at','')::timestamptz, nullif(row_data->>'created_at','')::timestamptz, now());
+
   else
-    event_kind := 'other'; event_title := initcap(replace(tg_table_name,'_',' ')); event_description := null;
-    happened_at := coalesce(nullif(row_data->>'updated_at','')::timestamptz, nullif(row_data->>'created_at','')::timestamptz, now());
+    event_kind := 'other';
+    event_title := initcap(replace(tg_table_name,'_',' '));
+    event_description := null;
+    happened_at := now();
   end if;
 
   if tg_op='UPDATE' then
     if coalesce(old_data->>'status','') is distinct from coalesce(row_data->>'status','') then
       action_name := 'status_changed';
-      event_description := concat_ws(' → ', old_data->>'status', row_data->>'status');
-    elsif coalesce(old_data->>'stage_id','') is distinct from coalesce(row_data->>'stage_id','') then
-      action_name := 'stage_changed';
-    else action_name := 'updated'; end if;
-  elsif tg_op='INSERT' then action_name := 'created';
-  else action_name := 'deleted'; end if;
+    else
+      action_name := 'updated';
+    end if;
+  elsif tg_op='INSERT' then
+    action_name := 'created';
+  else
+    action_name := 'deleted';
+  end if;
 
-  revision_value := coalesce(row_data->>'updated_at', row_data->>'created_at', row_data->>'occurred_at', row_data->>'started_at', clock_timestamp()::text);
+  revision_value := coalesce(
+    row_data->>'updated_at',
+    row_data->>'created_at',
+    row_data->>'sent_at',
+    clock_timestamp()::text
+  );
+
   key_value := md5(concat_ws(':',tg_table_name,source_uuid::text,action_name,revision_value));
 
-  perform public.write_crm_timeline_event(org_id,contact_id_value,company_id_value,opportunity_id_value,event_kind,action_name,tg_table_name,source_uuid,key_value,event_title,event_description,happened_at,actor_id,owner_id,event_visibility,row_data,jsonb_build_object('trigger_operation',tg_op));
+  perform public.write_crm_timeline_event(
+    org_id,
+    contact_id_value,
+    company_id_value,
+    opportunity_id_value,
+    event_kind,
+    action_name,
+    tg_table_name,
+    source_uuid,
+    key_value,
+    event_title,
+    event_description,
+    happened_at,
+    actor_id,
+    owner_id,
+    event_visibility,
+    row_data,
+    jsonb_build_object('trigger_operation',tg_op)
+  );
+
   return case when tg_op='DELETE' then old else new end;
 end $$;
 

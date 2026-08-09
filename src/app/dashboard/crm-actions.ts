@@ -785,24 +785,6 @@ export async function sendCommunication(formData: FormData) {
     throw queueError
   }
 
-  const { error: timelineError } = await supabase
-    .from('crm_timeline_events')
-    .insert({
-      organization_id: membership.organization_id,
-      event_key: `communication:${message.id}`,
-      event_type: 'activity',
-      event_action: 'sent',
-      title: subject || 'Email sent',
-      description: body,
-      source_table: 'communication_messages',
-      source_id: message.id,
-      occurred_at: new Date().toISOString(),
-    })
-
-  if (timelineError) {
-    throw new Error(`Unable to create communication timeline event: ${timelineError.message}`)
-  }
-
   revalidatePath('/dashboard/communications')
   revalidatePath('/dashboard/timeline')
 }
