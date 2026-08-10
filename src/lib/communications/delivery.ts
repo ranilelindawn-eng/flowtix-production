@@ -493,6 +493,7 @@ export async function deliverCommunication(
     'communications',
   )
 
+  if (message.attempt_count === 0) {
   await enforceAutomationRules({
     organizationId: message.organization_id,
     contactId: message.contact_id,
@@ -500,6 +501,7 @@ export async function deliverCommunication(
     source: message.source,
     recipient: message.recipient,
   })
+}
 
   await consumeMessageUsage(message)
 
@@ -548,13 +550,14 @@ export async function deliverCommunication(
       .insert({
         organization_id: message.organization_id,
         contact_id: message.contact_id,
-        event_type: 'activity',
-        event_action: 'sent',
-        title: message.subject || 'Email sent',
-        description: message.body,
-        source_table: 'communication_messages',
-        source_id: message.id,
-        occurred_at: sentAt,
+            event_type: 'activity',
+    event_action: 'sent',
+    event_key: `communication_messages:${message.id}:sent`,
+    title: message.subject || 'Email sent',
+    description: message.body,
+    source_table: 'communication_messages',
+    source_id: message.id,
+    occurred_at: sentAt,
       })
 
     if (timelineError) {
