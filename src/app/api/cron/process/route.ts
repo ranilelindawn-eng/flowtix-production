@@ -32,6 +32,7 @@ export async function GET(request: Request) {
   const expected =
     process.env.INTERNAL_JOB_WORKER_SECRET?.trim()
 
+  
   if (!expected) {
     return NextResponse.json(
       {
