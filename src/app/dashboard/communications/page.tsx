@@ -19,7 +19,7 @@ export default async function CommunicationsPage() {
   const membership = await requirePermission('campaigns.view')
   const supabase = await createClient()
 
-  const [messageResult, templateResult] = await Promise.all([
+  const [messageResult, templateResult, snippetResult] = await Promise.all([
     supabase
       .from('communication_messages')
       .select('*')
@@ -29,6 +29,11 @@ export default async function CommunicationsPage() {
     supabase
       .from('message_templates')
       .select('id,name,channel,subject,body')
+      .eq('organization_id', membership.organization_id)
+      .order('name'),
+    supabase
+      .from('snippets')
+      .select('id,name,shortcut,content')
       .eq('organization_id', membership.organization_id)
       .order('name'),
   ])
@@ -42,6 +47,12 @@ export default async function CommunicationsPage() {
   if (templateResult.error) {
     throw new Error(
       `Failed to load message templates: ${templateResult.error.message}`,
+    )
+  }
+
+  if (snippetResult.error) {
+    throw new Error(
+      `Failed to load snippets: ${snippetResult.error.message}`,
     )
   }
 
@@ -113,7 +124,10 @@ export default async function CommunicationsPage() {
         </p>
       </header>
 
-      <CommunicationComposer templates={templates} />
+      <CommunicationComposer
+        templates={templates}
+        snippets={snippetResult.data ?? []}
+      />
 
       <section className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5">
         <h2 className="font-semibold text-white">

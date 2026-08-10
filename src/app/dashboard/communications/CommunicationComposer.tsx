@@ -4,6 +4,13 @@ import { useMemo, useState } from 'react'
 
 import { sendCommunication } from '../crm-actions'
 
+type MessageSnippet = {
+  id: string
+  name: string
+  shortcut: string
+  content: string
+}
+
 type MessageTemplate = {
   id: string
   name: string
@@ -17,8 +24,10 @@ const fieldClass =
 
 export default function CommunicationComposer({
   templates,
+  snippets,
 }: {
   templates: MessageTemplate[]
+  snippets: MessageSnippet[]
 }) {
   const [channel, setChannel] = useState<'email' | 'sms'>('email')
   const [templateId, setTemplateId] = useState('')
@@ -51,6 +60,28 @@ export default function CommunicationComposer({
     if (nextChannel === 'sms') {
       setSubject('')
     }
+  }
+
+  function changeBody(nextBody: string) {
+    const matchingSnippet = snippets.find((snippet) => {
+      const shortcut = snippet.shortcut.trim()
+
+      if (!shortcut) return false
+
+      return (
+        nextBody === shortcut ||
+        nextBody.endsWith(`\n${shortcut}`) ||
+        nextBody.endsWith(` ${shortcut}`)
+      )
+    })
+
+    if (!matchingSnippet) {
+      setBody(nextBody)
+      return
+    }
+
+    const shortcutStart = nextBody.length - matchingSnippet.shortcut.trim().length
+    setBody(`${nextBody.slice(0, shortcutStart)}${matchingSnippet.content}`)
   }
 
   return (
@@ -104,7 +135,7 @@ export default function CommunicationComposer({
         required
         name="body"
         value={body}
-        onChange={(event) => setBody(event.target.value)}
+        onChange={(event) => changeBody(event.target.value)}
         rows={6}
         placeholder="Write your message"
         className={`${fieldClass} py-3 md:col-span-2`}
