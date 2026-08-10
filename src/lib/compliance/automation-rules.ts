@@ -16,14 +16,8 @@ export type AutomationSource =
   | 'post_call_email'
   | 'post_call_sms'
 
-type BusinessWindow = {
-  start: string
-  end: string
-}
-
 type OrganizationPolicy = {
   timezone: string
-  businessHours: Record<string, BusinessWindow[]>
   allowUnknownConsent: boolean
   emailPerMinute: number
   smsPerMinute: number
@@ -37,16 +31,6 @@ type ContactPreference = {
   sms_consent_status: string
   call_consent_status: string
   timezone: string | null
-}
-
-const DEFAULT_BUSINESS_HOURS: Record<string, BusinessWindow[]> = {
-  monday: [{ start: '09:00', end: '17:00' }],
-  tuesday: [{ start: '09:00', end: '17:00' }],
-  wednesday: [{ start: '09:00', end: '17:00' }],
-  thursday: [{ start: '09:00', end: '17:00' }],
-  friday: [{ start: '09:00', end: '17:00' }],
-  saturday: [],
-  sunday: [],
 }
 
 function createServiceClient() {
@@ -78,128 +62,6 @@ function toPositiveInteger(
     : fallback
 }
 
-function normalizeBusinessHours(
-  value: unknown,
-): Record<string, BusinessWindow[]> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return DEFAULT_BUSINESS_HOURS
-  }
-
-  const source = value as Record<string, unknown>
-  const result: Record<string, BusinessWindow[]> = {}
-
-  for (const day of Object.keys(DEFAULT_BUSINESS_HOURS)) {
-    const windows = source[day]
-
-    result[day] = Array.isArray(windows)
-      ? windows.flatMap((window): BusinessWindow[] => {
-          if (
-            !window ||
-            typeof window !== 'object' ||
-            Array.isArray(window)
-          ) {
-            return []
-          }
-
-          const candidate = window as Record<string, unknown>
-
-          if (
-            typeof candidate.start !== 'string' ||
-            typeof candidate.end !== 'string' ||
-            !/^\d{2}:\d{2}$/.test(candidate.start) ||
-            !/^\d{2}:\d{2}$/.test(candidate.end)
-          ) {
-            return []
-          }
-
-          return [{
-            start: candidate.start,
-            end: candidate.end,
-          }]
-        })
-      : DEFAULT_BUSINESS_HOURS[day]
-  }
-
-  return result
-}
-
-function localDateParts(date: Date, timezone: string) {
-  const formatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    weekday: 'long',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
-
-  const parts = Object.fromEntries(
-    formatter
-      .formatToParts(date)
-      .filter((part) => part.type !== 'literal')
-      .map((part) => [part.type, part.value]),
-  )
-
-  return {
-    weekday: parts.weekday.toLowerCase(),
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    minutes: Number(parts.hour) * 60 + Number(parts.minute),
-  }
-}
-
-function parseMinutes(value: string): number {
-  const [hour, minute] = value.split(':').map(Number)
-  return hour * 60 + minute
-}
-
-function nextBusinessOpening(
-  now: Date,
-  timezone: string,
-  businessHours: Record<string, BusinessWindow[]>,
-): Date {
-  for (let dayOffset = 0; dayOffset <= 8; dayOffset += 1) {
-    const candidate = new Date(
-      now.getTime() + dayOffset * 24 * 60 * 60 * 1000,
-    )
-    const local = localDateParts(candidate, timezone)
-    const windows = businessHours[local.weekday] ?? []
-
-    for (const window of windows) {
-      const startMinutes = parseMinutes(window.start)
-
-      if (dayOffset === 0 && startMinutes <= local.minutes) {
-        continue
-      }
-
-      const deltaMinutes =
-        dayOffset * 24 * 60 +
-        Math.max(1, startMinutes - local.minutes)
-
-      return new Date(now.getTime() + deltaMinutes * 60 * 1000)
-    }
-  }
-
-  return new Date(now.getTime() + 24 * 60 * 60 * 1000)
-}
-
-function isInsideBusinessHours(
-  now: Date,
-  timezone: string,
-  businessHours: Record<string, BusinessWindow[]>,
-): boolean {
-  const local = localDateParts(now, timezone)
-  const windows = businessHours[local.weekday] ?? []
-
-  return windows.some((window) => {
-    const start = parseMinutes(window.start)
-    const end = parseMinutes(window.end)
-
-    return local.minutes >= start && local.minutes < end
-  })
-}
-
 function consentStatusFor(
   preference: ContactPreference | null,
   channel: AutomationChannel,
@@ -226,7 +88,7 @@ async function loadPolicy(
 
   const { data, error } = await client
     .from('organizations')
-    .select('timezone,business_hours,communication_policy')
+    .select('timezone,communication_policy')
     .eq('id', organizationId)
     .maybeSingle()
 
@@ -255,7 +117,6 @@ async function loadPolicy(
       typeof data.timezone === 'string' && data.timezone.trim()
         ? data.timezone
         : 'UTC',
-    businessHours: normalizeBusinessHours(data.business_hours),
     allowUnknownConsent: policy.allow_unknown_consent === true,
     emailPerMinute: toPositiveInteger(
       policy.email_per_minute,
@@ -362,29 +223,6 @@ export async function enforceAutomationRules(input: {
       `Explicit ${input.channel} consent is required for automated communication.`,
       'CONSENT_REQUIRED',
     )
-  }
-
-  if (automated) {
-    const timezone = preference?.timezone || policy.timezone
-    const now = new Date()
-
-    if (
-      !isInsideBusinessHours(
-        now,
-        timezone,
-        policy.businessHours,
-      )
-    ) {
-      throw new DeferredJobError(
-        'The communication is outside configured business hours.',
-        nextBusinessOpening(
-          now,
-          timezone,
-          policy.businessHours,
-        ),
-        'OUTSIDE_BUSINESS_HOURS',
-      )
-    }
   }
 
   const recipientHash = createHash('sha256')
