@@ -4,6 +4,7 @@ import ContactAISummary from '@/components/contacts/ContactAISummary'
 import ContactHeader from '@/components/contacts/ContactHeader'
 import ContactProfileCard from '@/components/contacts/ContactProfileCard'
 import ContactQuickActions from '@/components/contacts/ContactQuickActions'
+import ContactTags from '@/components/contacts/ContactTags'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import { requirePermission } from '@/lib/auth'
 import { getContactActivity } from '@/lib/contact-activity'
@@ -13,6 +14,7 @@ import { getContactNotes } from '@/lib/contact-notes'
 import { getContactTasks } from '@/lib/contact-tasks'
 import { getTimelineEvents } from '@/lib/timeline'
 import { getContact } from '@/lib/contacts'
+import { getEntityTags, getTags } from '@/lib/tags'
 
 type ContactPageProps = {
   params: Promise<{
@@ -27,13 +29,28 @@ export default async function ContactPage({
 
   const { id } = await params
 
-  const [contact, calls, notes, tasks, crmActivities, timelineEvents] = await Promise.all([
+  const [
+    contact,
+    calls,
+    notes,
+    tasks,
+    crmActivities,
+    timelineEvents,
+    availableTags,
+    assignedTags,
+  ] = await Promise.all([
     getContact(id),
     getContactCalls(id),
     getContactNotes(id),
     getContactTasks(id),
     getActivities({ organizationId: organization.organization_id, contactId: id, limit: 100 }),
     getTimelineEvents({ organizationId: organization.organization_id, contactId: id, limit: 150 }),
+    getTags(organization.organization_id),
+    getEntityTags({
+      organizationId: organization.organization_id,
+      entityType: 'contact',
+      entityId: id,
+    }),
   ])
 
   if (!contact) {
@@ -53,8 +70,14 @@ export default async function ContactPage({
       <ContactHeader contact={contact} />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)_minmax(280px,0.62fr)]">
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-6">
           <ContactProfileCard contact={contact} />
+
+          <ContactTags
+            contactId={contact.id}
+            availableTags={availableTags}
+            assignedTags={assignedTags}
+          />
         </div>
 
         <div className="min-w-0 space-y-6">
