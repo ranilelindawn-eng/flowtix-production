@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { processJobs } from "@/lib/jobs/worker";
+import { scheduleDueSequenceEnrollments } from "@/lib/sequences/engine";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -190,6 +191,9 @@ export async function GET(request: Request) {
     const workerId = resolveWorkerId(request);
     executionLog = await startExecutionLog(workerId);
 
+    const sequenceScheduling =
+      await scheduleDueSequenceEnrollments(25);
+
     const result = await processJobs({
       workerId,
       queues: [
@@ -215,6 +219,7 @@ export async function GET(request: Request) {
       ok: true,
       workerId,
       processedAt: new Date().toISOString(),
+      sequenceScheduling,
       ...result,
     });
   } catch (error) {
