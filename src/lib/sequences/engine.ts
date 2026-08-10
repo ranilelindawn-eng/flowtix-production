@@ -25,6 +25,21 @@ function requiredString(value: JsonValue | undefined, label: string) {
   return value.trim()
 }
 
+function renderMergeFields(
+  template: string | null,
+  variables: Record<string, string>,
+): string | null {
+  if (template === null) return null
+
+  return template.replace(
+    /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
+    (match, key: string) =>
+      Object.prototype.hasOwnProperty.call(variables, key)
+        ? variables[key]
+        : match,
+  )
+}
+
 async function enqueueCommunication(input: {
   organizationId: string
   enrollmentId: string
@@ -173,7 +188,7 @@ export async function executeSequenceStep(
   if (executionError) throw new Error(executionError.message)
 
   const { data: contact, error: contactError } = await client
-    .from('contacts').select('id,email,phone,first_name,last_name')
+    .from('contacts').select('id,email,phone,first_name,last_name,company_id')
     .eq('id', enrollment.contact_id).eq('organization_id', enrollment.organization_id).maybeSingle()
   if (contactError) throw new Error(contactError.message)
   if (!contact) throw new NonRetryableJobError('Sequence contact no longer exists.', 'CONTACT_NOT_FOUND')
@@ -187,6 +202,29 @@ export async function executeSequenceStep(
         error_message: `The contact has no ${step.channel} recipient.`, completed_at: new Date().toISOString(),
       }).eq('id', execution.id)
     } else {
+      let companyName = ''
+      if (contact.company_id) {
+        const { data: company, error: companyError } = await client
+          .from('companies')
+          .select('name')
+          .eq('id', contact.company_id)
+          .eq('organization_id', enrollment.organization_id)
+          .maybeSingle()
+
+        if (companyError) throw new Error(companyError.message)
+        companyName = company?.name ?? ''
+      }
+
+      const mergeFields = {
+        first_name: contact.first_name ?? '',
+        last_name: contact.last_name ?? '',
+        full_name:
+          [contact.first_name, contact.last_name].filter(Boolean).join(' '),
+        email: contact.email ?? '',
+        phone: contact.phone ?? '',
+        company: companyName,
+      }
+
       dispatchJobId = await enqueueCommunication({
         organizationId: enrollment.organization_id,
         enrollmentId: enrollment.id,
@@ -195,8 +233,8 @@ export async function executeSequenceStep(
         contactId: contact.id,
         channel: step.channel,
         recipient,
-        subject: step.subject,
-        body: step.body ?? '',
+        subject: renderMergeFields(step.subject, mergeFields),
+        body: renderMergeFields(step.body ?? '', mergeFields) ?? '',
       })
       await client.from('sequence_step_executions').update({
         status: 'dispatched', dispatch_job_id: dispatchJobId,
