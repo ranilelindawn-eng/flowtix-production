@@ -661,16 +661,90 @@ export async function createTag(formData: FormData) {
 
 export async function createTemplate(formData: FormData) {
   const { membership, supabase, user } = await context('campaigns.create')
+  const name = text(formData, 'name')
+  const channel = text(formData, 'channel') || 'email'
+  const subject = text(formData, 'subject')
+  const body = text(formData, 'body')
+
+  if (!name) throw new Error('Template name is required.')
+  if (channel !== 'email' && channel !== 'sms') {
+    throw new Error('Choose a valid template channel.')
+  }
+  if (!body) throw new Error('Template message body is required.')
+
   const { error } = await supabase.from('message_templates').insert({
     organization_id: membership.organization_id,
-    name: text(formData, 'name'),
-    channel: text(formData, 'channel') || 'email',
-    subject: optional(text(formData, 'subject')),
-    body: text(formData, 'body'),
+    name,
+    channel,
+    subject: channel === 'email' ? optional(subject) : null,
+    body,
     created_by: user.id,
   })
+
   if (error) throw new Error(error.message)
+
   revalidatePath('/dashboard/templates')
+  revalidatePath('/dashboard/communications')
+  revalidatePath('/dashboard/sequences')
+}
+
+export async function updateTemplate(formData: FormData) {
+  const { membership, supabase } = await context('campaigns.create')
+  const templateId = text(formData, 'template_id')
+  const name = text(formData, 'name')
+  const channel = text(formData, 'channel') || 'email'
+  const subject = text(formData, 'subject')
+  const body = text(formData, 'body')
+
+  if (!templateId) throw new Error('Template ID is required.')
+  if (!name) throw new Error('Template name is required.')
+  if (channel !== 'email' && channel !== 'sms') {
+    throw new Error('Choose a valid template channel.')
+  }
+  if (!body) throw new Error('Template message body is required.')
+
+  const { data, error } = await supabase
+    .from('message_templates')
+    .update({
+      name,
+      channel,
+      subject: channel === 'email' ? optional(subject) : null,
+      body,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', templateId)
+    .eq('organization_id', membership.organization_id)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Template not found.')
+
+  revalidatePath('/dashboard/templates')
+  revalidatePath('/dashboard/communications')
+  revalidatePath('/dashboard/sequences')
+}
+
+export async function deleteTemplate(formData: FormData) {
+  const { membership, supabase } = await context('campaigns.create')
+  const templateId = text(formData, 'template_id')
+
+  if (!templateId) throw new Error('Template ID is required.')
+
+  const { data, error } = await supabase
+    .from('message_templates')
+    .delete()
+    .eq('id', templateId)
+    .eq('organization_id', membership.organization_id)
+    .select('id')
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error('Template not found.')
+
+  revalidatePath('/dashboard/templates')
+  revalidatePath('/dashboard/communications')
+  revalidatePath('/dashboard/sequences')
 }
 
 export async function createSnippet(formData: FormData) {
@@ -691,24 +765,62 @@ export async function createSequence(formData: FormData) {
   const { membership, supabase, user } = await context(
     'campaigns.create',
   )
+  const name = text(formData, 'name')
+  const channel = text(formData, 'channel') || 'email'
+  const subject = text(formData, 'subject')
+  const body = text(formData, 'body')
+  const templateId = optional(text(formData, 'template_id'))
+
+  if (!name) throw new Error('Sequence name is required.')
+  if (!['email', 'sms', 'task', 'call'].includes(channel)) {
+    throw new Error('Choose a valid sequence step channel.')
+  }
+  if (!body) throw new Error('First-step content is required.')
+
+  if (templateId) {
+    const { data: template, error: templateError } = await supabase
+      .from('message_templates')
+      .select('id,channel')
+      .eq('id', templateId)
+      .eq('organization_id', membership.organization_id)
+      .maybeSingle()
+
+    if (templateError) throw new Error(templateError.message)
+    if (!template) throw new Error('Selected template was not found.')
+    if (template.channel !== channel) {
+      throw new Error('Selected template does not match the sequence channel.')
+    }
+  }
+
   const { data, error } = await supabase.from('sequences').insert({
     organization_id: membership.organization_id,
-    name: text(formData, 'name'),
+    name,
     description: optional(text(formData, 'description')),
     status: 'draft',
     created_by: user.id,
   }).select('id').single()
   if (error) throw new Error(error.message)
+
   const { error: stepError } = await supabase.from('sequence_steps').insert({
     organization_id: membership.organization_id,
     sequence_id: data.id,
     position: 1,
-    channel: text(formData, 'channel') || 'email',
+    channel,
     delay_days: 0,
-    subject: optional(text(formData, 'subject')),
-    body: text(formData, 'body'),
+    subject: optional(subject),
+    body,
+    template_id: templateId,
   })
-  if (stepError) throw new Error(stepError.message)
+
+  if (stepError) {
+    await supabase
+      .from('sequences')
+      .delete()
+      .eq('id', data.id)
+      .eq('organization_id', membership.organization_id)
+    throw new Error(stepError.message)
+  }
+
   revalidatePath('/dashboard/sequences')
 }
 

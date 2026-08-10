@@ -1,6 +1,6 @@
 import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { sendCommunication } from '../crm-actions'
+import CommunicationComposer from './CommunicationComposer'
 
 type CommunicationMessage = {
   id: string
@@ -19,23 +19,37 @@ export default async function CommunicationsPage() {
   const membership = await requirePermission('campaigns.view')
   const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('communication_messages')
-    .select('*')
-    .eq('organization_id', membership.organization_id)
-    .order('created_at', { ascending: false })
-    .limit(100)
+  const [messageResult, templateResult] = await Promise.all([
+    supabase
+      .from('communication_messages')
+      .select('*')
+      .eq('organization_id', membership.organization_id)
+      .order('created_at', { ascending: false })
+      .limit(100),
+    supabase
+      .from('message_templates')
+      .select('id,name,channel,subject,body')
+      .eq('organization_id', membership.organization_id)
+      .order('name'),
+  ])
 
-  if (error) {
+  if (messageResult.error) {
     throw new Error(
-      `Failed to load communication history: ${error.message}`,
+      `Failed to load communication history: ${messageResult.error.message}`,
     )
   }
 
-  const messages = (data ?? []) as CommunicationMessage[]
+  if (templateResult.error) {
+    throw new Error(
+      `Failed to load message templates: ${templateResult.error.message}`,
+    )
+  }
 
-  const fieldClass =
-    'min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
+  const messages = (messageResult.data ?? []) as CommunicationMessage[]
+  const templates = (templateResult.data ?? []).map((template) => ({
+    ...template,
+    channel: template.channel as 'email' | 'sms',
+  }))
 
   function statusStyle(status: string) {
     switch (status) {
@@ -99,40 +113,7 @@ export default async function CommunicationsPage() {
         </p>
       </header>
 
-      <form
-        action={sendCommunication}
-        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2"
-      >
-        <select name="channel" className={fieldClass}>
-          <option value="email">Email</option>
-          <option value="sms">SMS</option>
-        </select>
-
-        <input
-          required
-          name="recipient"
-          placeholder="Email address or E.164 phone number"
-          className={fieldClass}
-        />
-
-        <input
-          name="subject"
-          placeholder="Subject (email only)"
-          className={`${fieldClass} md:col-span-2`}
-        />
-
-        <textarea
-          required
-          name="body"
-          rows={6}
-          placeholder="Write your message"
-          className={`${fieldClass} py-3 md:col-span-2`}
-        />
-
-        <button className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white md:col-span-2">
-          Send message
-        </button>
-      </form>
+      <CommunicationComposer templates={templates} />
 
       <section className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5">
         <h2 className="font-semibold text-white">

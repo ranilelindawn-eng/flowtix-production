@@ -15,7 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { getTeamMembers } from '@/lib/team'
 
-import { createSequence } from '../crm-actions'
+import SequenceCreateForm from './SequenceCreateForm'
 import {
   enrollContact,
   setSequenceStatus,
@@ -127,8 +127,13 @@ export default async function SequencesPage() {
 
   const supabase = await createClient()
 
-  const [sequenceResult, contactResult, enrollmentResult, team] =
-    await Promise.all([
+  const [
+    sequenceResult,
+    contactResult,
+    enrollmentResult,
+    templateResult,
+    team,
+  ] = await Promise.all([
       supabase
         .from('sequences')
         .select('*,sequence_steps(*)')
@@ -148,6 +153,11 @@ export default async function SequencesPage() {
         .eq('organization_id', membership.organization_id)
         .order('created_at', { ascending: false })
         .limit(200),
+      supabase
+        .from('message_templates')
+        .select('id,name,channel,subject,body')
+        .eq('organization_id', membership.organization_id)
+        .order('name'),
       getTeamMembers(),
     ])
 
@@ -169,9 +179,19 @@ export default async function SequencesPage() {
     )
   }
 
+  if (templateResult.error) {
+    throw new Error(
+      `Failed to load message templates: ${templateResult.error.message}`,
+    )
+  }
+
   const sequences = sequenceResult.data ?? []
   const contacts = contactResult.data ?? []
   const enrollments = enrollmentResult.data ?? []
+  const templates = (templateResult.data ?? []).map((template) => ({
+    ...template,
+    channel: template.channel as 'email' | 'sms',
+  }))
   const fieldClass =
     'min-h-11 rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white'
   const contactMap = new Map(
@@ -195,24 +215,7 @@ export default async function SequencesPage() {
         </p>
       </header>
 
-      <form
-        action={createSequence}
-        className="grid gap-3 rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 md:grid-cols-2"
-      >
-        <input required name="name" placeholder="Sequence name" className={fieldClass} />
-        <select name="channel" className={fieldClass}>
-          <option value="email">Email first step</option>
-          <option value="sms">SMS first step</option>
-          <option value="task">Task first step</option>
-          <option value="call">Call first step</option>
-        </select>
-        <input name="description" placeholder="Description" className={`${fieldClass} md:col-span-2`} />
-        <input name="subject" placeholder="First-step subject" className={`${fieldClass} md:col-span-2`} />
-        <textarea required name="body" rows={4} placeholder="First-step content" className={`${fieldClass} py-3 md:col-span-2`} />
-        <button className="rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white md:col-span-2">
-          Create sequence
-        </button>
-      </form>
+      <SequenceCreateForm templates={templates} />
 
       <div className="grid gap-4 xl:grid-cols-2">
         {sequences.map((sequence) => {
