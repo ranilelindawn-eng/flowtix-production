@@ -1,0 +1,70 @@
+name: Flowtix Production Worker
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flowtix-production-worker
+  cancel-in-progress: false
+
+jobs:
+  process-jobs:
+    name: Process Flowtix jobs
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    env:
+      FLOWTIX_WORKER_URL: ${{ vars.FLOWTIX_WORKER_URL }}
+      INTERNAL_JOB_WORKER_SECRET: ${{ secrets.INTERNAL_JOB_WORKER_SECRET }}
+
+    steps:
+      - name: Validate worker configuration
+        shell: bash
+        run: |
+          if [ -z "$FLOWTIX_WORKER_URL" ]; then
+            echo "::error::Missing repository variable FLOWTIX_WORKER_URL."
+            exit 1
+          fi
+
+          if [ -z "$INTERNAL_JOB_WORKER_SECRET" ]; then
+            echo "::error::Missing repository secret INTERNAL_JOB_WORKER_SECRET."
+            exit 1
+          fi
+
+          case "$FLOWTIX_WORKER_URL" in
+            https://*)
+              ;;
+            *)
+              echo "::error::FLOWTIX_WORKER_URL must use HTTPS."
+              exit 1
+              ;;
+          esac
+
+      - name: Invoke Flowtix worker
+        shell: bash
+        run: |
+          response_file="$(mktemp)"
+
+          http_status="$(
+            curl               --silent               --show-error               --request GET               --connect-timeout 15               --max-time 75               --output "$response_file"               --write-out "%{http_code}"               --header "Accept: application/json"               --header "Authorization: Bearer $INTERNAL_JOB_WORKER_SECRET"               "$FLOWTIX_WORKER_URL"
+          )"
+
+          echo "Flowtix worker returned HTTP $http_status."
+
+          if [ "$http_status" -lt 200 ] || [ "$http_status" -ge 300 ]; then
+            echo "::error::Flowtix worker invocation failed with HTTP $http_status."
+            cat "$response_file"
+            exit 1
+          fi
+
+          cat "$response_file"
+
+          if ! grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' "$response_file"; then
+            echo "::error::Flowtix worker response did not report ok=true."
+            exit 1
+          fi
