@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import ContactForm from '@/components/contacts/ContactForm';
+import { createClient } from '@/lib/supabase/server';
 import { updateContact } from '@/app/dashboard/contacts/actions';
 import { getContact, getContactCompanyOptions } from '@/lib/contacts';
 import { requirePermission } from '@/lib/auth';
@@ -18,15 +19,36 @@ export default async function EditContactPage({
 }: EditContactPageProps) {
   const { id } = await params;
   const membership = await requirePermission('contacts.update');
-  const [contact, owners, companies] = await Promise.all([
+  const supabase = await createClient();
+
+  const [contact, owners, companies, preferenceResult] = await Promise.all([
     getContact(id),
     getAssignableMembers(membership),
     getContactCompanyOptions(),
+    supabase
+      .from('contact_communication_preferences')
+      .select('email_consent_status,sms_consent_status,call_consent_status')
+      .eq('organization_id', membership.organization_id)
+      .eq('contact_id', id)
+      .maybeSingle(),
   ]);
 
   if (!contact) {
     notFound();
   }
+
+  if (preferenceResult.error) {
+    throw new Error(preferenceResult.error.message);
+  }
+
+  const communicationPreferences = {
+    email_consent_status:
+      preferenceResult.data?.email_consent_status ?? 'unknown',
+    sms_consent_status:
+      preferenceResult.data?.sms_consent_status ?? 'unknown',
+    call_consent_status:
+      preferenceResult.data?.call_consent_status ?? 'unknown',
+  } as const;
 
   const fullName =
     `${contact.first_name} ${contact.last_name}`.trim() || 'Unnamed contact';
@@ -88,6 +110,7 @@ export default async function EditContactPage({
           }))}
           companyOptions={companies}
           canAssignOthers={canAssignOtherMembers(membership.role)}
+          initialCommunicationPreferences={communicationPreferences}
         />
       </section>
     </div>

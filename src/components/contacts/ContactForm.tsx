@@ -4,6 +4,9 @@ import { useState } from 'react'
 import type { Contact, ContactLifecycleStage } from '@/types/contact'
 
 const statusOptions = ['active', 'inactive', 'archived'] as const
+const consentStatusOptions = ['unknown', 'granted', 'denied', 'revoked', 'opted_out'] as const
+
+type ConsentStatus = typeof consentStatusOptions[number]
 
 type ContactFormState = {
   first_name: string
@@ -28,6 +31,9 @@ type ContactFormState = {
   do_not_sms: boolean
   do_not_call: boolean
   next_follow_up_at: string
+  email_consent_status: ConsentStatus
+  sms_consent_status: ConsentStatus
+  call_consent_status: ConsentStatus
 }
 
 export type ContactOwnerOption = {
@@ -40,6 +46,12 @@ export type ContactCompanyOption = {
   name: string
 }
 
+export type ContactCommunicationPreferences = {
+  email_consent_status: ConsentStatus
+  sms_consent_status: ConsentStatus
+  call_consent_status: ConsentStatus
+}
+
 type ContactFormProps = {
   initialValues?: Partial<Contact>
   action: (formData: FormData) => Promise<void>
@@ -48,6 +60,7 @@ type ContactFormProps = {
   ownerOptions: ContactOwnerOption[]
   companyOptions: ContactCompanyOption[]
   canAssignOthers: boolean
+  initialCommunicationPreferences?: ContactCommunicationPreferences
 }
 
 export default function ContactForm({
@@ -58,6 +71,7 @@ export default function ContactForm({
   ownerOptions,
   companyOptions,
   canAssignOthers,
+  initialCommunicationPreferences,
 }: ContactFormProps) {
   const [form, setForm] = useState<ContactFormState>({
     first_name: initialValues.first_name ?? '',
@@ -84,6 +98,9 @@ export default function ContactForm({
     next_follow_up_at: initialValues.next_follow_up_at
       ? new Date(initialValues.next_follow_up_at).toISOString().slice(0, 16)
       : '',
+    email_consent_status: initialCommunicationPreferences?.email_consent_status ?? 'unknown',
+    sms_consent_status: initialCommunicationPreferences?.sms_consent_status ?? 'unknown',
+    call_consent_status: initialCommunicationPreferences?.call_consent_status ?? 'unknown',
   })
 
   return (
@@ -345,6 +362,45 @@ export default function ContactForm({
         </label>
       </div>
 
+
+      {hiddenId ? (
+        <fieldset className="rounded-3xl border border-white/10 bg-white/[0.02] p-5">
+          <legend className="px-2 text-sm font-semibold text-white">Automation consent</legend>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Record the contact&apos;s consent status for automated outreach. Choose Granted only when you have a valid consent record or other evidence required by your policy.
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {[
+              ['email_consent_status', 'Email consent'],
+              ['sms_consent_status', 'SMS consent'],
+              ['call_consent_status', 'Call consent'],
+            ].map(([field, label]) => (
+              <label key={field} className="block">
+                <span className="text-sm text-slate-300">{label}</span>
+                <select
+                  name={field}
+                  value={form[field as 'email_consent_status' | 'sms_consent_status' | 'call_consent_status']}
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      [field]: event.target.value as ConsentStatus,
+                    }))
+                  }
+                  className="mt-2 w-full rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-white outline-none focus:border-[#22D3EE]/50"
+                >
+                  {consentStatusOptions.map((option) => (
+                    <option key={option} value={option} className="bg-[#07111F] text-white">
+                      {option === 'opted_out'
+                        ? 'Opted out'
+                        : option.charAt(0).toUpperCase() + option.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <fieldset className="rounded-3xl border border-white/10 bg-white/[0.02] p-5">
         <legend className="px-2 text-sm font-semibold text-white">Communication restrictions</legend>

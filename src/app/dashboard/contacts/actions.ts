@@ -44,6 +44,21 @@ type ContactValues = {
 
 type ContactTaskStatus = 'pending' | 'completed' | 'cancelled'
 type ContactTaskPriority = 'low' | 'medium' | 'high'
+type ConsentStatus = 'unknown' | 'granted' | 'denied' | 'revoked' | 'opted_out'
+
+function parseConsentStatus(value: string): ConsentStatus {
+  if (
+    value === 'unknown' ||
+    value === 'granted' ||
+    value === 'denied' ||
+    value === 'revoked' ||
+    value === 'opted_out'
+  ) {
+    return value
+  }
+
+  return 'unknown'
+}
 
 function revalidateContactPaths(contactId: string) {
   revalidatePath('/dashboard')
@@ -175,7 +190,7 @@ export async function createContact(formData: FormData) {
 }
 
 export async function updateContact(formData: FormData) {
-  await requirePermission('contacts.update')
+  const organization = await requirePermission('contacts.update')
 
   const id = getString(formData, 'id')
 
@@ -212,6 +227,111 @@ export async function updateContact(formData: FormData) {
   }
 
   await updateContactRecord(id, values)
+
+  const emailConsentStatus = parseConsentStatus(
+    getString(formData, 'email_consent_status'),
+  )
+  const smsConsentStatus = parseConsentStatus(
+    getString(formData, 'sms_consent_status'),
+  )
+  const callConsentStatus = parseConsentStatus(
+    getString(formData, 'call_consent_status'),
+  )
+
+  const { supabase, user } = await getAuthenticatedSupabaseClient()
+
+  const { data: existingPreference, error: preferenceReadError } =
+    await supabase
+      .from('contact_communication_preferences')
+      .select(
+        'id,email_consent_status,sms_consent_status,call_consent_status',
+      )
+      .eq('organization_id', organization.organization_id)
+      .eq('contact_id', id)
+      .maybeSingle()
+
+  if (preferenceReadError) {
+    throw new Error(preferenceReadError.message)
+  }
+
+  if (existingPreference) {
+    const { error: preferenceUpdateError } = await supabase
+      .from('contact_communication_preferences')
+      .update({
+        email_consent_status: emailConsentStatus,
+        sms_consent_status: smsConsentStatus,
+        call_consent_status: callConsentStatus,
+        updated_by: user.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existingPreference.id)
+      .eq('organization_id', organization.organization_id)
+
+    if (preferenceUpdateError) {
+      throw new Error(preferenceUpdateError.message)
+    }
+  } else {
+    const { error: preferenceInsertError } = await supabase
+      .from('contact_communication_preferences')
+      .insert({
+        organization_id: organization.organization_id,
+        contact_id: id,
+        email_consent_status: emailConsentStatus,
+        sms_consent_status: smsConsentStatus,
+        call_consent_status: callConsentStatus,
+        created_by: user.id,
+        updated_by: user.id,
+      })
+
+    if (preferenceInsertError) {
+      throw new Error(preferenceInsertError.message)
+    }
+  }
+
+  const previousEmailStatus = existingPreference?.email_consent_status ?? 'unknown'
+  const previousSmsStatus = existingPreference?.sms_consent_status ?? 'unknown'
+  const previousCallStatus = existingPreference?.call_consent_status ?? 'unknown'
+
+  const consentEvents = [
+    {
+      channel: 'email',
+      previous_status: previousEmailStatus,
+      new_status: emailConsentStatus,
+    },
+    {
+      channel: 'sms',
+      previous_status: previousSmsStatus,
+      new_status: smsConsentStatus,
+    },
+    {
+      channel: 'call',
+      previous_status: previousCallStatus,
+      new_status: callConsentStatus,
+    },
+  ].filter((event) => event.previous_status !== event.new_status)
+
+  if (consentEvents.length > 0) {
+    const { error: consentEventError } = await supabase
+      .from('contact_consent_events')
+      .insert(
+        consentEvents.map((event) => ({
+          organization_id: organization.organization_id,
+          contact_id: id,
+          channel: event.channel,
+          previous_status: event.previous_status,
+          new_status: event.new_status,
+          source: 'manual',
+          evidence: {
+            recorded_from: 'contact_edit',
+          },
+          created_by: user.id,
+        })),
+      )
+
+    if (consentEventError) {
+      throw new Error(consentEventError.message)
+    }
+  }
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/contacts')
