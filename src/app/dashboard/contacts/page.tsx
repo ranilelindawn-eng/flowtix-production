@@ -17,6 +17,7 @@ import {
   getContacts,
 } from '@/lib/contacts'
 import { requirePermission } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import type { Contact } from '@/types/contact'
 
 type ContactsPageProps = {
@@ -131,6 +132,46 @@ export default async function ContactsPage({
     sort,
     requestedPage,
   )
+
+  const contactIds = contacts.map((contact) => contact.id)
+  const tagsByContact = new Map<
+    string,
+    Array<{ id: string; name: string; color: string | null }>
+  >()
+
+  if (contactIds.length > 0) {
+    const supabase = await createClient()
+    const { data: tagAssignments, error: tagAssignmentsError } =
+      await supabase
+        .from('entity_tags')
+        .select('entity_id,tag:tags(id,name,color,is_active)')
+        .eq('organization_id', organization.organization_id)
+        .eq('entity_type', 'contact')
+        .in('entity_id', contactIds)
+
+    if (tagAssignmentsError) {
+      throw new Error(
+        `Failed to load contact tags: ${tagAssignmentsError.message}`,
+      )
+    }
+
+    for (const assignment of tagAssignments ?? []) {
+      const tag = assignment.tag as unknown as
+        | {
+            id: string
+            name: string
+            color: string | null
+            is_active: boolean
+          }
+        | null
+
+      if (!tag?.is_active) continue
+
+      const current = tagsByContact.get(assignment.entity_id) ?? []
+      current.push({ id: tag.id, name: tag.name, color: tag.color })
+      tagsByContact.set(assignment.entity_id, current)
+    }
+  }
 
   const totalPages = Math.max(
     1,
@@ -299,7 +340,7 @@ export default async function ContactsPage({
         {contacts.length > 0 ? (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[850px] border-collapse text-left">
+              <table className="w-full min-w-[1050px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <th className="px-5 py-4">
@@ -314,6 +355,9 @@ export default async function ContactsPage({
                     <th className="px-5 py-4">
                       Status
                     </th>
+                    <th className="px-5 py-4">
+                      Tags
+                    </th>
                     <th className="px-5 py-4 text-right">
                       Actions
                     </th>
@@ -327,6 +371,13 @@ export default async function ContactsPage({
                       contact.phone?.trim() ||
                       contact.metadata.mobile?.trim() ||
                       ''
+
+                    const contactTags = tagsByContact.get(contact.id) ?? []
+                    const visibleTags = contactTags.slice(0, 3)
+                    const hiddenTagCount = Math.max(
+                      0,
+                      contactTags.length - visibleTags.length,
+                    )
 
                     return (
                       <tr
@@ -383,6 +434,37 @@ export default async function ContactsPage({
                         </td>
 
                         <td className="px-5 py-4">
+                          {contactTags.length > 0 ? (
+                            <div className="flex max-w-64 flex-wrap items-center gap-1.5">
+                              {visibleTags.map((tag) => (
+                                <span
+                                  key={tag.id}
+                                  className="inline-flex max-w-40 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-200"
+                                  title={tag.name}
+                                >
+                                  <span
+                                    aria-hidden="true"
+                                    className="size-2 shrink-0 rounded-full"
+                                    style={{ backgroundColor: tag.color || '#64748b' }}
+                                  />
+                                  <span className="truncate">{tag.name}</span>
+                                </span>
+                              ))}
+                              {hiddenTagCount > 0 ? (
+                                <span
+                                  className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-400"
+                                  title={`${hiddenTagCount} more tag${hiddenTagCount === 1 ? '' : 's'}`}
+                                >
+                                  +{hiddenTagCount}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-600">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
                           <div className="flex justify-end gap-2">
                             {phoneNumber ? (
                               <Link
@@ -429,6 +511,13 @@ export default async function ContactsPage({
                   contact.phone?.trim() ||
                   contact.metadata.mobile?.trim() ||
                   ''
+
+                const contactTags = tagsByContact.get(contact.id) ?? []
+                const visibleTags = contactTags.slice(0, 3)
+                const hiddenTagCount = Math.max(
+                  0,
+                  contactTags.length - visibleTags.length,
+                )
 
                 return (
                   <article
@@ -488,6 +577,37 @@ export default async function ContactsPage({
                         />
                         {phoneNumber || 'No phone number'}
                       </p>
+
+                      <div className="pt-1">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          Tags
+                        </p>
+                        {contactTags.length > 0 ? (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {visibleTags.map((tag) => (
+                              <span
+                                key={tag.id}
+                                className="inline-flex max-w-40 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-200"
+                                title={tag.name}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="size-2 shrink-0 rounded-full"
+                                  style={{ backgroundColor: tag.color || '#64748b' }}
+                                />
+                                <span className="truncate">{tag.name}</span>
+                              </span>
+                            ))}
+                            {hiddenTagCount > 0 ? (
+                              <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-xs font-medium text-slate-400">
+                                +{hiddenTagCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <p className="mt-1 text-sm text-slate-600">—</p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-2 gap-2">
