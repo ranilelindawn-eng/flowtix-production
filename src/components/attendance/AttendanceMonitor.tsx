@@ -1,5 +1,6 @@
 import type { AttendanceMember } from '@/lib/attendance'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 function durationLabel(start: string, end: string | null): string {
   const milliseconds =
     new Date(end ?? Date.now()).getTime() - new Date(start).getTime()
@@ -14,10 +15,11 @@ type AttendanceMonitorProps = {
   canViewAll: boolean
 }
 
-export default function AttendanceMonitor({
+export default async function AttendanceMonitor({
   members,
   canViewAll,
 }: AttendanceMonitorProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const entries = members
     .flatMap((member) =>
       member.entries.map((entry) => ({ member, entry })),
@@ -67,7 +69,7 @@ export default function AttendanceMonitor({
                 </div>
                 <p className="mt-4 text-sm text-slate-400">
                   {member.active_since
-                    ? `On duty since ${new Date(member.active_since).toLocaleString()}`
+                    ? `On duty since ${new Date(member.active_since).toLocaleString('en-US', { timeZone })}`
                     : 'No active duty session.'}
                 </p>
               </article>
@@ -111,11 +113,11 @@ export default function AttendanceMonitor({
                       </td>
                     ) : null}
                     <td className="whitespace-nowrap px-5 py-4 text-slate-300">
-                      {new Date(entry.clocked_in_at).toLocaleString()}
+                      {new Date(entry.clocked_in_at).toLocaleString('en-US', { timeZone })}
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-300">
                       {entry.clocked_out_at
-                        ? new Date(entry.clocked_out_at).toLocaleString()
+                        ? new Date(entry.clocked_out_at).toLocaleString('en-US', { timeZone })
                         : '—'}
                     </td>
                     <td className="whitespace-nowrap px-5 py-4 text-slate-300">

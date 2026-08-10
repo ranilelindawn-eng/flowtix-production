@@ -3,11 +3,12 @@ import { MoreHorizontal } from 'lucide-react'
 
 import type { Contact } from '@/types/contact'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type ContactTableProps = {
   contacts: Contact[]
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -15,6 +16,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -41,9 +43,10 @@ function getStatusClasses(status: Contact['status']): string {
   }
 }
 
-export default function ContactTable({
+export default async function ContactTable({
   contacts,
 }: ContactTableProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   if (contacts.length === 0) {
     return (
       <div className="rounded-3xl border border-white/10 bg-[#0B1726]/90 px-6 py-16 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
@@ -132,7 +135,7 @@ export default function ContactTable({
                 </td>
 
                 <td className="px-6 py-4 text-slate-400">
-                  {formatDate(contact.created_at)}
+                  {formatDate(contact.created_at, timeZone)}
                 </td>
 
                 <td className="px-6 py-4 text-right">
@@ -205,7 +208,7 @@ export default function ContactTable({
               <div>
                 <dt className="text-slate-500">Created</dt>
                 <dd className="mt-1 text-slate-200">
-                  {formatDate(contact.created_at)}
+                  {formatDate(contact.created_at, timeZone)}
                 </dd>
               </div>
             </dl>

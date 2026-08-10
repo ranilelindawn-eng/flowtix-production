@@ -3,6 +3,7 @@ import { Activity, BadgeDollarSign, Clock3, PhoneCall, Target, TrendingDown, Tre
 import MetricCard from '@/components/reports/MetricCard'
 import { getKpiOverview, type KpiPeriod, type KpiValue } from '@/lib/kpis'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type Props = { searchParams: Promise<{ period?: string }> }
 
 function periodValue(value: string | undefined): KpiPeriod {
@@ -32,6 +33,7 @@ function icon(value: KpiValue) {
 }
 
 export default async function KpisPage({ searchParams }: Props) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = periodValue(params.period)
   const overview = await getKpiOverview(period)
@@ -58,7 +60,7 @@ export default async function KpisPage({ searchParams }: Props) {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-white">Snapshot details</h2>
-                <p className="mt-1 text-sm text-slate-400">Captured {new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(overview.snapshot.capturedAt))}</p>
+                <p className="mt-1 text-sm text-slate-400">Captured {new Intl.DateTimeFormat('en', { timeZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(overview.snapshot.capturedAt))}</p>
               </div>
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 {overview.snapshot.values.filter((item) => item.changePercent !== null && item.changePercent >= 0).length >= overview.snapshot.values.length / 2 ? <TrendingUp className="h-5 w-5 text-emerald-400" /> : <TrendingDown className="h-5 w-5 text-amber-400" />}

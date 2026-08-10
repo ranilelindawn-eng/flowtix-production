@@ -3,6 +3,7 @@ import { BadgeDollarSign, CalendarClock, CircleDollarSign, Gauge, Target, Trophy
 import MetricCard from '@/components/reports/MetricCard'
 import { getSalesAnalyticsOverview, normalizeSalesAnalyticsPeriod } from '@/lib/analytics/sales'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type Props = { searchParams: Promise<{ period?: string }> }
 
 function money(value: number, currency: string): string {
@@ -14,6 +15,7 @@ function percent(value: number): string {
 }
 
 export default async function SalesAnalyticsPage({ searchParams }: Props) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = normalizeSalesAnalyticsPeriod(params.period)
   const { snapshot, history } = await getSalesAnalyticsOverview(period)
@@ -43,7 +45,7 @@ export default async function SalesAnalyticsPage({ searchParams }: Props) {
         <MetricCard label="Sales cycle" value={`${snapshot.averageSalesCycleDays.toFixed(1)} days`} helper="Average won-deal duration" icon={<CalendarClock className="h-5 w-5" />} />
         <MetricCard label="Stale deals" value={snapshot.staleDeals.toLocaleString()} helper="Past pipeline stale threshold" icon={<Gauge className="h-5 w-5" />} />
         <MetricCard label="Overdue next steps" value={snapshot.overdueNextSteps.toLocaleString()} helper="Open deals needing follow-up" icon={<CalendarClock className="h-5 w-5" />} />
-        <MetricCard label="Snapshots" value={history.length.toLocaleString()} helper={`Captured ${new Date(snapshot.capturedAt).toLocaleString()}`} icon={<Gauge className="h-5 w-5" />} />
+        <MetricCard label="Snapshots" value={history.length.toLocaleString()} helper={`Captured ${new Date(snapshot.capturedAt).toLocaleString('en-US', { timeZone })}`} icon={<Gauge className="h-5 w-5" />} />
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-6">

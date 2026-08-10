@@ -1,5 +1,7 @@
 'use server'
 
+import { organizationLocalDateTimeToUtc } from '@/lib/timezone'
+
 import { revalidatePath } from 'next/cache'
 
 import { requirePermission } from '@/lib/auth'
@@ -16,7 +18,7 @@ import {
 import { enqueueJob } from '@/lib/jobs/queue'
 import { resolveOwnerAssignmentByUserId } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/team'
+import { getCurrentOrganization, getCurrentOrganizationTimezone } from '@/lib/team'
 
 const EDIT_ALL_ROLES = new Set(['owner', 'admin'])
 const EDIT_TEAM_ROLES = new Set(['owner', 'admin', 'manager'])
@@ -58,14 +60,16 @@ async function context() {
   }
 }
 
-function parseTimes(formData: FormData) {
-  const start = new Date(text(formData, 'starts_at'))
-  const end = new Date(text(formData, 'ends_at'))
+function parseTimes(formData: FormData, timeZone: string) {
+  const startIso = organizationLocalDateTimeToUtc(text(formData, 'starts_at'), timeZone)
+  const endIso = organizationLocalDateTimeToUtc(text(formData, 'ends_at'), timeZone)
 
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+  if (!startIso || !endIso) {
     throw new Error('Enter a valid start and end time.')
   }
 
+  const start = new Date(startIso)
+  const end = new Date(endIso)
   if (end <= start) {
     throw new Error('The end time must be after the start time.')
   }
@@ -106,12 +110,12 @@ export async function createCalendarEvent(
     organizationId,
     membership,
   } = await context()
-  const { start, end } = parseTimes(formData)
+  const timezone = text(formData, 'timezone') || await getCurrentOrganizationTimezone()
+  const { start, end } = parseTimes(formData, timezone)
   const title = text(formData, 'title')
   const eventType = text(formData, 'event_type') || 'meeting'
   const meetingProvider =
     text(formData, 'meeting_provider') || 'none'
-  const timezone = text(formData, 'timezone') || 'Asia/Manila'
   const description = text(formData, 'description')
   const attendeeEmails = text(formData, 'attendee_emails')
     .split(',')
@@ -276,10 +280,10 @@ export async function updateCalendarEvent(
     throw new Error('You do not have permission to edit this event.')
   }
 
-  const { start, end } = parseTimes(formData)
+  const timezone = text(formData, 'timezone') || await getCurrentOrganizationTimezone()
+  const { start, end } = parseTimes(formData, timezone)
   const title = text(formData, 'title')
   const description = text(formData, 'description')
-  const timezone = text(formData, 'timezone') || 'Asia/Manila'
   const attendeeEmails = text(formData, 'attendee_emails')
     .split(',')
     .map((value) => value.trim())

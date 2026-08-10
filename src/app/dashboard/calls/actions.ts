@@ -1,5 +1,8 @@
 'use server'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+import { organizationLocalDateTimeToUtc } from '@/lib/timezone'
+
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -52,13 +55,17 @@ function getStatus(formData: FormData): CallStatus {
   return 'scheduled'
 }
 
-function getCallValues(formData: FormData): CallFormValues {
+function getCallValues(formData: FormData, timeZone: string): CallFormValues {
   return {
     campaign_id: getString(formData, 'campaign_id'),
     contact_id: getString(formData, 'contact_id'),
     direction: getDirection(formData),
     status: getStatus(formData),
-    started_at: getString(formData, 'started_at'),
+    started_at:
+      organizationLocalDateTimeToUtc(
+        getString(formData, 'started_at'),
+        timeZone,
+      ) ?? '',
     duration_seconds: getString(formData, 'duration_seconds'),
     recording_available: getBoolean(formData, 'recording_available'),
     notes: getString(formData, 'notes'),
@@ -69,7 +76,8 @@ function getCallValues(formData: FormData): CallFormValues {
 export async function createCall(formData: FormData) {
   await requirePermission('calls.create')
 
-  const call = await createCallRecord(getCallValues(formData))
+  const timeZone = await getCurrentOrganizationTimezone()
+  const call = await createCallRecord(getCallValues(formData, timeZone))
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/calls')
@@ -86,7 +94,8 @@ export async function updateCall(formData: FormData) {
     throw new Error('A valid call ID is required.')
   }
 
-  await updateCallRecord(id, getCallValues(formData))
+  const timeZone = await getCurrentOrganizationTimezone()
+  await updateCallRecord(id, getCallValues(formData, timeZone))
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/calls')

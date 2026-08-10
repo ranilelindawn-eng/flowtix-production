@@ -25,16 +25,18 @@ import {
   retryBackgroundJob,
 } from './actions'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 function isJobStatus(value: string | undefined): value is JobStatus {
   return JOB_STATUSES.includes(value as JobStatus)
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, timeZone: string) {
   if (!value) {
     return '—'
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
@@ -76,6 +78,7 @@ export default async function BackgroundJobsPage({
     Record<string, string | string[] | undefined>
   >
 }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization = await requirePermission('jobs.view')
   const params = await searchParams
   const rawStatus =
@@ -224,10 +227,10 @@ export default async function BackgroundJobsPage({
                     {job.attempt_count}/{job.max_attempts}
                   </td>
                   <td className="p-4 text-muted-foreground">
-                    {formatDate(job.next_retry_at ?? job.scheduled_at)}
+                    {formatDate(job.next_retry_at ?? job.scheduled_at, timeZone)}
                   </td>
                   <td className="p-4 text-muted-foreground">
-                    {formatDate(job.updated_at)}
+                    {formatDate(job.updated_at, timeZone)}
                   </td>
                   <td className="max-w-[280px] p-4">
                     {job.last_error_message ? (

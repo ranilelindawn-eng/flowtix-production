@@ -14,6 +14,7 @@ import type {
   SummaryTranscriptOption,
 } from '@/lib/summaries'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type SummaryFormProps = {
   transcripts: SummaryTranscriptOption[]
   summary?: Summary
@@ -64,6 +65,7 @@ export default function SummaryForm({
   transcripts,
   summary,
 }: SummaryFormProps) {
+  const timeZone = useOrganizationTimezone()
   const editing = Boolean(summary)
   const router = useRouter()
   const [generating, setGenerating] = useState(false)
@@ -159,7 +161,7 @@ export default function SummaryForm({
                 {t.language} •{' '}
                 {new Date(
                   t.created_at
-                ).toLocaleDateString()}
+                ).toLocaleDateString('en-US', { timeZone })}
               </option>
             ))}
           </select>

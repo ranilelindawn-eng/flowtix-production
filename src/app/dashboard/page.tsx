@@ -11,6 +11,7 @@ import {
 import { getDashboardData } from '@/lib/dashboard'
 import FollowUpWidget from '@/components/dashboard/FollowUpWidget'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type IconProps = {
   className?: string
 }
@@ -245,7 +246,7 @@ function getGreeting(): string {
   return 'Good evening'
 }
 
-function formatDate(value: string | null | undefined): string {
+function formatDate(value: string | null | undefined, timeZone: string): string {
   if (!value) {
     return '—'
   }
@@ -257,6 +258,7 @@ function formatDate(value: string | null | undefined): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -393,6 +395,7 @@ function AnalyticsCard({
 }
 
 export default async function DashboardPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const dashboard = await getDashboardData()
 
   const userName = dashboard.userName || 'there'
@@ -495,7 +498,7 @@ export default async function DashboardPage() {
         </div>,
         contact.company ?? '—',
         contact.status || 'unknown',
-        formatDate(contact.created_at),
+        formatDate(contact.created_at, timeZone),
       ]
     },
   )
@@ -515,7 +518,7 @@ export default async function DashboardPage() {
     </div>,
     formatCallDurationLabel(call.durationSeconds),
     call.status || 'unknown',
-    formatDate(call.started_at),
+    formatDate(call.started_at, timeZone),
   ])
 
   const actions = [

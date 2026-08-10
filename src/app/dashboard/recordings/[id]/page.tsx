@@ -8,13 +8,14 @@ import {
   getRecordingSignedUrl,
 } from '@/lib/recordings'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type RecordingDetailPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -22,6 +23,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -98,6 +100,7 @@ function isVideoRecording(mimeType: string | null): boolean {
 export default async function RecordingDetailPage({
   params,
 }: RecordingDetailPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
 
   await requirePermission('recordings.view')
@@ -263,7 +266,7 @@ export default async function RecordingDetailPage({
                 Uploaded
               </dt>
               <dd className="mt-2 text-sm font-medium text-slate-200">
-                {formatDate(recording.created_at)}
+                {formatDate(recording.created_at, timeZone)}
               </dd>
             </div>
 
@@ -272,7 +275,7 @@ export default async function RecordingDetailPage({
                 Last updated
               </dt>
               <dd className="mt-2 text-sm font-medium text-slate-200">
-                {formatDate(recording.updated_at)}
+                {formatDate(recording.updated_at, timeZone)}
               </dd>
             </div>
 

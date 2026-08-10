@@ -1,5 +1,7 @@
 'use server'
 
+import { organizationLocalDateTimeToUtc } from '@/lib/timezone'
+
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -11,7 +13,7 @@ import {
 } from '@/lib/contacts'
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { assertContactCapacity } from '@/lib/usage-limits'
-import { getCurrentOrganization } from '@/lib/team'
+import { getCurrentOrganization, getCurrentOrganizationTimezone } from '@/lib/team'
 import { resolveOwnerAssignment } from '@/lib/ownership'
 
 const getString = (formData: FormData, key: string) =>
@@ -153,6 +155,7 @@ export async function createContact(formData: FormData) {
     organization.organization_id,
   )
 
+  const timeZone = await getCurrentOrganizationTimezone()
   const values: ContactValues = {
     first_name: getString(formData, 'first_name'),
     last_name: getString(formData, 'last_name'),
@@ -178,7 +181,11 @@ export async function createContact(formData: FormData) {
     do_not_email: getString(formData, 'do_not_email'),
     do_not_sms: getString(formData, 'do_not_sms'),
     do_not_call: getString(formData, 'do_not_call'),
-    next_follow_up_at: getString(formData, 'next_follow_up_at'),
+    next_follow_up_at:
+      organizationLocalDateTimeToUtc(
+        getString(formData, 'next_follow_up_at'),
+        timeZone,
+      ) ?? '',
   }
 
   await createContactRecord(values)
@@ -198,6 +205,7 @@ export async function updateContact(formData: FormData) {
     throw new Error('A valid contact ID is required.')
   }
 
+  const timeZone = await getCurrentOrganizationTimezone()
   const values: ContactValues = {
     first_name: getString(formData, 'first_name'),
     last_name: getString(formData, 'last_name'),
@@ -223,7 +231,11 @@ export async function updateContact(formData: FormData) {
     do_not_email: getString(formData, 'do_not_email'),
     do_not_sms: getString(formData, 'do_not_sms'),
     do_not_call: getString(formData, 'do_not_call'),
-    next_follow_up_at: getString(formData, 'next_follow_up_at'),
+    next_follow_up_at:
+      organizationLocalDateTimeToUtc(
+        getString(formData, 'next_follow_up_at'),
+        timeZone,
+      ) ?? '',
   }
 
   await updateContactRecord(id, values)
@@ -419,17 +431,18 @@ export async function createContactNote(formData: FormData) {
 
 export async function createContactTask(formData: FormData) {
   await requirePermission('tasks.create')
+  const timeZone = await getCurrentOrganizationTimezone()
 
   const contactId = getString(formData, 'contactId')
   const title = getString(formData, 'title')
   const description = getString(formData, 'description')
-  const dueAt = getString(formData, 'dueAt')
+  const dueAt = organizationLocalDateTimeToUtc(getString(formData, 'dueAt'), timeZone) ?? ''
   const priority = parseTaskPriority(
     getString(formData, 'priority'),
   )
   const taskType = parseTaskType(getString(formData, 'taskType'))
-  const startAt = getString(formData, 'startAt')
-  const reminderAt = getString(formData, 'reminderAt')
+  const startAt = organizationLocalDateTimeToUtc(getString(formData, 'startAt'), timeZone) ?? ''
+  const reminderAt = organizationLocalDateTimeToUtc(getString(formData, 'reminderAt'), timeZone) ?? ''
   const estimatedMinutes = parseOptionalMinutes(getString(formData, 'estimatedMinutes'))
   const recurrenceRule = getString(formData, 'recurrenceRule')
 
@@ -567,18 +580,19 @@ export async function completeContactTask(formData: FormData) {
 
 export async function updateContactTask(formData: FormData) {
   await requirePermission('tasks.update')
+  const timeZone = await getCurrentOrganizationTimezone()
 
   const taskId = getString(formData, 'taskId')
   const contactId = getString(formData, 'contactId')
   const title = getString(formData, 'title')
   const description = getString(formData, 'description')
-  const dueAt = getString(formData, 'dueAt')
+  const dueAt = organizationLocalDateTimeToUtc(getString(formData, 'dueAt'), timeZone) ?? ''
   const priority = parseTaskPriority(
     getString(formData, 'priority'),
   )
   const taskType = parseTaskType(getString(formData, 'taskType'))
-  const startAt = getString(formData, 'startAt')
-  const reminderAt = getString(formData, 'reminderAt')
+  const startAt = organizationLocalDateTimeToUtc(getString(formData, 'startAt'), timeZone) ?? ''
+  const reminderAt = organizationLocalDateTimeToUtc(getString(formData, 'reminderAt'), timeZone) ?? ''
   const estimatedMinutes = parseOptionalMinutes(getString(formData, 'estimatedMinutes'))
   const actualMinutes = parseOptionalMinutes(getString(formData, 'actualMinutes'))
   const recurrenceRule = getString(formData, 'recurrenceRule')

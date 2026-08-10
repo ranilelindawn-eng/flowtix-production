@@ -6,41 +6,18 @@ import { Pencil } from 'lucide-react'
 import { updateContactTask } from '@/app/dashboard/contacts/actions'
 import type { ContactTask } from '@/lib/contact-tasks'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 type EditTaskDialogProps = {
   contactId: string
   task: ContactTask
-}
-
-function toDateTimeLocalValue(value: string | null): string {
-  if (!value) {
-    return ''
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  const pad = (part: number) => part.toString().padStart(2, '0')
-
-  return [
-    date.getFullYear(),
-    '-',
-    pad(date.getMonth() + 1),
-    '-',
-    pad(date.getDate()),
-    'T',
-    pad(date.getHours()),
-    ':',
-    pad(date.getMinutes()),
-  ].join('')
 }
 
 export default function EditTaskDialog({
   contactId,
   task,
 }: EditTaskDialogProps) {
+  const timeZone = useOrganizationTimezone()
   const dialogRef = useRef<HTMLDialogElement>(null)
 
   return (
@@ -147,7 +124,7 @@ export default function EditTaskDialog({
                   id={`task-due-at-${task.id}`}
                   name="dueAt"
                   type="datetime-local"
-                  defaultValue={toDateTimeLocalValue(task.due_at)}
+                  defaultValue={toOrganizationDateTimeLocal(task.due_at, timeZone)}
                   className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-sm text-white outline-none focus:border-cyan-500"
                 />
               </div>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 import { requirePermission } from '@/lib/auth'
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 
 import {
   canManageSettings,
@@ -230,6 +231,7 @@ export default async function IntegrationsPage({
   searchParams: SearchParams
 }) {
   await requirePermission('settings.manage')
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 
   const {
@@ -407,7 +409,7 @@ export default async function IntegrationsPage({
                       {item?.connected_at
                         ? new Date(
                             item.connected_at,
-                          ).toLocaleString()
+                          ).toLocaleString('en-US', { timeZone })
                         : 'successfully'}
                     </p>
                   </div>
@@ -741,7 +743,7 @@ export default async function IntegrationsPage({
                   ·{' '}
                   {new Date(
                     item.last_tested_at,
-                  ).toLocaleString()}
+                  ).toLocaleString('en-US', { timeZone })}
                 </p>
               ) : null}
 

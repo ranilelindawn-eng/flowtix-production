@@ -17,6 +17,7 @@ import {
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 export type ConversationSummary = {
   id: string
   title: string
@@ -53,9 +54,10 @@ const starters = [
   'Suggest the next best actions for a stalled opportunity.',
 ]
 
-function formatTime(value: string) {
+function formatTime(value: string, timeZone: string) {
   try {
     return new Intl.DateTimeFormat('en-US', {
+    timeZone,
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
@@ -67,6 +69,7 @@ function formatTime(value: string) {
 }
 
 export default function AIWorkspace({ initialConversations }: { initialConversations: ConversationSummary[] }) {
+  const timeZone = useOrganizationTimezone()
   const [conversations, setConversations] = useState(initialConversations)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -219,7 +222,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
                   <MessageSquare className="mt-0.5 h-4 w-4 shrink-0" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{conversation.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">{formatTime(conversation.updated_at)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{formatTime(conversation.updated_at, timeZone)}</p>
                   </div>
                 </div>
               </button>

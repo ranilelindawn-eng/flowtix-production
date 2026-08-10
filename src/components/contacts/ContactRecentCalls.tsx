@@ -9,11 +9,12 @@ import {
 import type { ContactCall } from '@/lib/contact-calls'
 import { formatCallDurationLabel } from '@/lib/formatters'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type ContactRecentCallsProps = {
   calls: ContactCall[]
 }
 
-function formatCallDate(value: string): string {
+function formatCallDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -21,6 +22,7 @@ function formatCallDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -55,9 +57,10 @@ function getStatusClasses(status: string): string {
   return 'border-amber-400/20 bg-amber-400/10 text-amber-300'
 }
 
-export default function ContactRecentCalls({
+export default async function ContactRecentCalls({
   calls,
 }: ContactRecentCallsProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
       <div className="flex flex-col gap-3 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -133,7 +136,7 @@ export default function ContactRecentCalls({
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span>{formatCallDate(call.started_at)}</span>
+                      <span>{formatCallDate(call.started_at, timeZone)}</span>
 
                       <span className="inline-flex items-center gap-1.5">
                         <Clock3 className="h-3.5 w-3.5" />

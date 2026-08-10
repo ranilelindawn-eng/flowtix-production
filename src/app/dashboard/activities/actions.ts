@@ -1,5 +1,8 @@
 'use server'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+import { organizationLocalDateTimeToUtc } from '@/lib/timezone'
+
 import { revalidatePath } from 'next/cache'
 import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
@@ -21,6 +24,7 @@ export async function createActivity(formData: FormData) {
   const durationSeconds = durationValue ? Number.parseInt(durationValue, 10) : null
   if (durationSeconds !== null && (!Number.isInteger(durationSeconds) || durationSeconds < 0 || durationSeconds > 604800)) throw new Error('Duration must be between 0 and 604,800 seconds.')
   const occurredValue = text(formData, 'occurredAt')
+  const timeZone = await getCurrentOrganizationTimezone()
   const { error } = await supabase.from('crm_activities').insert({
     organization_id: organization.organization_id,
     contact_id: contactId,
@@ -32,7 +36,9 @@ export async function createActivity(formData: FormData) {
     subject,
     body: text(formData, 'body') || null,
     outcome: text(formData, 'outcome') || null,
-    occurred_at: occurredValue ? new Date(occurredValue).toISOString() : new Date().toISOString(),
+    occurred_at: occurredValue
+      ? organizationLocalDateTimeToUtc(occurredValue, timeZone) ?? new Date().toISOString()
+      : new Date().toISOString(),
     duration_seconds: durationSeconds,
     source: 'manual',
     visibility: text(formData, 'visibility') || 'organization',

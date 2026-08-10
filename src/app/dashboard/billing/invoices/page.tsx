@@ -6,10 +6,12 @@ import {
   getUsageBillingStatements,
 } from '@/lib/billing/platform'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 const money = (value: number, currency: string) =>
   new Intl.NumberFormat('en-PH', { style: 'currency', currency }).format(value / 100)
 
 export default async function BillingInvoicesPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const [invoices, statements, reconciliation] = await Promise.all([
     getInvoices(),
     getUsageBillingStatements(),
@@ -47,7 +49,7 @@ export default async function BillingInvoicesPage() {
               Provider: {reconciliation.billingProvider ?? 'not configured'} · Subscription: {reconciliation.subscriptionStatus ?? 'missing'} · Issues: {issueCount}
             </p>
           </div>
-          <p className="text-xs text-slate-400">Checked {new Date(reconciliation.checkedAt).toLocaleString()}</p>
+          <p className="text-xs text-slate-400">Checked {new Date(reconciliation.checkedAt).toLocaleString('en-US', { timeZone })}</p>
         </div>
       </section>
 
@@ -62,8 +64,8 @@ export default async function BillingInvoicesPage() {
                   <td className="py-4 font-medium text-white">{invoice.invoice_number}</td>
                   <td className="capitalize text-slate-300">{invoice.status}</td>
                   <td className="text-slate-300">{money(invoice.total, invoice.currency)}</td>
-                  <td className="text-slate-400">{invoice.period_start ? new Date(invoice.period_start).toLocaleDateString() : '—'} – {invoice.period_end ? new Date(invoice.period_end).toLocaleDateString() : '—'}</td>
-                  <td className="text-slate-400">{new Date(invoice.created_at).toLocaleDateString()}</td>
+                  <td className="text-slate-400">{invoice.period_start ? new Date(invoice.period_start).toLocaleDateString('en-US', { timeZone }) : '—'} – {invoice.period_end ? new Date(invoice.period_end).toLocaleDateString('en-US', { timeZone }) : '—'}</td>
+                  <td className="text-slate-400">{new Date(invoice.created_at).toLocaleDateString('en-US', { timeZone })}</td>
                   <td className="text-right"><a className="font-medium text-cyan-400 hover:text-cyan-300" href={`/api/crm/billing/invoices/${invoice.id}/download`}>CSV</a></td>
                 </tr>
               ))}

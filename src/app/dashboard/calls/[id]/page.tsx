@@ -7,13 +7,14 @@ import {
   type CallStatus,
 } from '@/lib/calls'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CallPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -21,6 +22,7 @@ function formatDateTime(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -96,6 +98,7 @@ function formatMetadata(
 export default async function CallPage({
   params,
 }: CallPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
   const call = await getCall(id)
 
@@ -238,7 +241,7 @@ export default async function CallPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDateTime(call.started_at)}
+                {formatDateTime(call.started_at, timeZone)}
               </dd>
             </div>
 
@@ -324,7 +327,7 @@ export default async function CallPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDateTime(call.updated_at)}
+                {formatDateTime(call.updated_at, timeZone)}
               </dd>
             </div>
           </div>

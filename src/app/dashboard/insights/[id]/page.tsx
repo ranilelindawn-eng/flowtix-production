@@ -4,13 +4,14 @@ import { notFound } from 'next/navigation'
 import { deleteInsight } from '@/app/dashboard/insights/actions'
 import { getInsight } from '@/lib/insights'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type InsightPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, timeZone: string) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -18,6 +19,7 @@ function formatDate(value: string) {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -41,6 +43,7 @@ function sentimentClass(sentiment: string | null) {
 export default async function InsightPage({
   params,
 }: InsightPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
 
   const insight = await getInsight(id)
@@ -171,7 +174,7 @@ export default async function InsightPage({
                 </dt>
 
                 <dd className="mt-1 text-sm text-slate-200">
-                  {formatDate(insight.created_at)}
+                  {formatDate(insight.created_at, timeZone)}
                 </dd>
               </div>
 

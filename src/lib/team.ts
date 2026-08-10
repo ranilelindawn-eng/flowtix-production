@@ -189,6 +189,31 @@ export const getCurrentOrganization = cache(
   },
 )
 
+export const getCurrentOrganizationTimezone = cache(
+  async (): Promise<string> => {
+    const membership = await getCurrentOrganization()
+    if (!membership) return 'UTC'
+
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('timezone')
+      .eq('id', membership.organization_id)
+      .maybeSingle()
+
+    if (error) {
+      throw new Error(
+        `Failed to load the organization timezone: ${error.message}`,
+      )
+    }
+
+    const timezone = data?.timezone
+    return typeof timezone === 'string' && timezone.trim()
+      ? timezone.trim()
+      : 'UTC'
+  },
+)
+
 export async function setActiveOrganization(
   organizationId: string,
 ): Promise<CurrentOrganizationMembership> {

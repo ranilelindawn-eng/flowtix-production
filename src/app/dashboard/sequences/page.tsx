@@ -23,6 +23,7 @@ import {
 } from './actions'
 
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 function SequencesLocked({
   planName,
   subscriptionStatus,
@@ -108,6 +109,7 @@ function SequencesLocked({
 }
 
 export default async function SequencesPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const membership = await requirePermission('campaigns.view')
   const entitlements = await getCurrentEntitlements()
 
@@ -285,7 +287,7 @@ export default async function SequencesPage() {
                           <p className="text-xs text-slate-400">
                             Step {enrollment.current_step} · {enrollment.status}
                             {enrollment.next_run_at
-                              ? ` · ${new Date(enrollment.next_run_at).toLocaleString()}`
+                              ? ` · ${new Date(enrollment.next_run_at).toLocaleString('en-US', { timeZone })}`
                               : ''}
                           </p>
                           {enrollment.last_error && (

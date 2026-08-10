@@ -3,6 +3,7 @@ import { Activity, Clock3, Headphones, PhoneCall, PhoneIncoming, PhoneMissed, Ph
 import MetricCard from '@/components/reports/MetricCard'
 import { getCallAnalyticsOverview, normalizeCallAnalyticsPeriod } from '@/lib/analytics/calls'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type Props = { searchParams: Promise<{ period?: string }> }
 
 function percent(value: number): string {
@@ -20,6 +21,7 @@ function duration(seconds: number): string {
 }
 
 export default async function CallAnalyticsPage({ searchParams }: Props) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = normalizeCallAnalyticsPeriod(params.period)
   const { snapshot, history } = await getCallAnalyticsOverview(period)
@@ -49,7 +51,7 @@ export default async function CallAnalyticsPage({ searchParams }: Props) {
         <MetricCard label="Average answer" value={duration(snapshot.averageAnswerSeconds)} helper={`${snapshot.routingAttempts} routing attempts`} icon={<Route className="h-5 w-5" />} />
         <MetricCard label="Recording rate" value={percent(snapshot.recordingRate)} helper={`${snapshot.recordedCalls} recorded calls`} icon={<Voicemail className="h-5 w-5" />} />
         <MetricCard label="Queue abandon rate" value={percent(snapshot.queueAbandonRate)} helper={`${snapshot.queueAbandoned} abandoned · ${snapshot.queueAnswered} answered`} icon={<PhoneIncoming className="h-5 w-5" />} />
-        <MetricCard label="Snapshots" value={history.length.toLocaleString()} helper={`Captured ${new Date(snapshot.capturedAt).toLocaleString()}`} icon={<Activity className="h-5 w-5" />} />
+        <MetricCard label="Snapshots" value={history.length.toLocaleString()} helper={`Captured ${new Date(snapshot.capturedAt).toLocaleString('en-US', { timeZone })}`} icon={<Activity className="h-5 w-5" />} />
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">

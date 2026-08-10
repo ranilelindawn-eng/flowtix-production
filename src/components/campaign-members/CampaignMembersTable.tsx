@@ -6,11 +6,12 @@ import type {
   CampaignMember,
 } from '@/lib/campaign-members'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CampaignMembersTableProps = {
   members: CampaignMember[]
 }
 
-function formatDateTime(value: string | null): string {
+function formatDateTime(value: string | null, timeZone: string): string {
   if (!value) {
     return '—'
   }
@@ -22,6 +23,7 @@ function formatDateTime(value: string | null): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -70,9 +72,10 @@ function getPriorityClasses(priority: number): string {
   return 'border-slate-500/20 bg-slate-500/10 text-slate-400'
 }
 
-export default function CampaignMembersTable({
+export default async function CampaignMembersTable({
   members,
 }: CampaignMembersTableProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   if (members.length === 0) {
     return (
       <div className="rounded-3xl border border-white/10 bg-[#0B1726]/90 px-6 py-16 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
@@ -201,7 +204,7 @@ export default function CampaignMembersTable({
                   </td>
 
                   <td className="whitespace-nowrap px-6 py-4 text-slate-400">
-                    {formatDateTime(member.last_called_at)}
+                    {formatDateTime(member.last_called_at, timeZone)}
                   </td>
 
                   <td className="max-w-52 truncate px-6 py-4 text-slate-400">
@@ -326,7 +329,7 @@ export default function CampaignMembersTable({
                   </dt>
 
                   <dd className="mt-1 text-slate-200">
-                    {formatDateTime(member.last_called_at)}
+                    {formatDateTime(member.last_called_at, timeZone)}
                   </dd>
                 </div>
 

@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import type { Contact, ContactLifecycleStage } from '@/types/contact'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 const statusOptions = ['active', 'inactive', 'archived'] as const
 const consentStatusOptions = ['unknown', 'granted', 'denied', 'revoked', 'opted_out'] as const
 
@@ -73,6 +75,7 @@ export default function ContactForm({
   canAssignOthers,
   initialCommunicationPreferences,
 }: ContactFormProps) {
+  const timeZone = useOrganizationTimezone()
   const [form, setForm] = useState<ContactFormState>({
     first_name: initialValues.first_name ?? '',
     last_name: initialValues.last_name ?? '',
@@ -96,7 +99,7 @@ export default function ContactForm({
     do_not_sms: initialValues.do_not_sms ?? false,
     do_not_call: initialValues.do_not_call ?? false,
     next_follow_up_at: initialValues.next_follow_up_at
-      ? new Date(initialValues.next_follow_up_at).toISOString().slice(0, 16)
+      ? toOrganizationDateTimeLocal(initialValues.next_follow_up_at, timeZone)
       : '',
     email_consent_status: initialCommunicationPreferences?.email_consent_status ?? 'unknown',
     sms_consent_status: initialCommunicationPreferences?.sms_consent_status ?? 'unknown',

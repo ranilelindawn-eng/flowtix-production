@@ -11,6 +11,7 @@ import type {
   TeamRole,
 } from '@/lib/team'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type TeamMemberListProps = {
   members: TeamMember[]
   currentUserRole: TeamRole
@@ -74,7 +75,7 @@ function getInitials(
   return '?'
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -82,6 +83,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
   }).format(date)
 }
@@ -104,6 +106,7 @@ export default function TeamMemberList({
   currentUserRole,
   canManageTeam,
 }: TeamMemberListProps) {
+  const timeZone = useOrganizationTimezone()
   const canEditAdmins = currentUserRole === 'owner'
 
   return (
@@ -186,7 +189,7 @@ export default function TeamMemberList({
                     </p>
 
                     <p className="mt-1 text-xs text-slate-500">
-                      Joined {formatDate(member.created_at)}
+                      Joined {formatDate(member.created_at, timeZone)}
                     </p>
                   </div>
                 </div>

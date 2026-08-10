@@ -5,13 +5,14 @@ import { deleteSummary } from '@/app/dashboard/summaries/actions'
 import { requirePermission } from '@/lib/auth'
 import { getSummary } from '@/lib/summaries'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type SummaryDetailPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, timeZone: string) {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -19,6 +20,7 @@ function formatDate(value: string) {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -40,6 +42,7 @@ function sentimentColor(sentiment: string | null) {
 export default async function SummaryDetailPage({
   params,
 }: SummaryDetailPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
 
   await requirePermission('summaries.view')
@@ -162,7 +165,7 @@ export default async function SummaryDetailPage({
                 </dt>
 
                 <dd className="mt-1 text-sm text-slate-200">
-                  {formatDate(summary.created_at)}
+                  {formatDate(summary.created_at, timeZone)}
                 </dd>
               </div>
 
@@ -172,7 +175,7 @@ export default async function SummaryDetailPage({
                 </dt>
 
                 <dd className="mt-1 text-sm text-slate-200">
-                  {formatDate(summary.updated_at)}
+                  {formatDate(summary.updated_at, timeZone)}
                 </dd>
               </div>
 

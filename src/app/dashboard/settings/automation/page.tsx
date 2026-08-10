@@ -30,6 +30,7 @@ import {
   updatePostCallAutomation,
 } from './actions'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type PostCallConfig = {
   enabled: boolean
   email_enabled: boolean
@@ -73,12 +74,13 @@ const DEFAULT_POST_CALL_CONFIG: PostCallConfig = {
   ai_instructions: null,
 }
 
-function formatDate(value: string | null) {
+function formatDate(value: string | null, timeZone: string) {
   if (!value) {
     return '—'
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))
@@ -108,6 +110,7 @@ function smsCapable(number: PhoneNumberRow) {
 }
 
 export default async function AutomationOperationsPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization = await requirePermission('automation.view')
   const supabase = await createClient()
 
@@ -777,7 +780,7 @@ export default async function AutomationOperationsPage() {
                     {queue.dead_letter}
                   </td>
                   <td className="p-4 text-muted-foreground">
-                    {formatDate(queue.oldest_pending_at)}
+                    {formatDate(queue.oldest_pending_at, timeZone)}
                   </td>
                 </tr>
               ))}
@@ -811,7 +814,7 @@ export default async function AutomationOperationsPage() {
               <div>
                 <p className="font-medium">{run.scheduler}</p>
                 <p className="text-sm text-muted-foreground">
-                  {formatDate(run.started_at)}
+                  {formatDate(run.started_at, timeZone)}
                 </p>
               </div>
               <p className="text-sm">

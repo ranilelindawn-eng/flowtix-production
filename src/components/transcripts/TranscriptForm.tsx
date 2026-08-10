@@ -13,6 +13,7 @@ import type {
   TranscriptRecordingOption,
 } from '@/lib/transcripts'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type TranscriptFormProps = {
   recordings: TranscriptRecordingOption[]
   transcript?: Transcript
@@ -51,7 +52,7 @@ const providerOptions = [
   'Other',
 ]
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -59,6 +60,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -146,6 +148,7 @@ export default function TranscriptForm({
   recordings,
   transcript,
 }: TranscriptFormProps) {
+  const timeZone = useOrganizationTimezone()
   const isEditing = Boolean(transcript)
 
   const [recordingId, setRecordingId] = useState(
@@ -295,7 +298,7 @@ export default function TranscriptForm({
                 >
                   {getFilename(recording.storage_path)} ·{' '}
                   {formatDuration(recording.duration_seconds)} ·{' '}
-                  {formatDate(recording.created_at)}
+                  {formatDate(recording.created_at, timeZone)}
                 </option>
               ))}
             </select>
@@ -389,8 +392,7 @@ export default function TranscriptForm({
                         Uploaded:{' '}
                         <strong className="font-medium text-slate-200">
                           {formatDate(
-                            selectedRecording.created_at
-                          )}
+                            selectedRecording.created_at, timeZone)}
                         </strong>
                       </span>
                     </div>

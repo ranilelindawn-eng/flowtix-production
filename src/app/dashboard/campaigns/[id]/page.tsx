@@ -4,13 +4,14 @@ import DeleteCampaignButton from '@/components/campaigns/DeleteCampaignButton'
 
 import { getCampaign, type CampaignStatus } from '@/lib/campaigns'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CampaignPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, timeZone: string): string {
   if (!value) {
     return '—'
   }
@@ -22,13 +23,14 @@ function formatDate(value: string | null): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'long',
     day: 'numeric',
     year: 'numeric',
   }).format(date)
 }
 
-function formatDateTime(value: string): string {
+function formatDateTime(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -36,6 +38,7 @@ function formatDateTime(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -64,6 +67,7 @@ function getStatusClasses(status: CampaignStatus): string {
 export default async function CampaignPage({
   params,
 }: CampaignPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
   const campaign = await getCampaign(id)
 
@@ -172,7 +176,7 @@ export default async function CampaignPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDate(campaign.start_date)}
+                {formatDate(campaign.start_date, timeZone)}
               </dd>
             </div>
 
@@ -182,7 +186,7 @@ export default async function CampaignPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDate(campaign.end_date)}
+                {formatDate(campaign.end_date, timeZone)}
               </dd>
             </div>
 
@@ -192,7 +196,7 @@ export default async function CampaignPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDateTime(campaign.created_at)}
+                {formatDateTime(campaign.created_at, timeZone)}
               </dd>
             </div>
 
@@ -202,7 +206,7 @@ export default async function CampaignPage({
               </dt>
 
               <dd className="mt-2 text-base text-slate-200">
-                {formatDateTime(campaign.updated_at)}
+                {formatDateTime(campaign.updated_at, timeZone)}
               </dd>
             </div>
           </div>

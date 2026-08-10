@@ -14,6 +14,7 @@ import { useFormStatus } from 'react-dom'
 
 import { completeContactTask } from '@/app/dashboard/contacts/actions'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type DashboardFollowUp = {
   id: string
   contactId: string
@@ -36,6 +37,7 @@ type FollowUpSectionProps = {
   items: DashboardFollowUp[]
   emptyMessage: string
   tone: 'overdue' | 'today' | 'upcoming'
+  timeZone: string
 }
 
 type PriorityTone = {
@@ -94,7 +96,7 @@ const sectionTones = {
   },
 } as const
 
-function formatDueDate(value: string): string {
+function formatDueDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -102,6 +104,7 @@ function formatDueDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -136,6 +139,7 @@ function FollowUpSection({
   items,
   emptyMessage,
   tone,
+  timeZone,
 }: FollowUpSectionProps) {
   const sectionTone = sectionTones[tone]
   const SectionIcon = sectionTone.iconElement
@@ -207,7 +211,7 @@ function FollowUpSection({
 
                       <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                         <Clock3 className="h-3.5 w-3.5" />
-                        <span>{formatDueDate(item.dueAt)}</span>
+                        <span>{formatDueDate(item.dueAt, timeZone)}</span>
                       </div>
                     </div>
 
@@ -259,6 +263,7 @@ export default function FollowUpWidget({
   overdue,
   upcoming,
 }: FollowUpWidgetProps) {
+  const timeZone = useOrganizationTimezone()
   const totalFollowUps =
     today.length + overdue.length + upcoming.length
 
@@ -289,6 +294,7 @@ export default function FollowUpWidget({
           items={overdue}
           emptyMessage="No overdue follow-ups."
           tone="overdue"
+          timeZone={timeZone}
         />
 
         <FollowUpSection
@@ -297,6 +303,7 @@ export default function FollowUpWidget({
           items={today}
           emptyMessage="No follow-ups due today."
           tone="today"
+          timeZone={timeZone}
         />
 
         <FollowUpSection
@@ -305,6 +312,7 @@ export default function FollowUpWidget({
           items={upcoming}
           emptyMessage="No upcoming follow-ups."
           tone="upcoming"
+          timeZone={timeZone}
         />
       </div>
     </section>

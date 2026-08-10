@@ -9,6 +9,7 @@ import {
   type AttendanceActionState,
 } from '@/app/dashboard/attendance/actions'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 const initialState: AttendanceActionState = {
   status: 'idle',
   message: '',
@@ -23,6 +24,7 @@ export default function AttendanceClock({
   isClockedIn,
   clockedInAt,
 }: AttendanceClockProps) {
+  const timeZone = useOrganizationTimezone()
   const [clockInState, clockInAction, clockInPending] =
     useActionState(clockIn, initialState)
   const [clockOutState, clockOutAction, clockOutPending] =
@@ -45,7 +47,7 @@ export default function AttendanceClock({
           </h2>
           <p className="mt-2 text-sm text-slate-400">
             {isClockedIn && clockedInAt
-              ? `Clocked in ${new Date(clockedInAt).toLocaleString()}`
+              ? `Clocked in ${new Date(clockedInAt).toLocaleString('en-US', { timeZone })}`
               : 'Clock in when your workday starts.'}
           </p>
         </div>

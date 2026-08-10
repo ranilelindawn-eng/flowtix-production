@@ -2,6 +2,7 @@ import { Activity, CalendarDays, CheckSquare, Clock3, FileText, GitBranch, Phone
 import { requirePermission } from '@/lib/auth'
 import { getTimelineEvents, type TimelineEventType } from '@/lib/timeline'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 const icons: Record<TimelineEventType, typeof Activity> = {
   call: Phone,
   note: FileText,
@@ -14,6 +15,7 @@ const icons: Record<TimelineEventType, typeof Activity> = {
 }
 
 export default async function TimelinePage({ searchParams }: { searchParams: Promise<{ type?: string; action?: string; q?: string }> }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization = await requirePermission('contacts.view')
   const filters = await searchParams
   const events = await getTimelineEvents({ organizationId: organization.organization_id, eventType: filters.type, action: filters.action, search: filters.q, limit: 200 })
@@ -31,7 +33,7 @@ export default async function TimelinePage({ searchParams }: { searchParams: Pro
       <button className="rounded-xl bg-cyan-500 px-4 py-3 text-sm font-medium text-white sm:col-span-3">Apply filters</button>
     </form>
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90">
-      {events.length === 0 ? <div className="p-10 text-center text-slate-400"><Clock3 className="mx-auto mb-3 h-6 w-6" />No timeline events found.</div> : <div className="divide-y divide-white/10">{events.map((event)=>{const Icon=icons[event.event_type] ?? Activity; return <article key={event.id} className="flex gap-4 p-5"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.08] text-cyan-300"><Icon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-medium text-white">{event.title}</h2><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{event.event_type}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-400">{event.event_action.replaceAll('_',' ')}</span></div>{event.description?<p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{event.description}</p>:null}<p className="mt-2 text-xs text-slate-500">{new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'short'}).format(new Date(event.occurred_at))} · {event.source_table}</p></div></article>})}</div>}
+      {events.length === 0 ? <div className="p-10 text-center text-slate-400"><Clock3 className="mx-auto mb-3 h-6 w-6" />No timeline events found.</div> : <div className="divide-y divide-white/10">{events.map((event)=>{const Icon=icons[event.event_type] ?? Activity; return <article key={event.id} className="flex gap-4 p-5"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-400/15 bg-cyan-400/[0.08] text-cyan-300"><Icon className="h-5 w-5" /></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-medium text-white">{event.title}</h2><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{event.event_type}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-400">{event.event_action.replaceAll('_',' ')}</span></div>{event.description?<p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-400">{event.description}</p>:null}<p className="mt-2 text-xs text-slate-500">{new Intl.DateTimeFormat('en',{timeZone,dateStyle:'medium',timeStyle:'short'}).format(new Date(event.occurred_at))} · {event.source_table}</p></div></article>})}</div>}
     </section>
   </div>
 }

@@ -5,6 +5,7 @@ import { useFormStatus } from 'react-dom'
 import { revokeInvitation } from '@/app/dashboard/team/actions'
 import type { TeamInvitation } from '@/lib/team'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type PendingInvitationsProps = {
   invitations: TeamInvitation[]
   canManageTeam: boolean
@@ -24,8 +25,9 @@ function RevokeButton() {
   )
 }
 
-function formatDate(date: string) {
+function formatDate(date: string, timeZone: string) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(date))
@@ -48,6 +50,7 @@ export default function PendingInvitations({
   invitations,
   canManageTeam,
 }: PendingInvitationsProps) {
+  const timeZone = useOrganizationTimezone()
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900">
       <div className="border-b border-slate-800 px-6 py-5">
@@ -89,11 +92,11 @@ export default function PendingInvitations({
                 </div>
 
                 <p className="mt-2 text-sm text-slate-400">
-                  Invited on {formatDate(invite.created_at)}
+                  Invited on {formatDate(invite.created_at, timeZone)}
                 </p>
 
                 <p className="text-xs text-slate-500">
-                  Expires {formatDate(invite.expires_at)}
+                  Expires {formatDate(invite.expires_at, timeZone)}
                 </p>
               </div>
 

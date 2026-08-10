@@ -61,7 +61,7 @@ export default async function CalendarPage() {
         opportunities={(opportunitiesResult.data ?? []).map((deal) => ({ id: deal.id, label: deal.name }))}
         members={memberRows.map((member) => ({ id: member.user_id, label: member.profile?.full_name || member.profile?.email || 'Team member' }))}
         currentUserId={userId}
-        timezone={organizationResult.data?.timezone || 'Asia/Manila'}
+        timezone={organizationResult.data?.timezone || 'UTC'}
         zoomConnected={integrations.some((item) => item.provider === 'zoom' && item.enabled && item.status === 'connected')}
         teamsConnected={integrations.some((item) => item.provider === 'microsoft-teams' && item.enabled && item.status === 'connected')}
         googleCalendarConnected={integrations.some((item) => item.provider === 'google-calendar' && item.enabled && item.status === 'connected')}

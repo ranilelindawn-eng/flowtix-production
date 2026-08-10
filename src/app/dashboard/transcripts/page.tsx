@@ -8,6 +8,7 @@ import {
   type Transcript,
 } from '@/lib/transcripts'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type TranscriptsPageProps = {
   searchParams: Promise<{
     page?: string
@@ -26,7 +27,7 @@ function parsePage(value: string | undefined): number {
   return page
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -34,6 +35,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -114,8 +116,10 @@ function createPageHref(
 
 function TranscriptCard({
   transcript,
+  timeZone,
 }: {
   transcript: Transcript
+  timeZone: string
 }) {
   const wordCount = getWordCount(transcript.content)
 
@@ -151,7 +155,7 @@ function TranscriptCard({
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Created {formatDate(transcript.created_at)}
+              Created {formatDate(transcript.created_at, timeZone)}
             </p>
           </div>
         </div>
@@ -210,6 +214,7 @@ function TranscriptCard({
 export default async function TranscriptsPage({
   searchParams,
 }: TranscriptsPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 
   await requirePermission('transcripts.view')
@@ -387,6 +392,7 @@ export default async function TranscriptsPage({
             <TranscriptCard
               key={transcript.id}
               transcript={transcript}
+              timeZone={timeZone}
             />
           ))}
         </div>

@@ -14,6 +14,7 @@ import {
 } from '@/lib/billing'
 import { getUsageSnapshot } from '@/lib/usage-limits'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 function formatPrice(cents: number) {
   if (cents === 0) {
     return 'Custom'
@@ -97,6 +98,7 @@ export default async function BillingPage({
     >
   >
 }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization =
     await requirePermission('billing.view')
 
@@ -218,6 +220,7 @@ export default async function BillingPage({
           Your 7-day free trial is active. No payment was taken today.
           {subscription?.trial_ends_at
             ? ` Your trial ends ${new Date(subscription.trial_ends_at).toLocaleString('en-PH', {
+                timeZone,
                 dateStyle: 'medium',
                 timeStyle: 'short',
               })}.`

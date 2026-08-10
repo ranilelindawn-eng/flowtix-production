@@ -20,6 +20,7 @@ import {
 import { runTelephonyAcceptanceValidation } from '@/lib/telephony/acceptance'
 import { getFreshTelephonyMonitoringOverview } from '@/lib/telephony/monitoring/service'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 export const dynamic = 'force-dynamic'
 
 function formatSeconds(value: number | null): string {
@@ -129,6 +130,7 @@ function TelephonyMonitoringLocked({
 }
 
 export default async function TelephonyMonitoringPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization = await requirePermission('calls.view_all')
   const entitlements = await getCurrentEntitlements()
 
@@ -319,7 +321,7 @@ export default async function TelephonyMonitoringPage() {
       </div>
 
       <p className="text-xs text-slate-500">
-        Last captured {snapshot ? new Date(snapshot.capturedAt).toLocaleString() : 'not yet available'}.
+        Last captured {snapshot ? new Date(snapshot.capturedAt).toLocaleString('en-US', { timeZone }) : 'not yet available'}.
       </p>
     </div>
   )

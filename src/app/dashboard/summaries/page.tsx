@@ -8,6 +8,7 @@ import {
   type Summary,
 } from '@/lib/summaries'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type SummariesPageProps = {
   searchParams: Promise<{
     page?: string
@@ -27,7 +28,7 @@ function parsePage(value: string | undefined): number {
   return page
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -35,6 +36,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -128,8 +130,10 @@ function createPageHref(
 
 function SummaryCard({
   summary,
+  timeZone,
 }: {
   summary: Summary
+  timeZone: string
 }) {
   return (
     <article className="group flex h-full flex-col rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm transition hover:border-slate-700 hover:bg-slate-900">
@@ -168,7 +172,7 @@ function SummaryCard({
             </h2>
 
             <p className="mt-1 text-xs text-slate-500">
-              Created {formatDate(summary.created_at)}
+              Created {formatDate(summary.created_at, timeZone)}
             </p>
           </div>
         </div>
@@ -230,6 +234,7 @@ function SummaryCard({
 export default async function SummariesPage({
   searchParams,
 }: SummariesPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 
 await requirePermission('summaries.view')
@@ -453,6 +458,7 @@ const requestedPage = parsePage(params.page)
             <SummaryCard
               key={summary.id}
               summary={summary}
+              timeZone={timeZone}
             />
           ))}
         </div>

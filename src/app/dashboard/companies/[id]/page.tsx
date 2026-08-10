@@ -7,11 +7,13 @@ import { createClient } from '@/lib/supabase/server'
 import { createComment, deleteCompany, uploadAttachment } from '../../crm-actions'
 import DeleteCompanyButton from './delete-company-button'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 export default async function CompanyPage({
   params,
 }: {
   params: Promise<{ id: string }>
 }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
   const membership = await requirePermission('companies.view')
   const supabase = await createClient()
@@ -218,7 +220,7 @@ export default async function CompanyPage({
                 </p>
 
                 <time className="mt-2 block text-xs text-slate-500">
-                  {new Date(comment.created_at).toLocaleString()}
+                  {new Date(comment.created_at).toLocaleString('en-US', { timeZone })}
                 </time>
               </article>
             ))}

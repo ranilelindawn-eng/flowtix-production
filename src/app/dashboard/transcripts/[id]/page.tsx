@@ -5,13 +5,14 @@ import { requirePermission } from '@/lib/auth'
 import { deleteTranscript } from '@/app/dashboard/transcripts/actions'
 import { getTranscript } from '@/lib/transcripts'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type TranscriptDetailPageProps = {
   params: Promise<{
     id: string
   }>
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -19,6 +20,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -63,6 +65,7 @@ function formatTranscriptContent(content: string): string[] {
 export default async function TranscriptDetailPage({
   params,
 }: TranscriptDetailPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
 
   await requirePermission('transcripts.view')
@@ -190,7 +193,7 @@ export default async function TranscriptDetailPage({
                 </dt>
 
                 <dd className="mt-1 text-sm font-medium text-slate-200">
-                  {formatDate(transcript.created_at)}
+                  {formatDate(transcript.created_at, timeZone)}
                 </dd>
               </div>
 
@@ -200,7 +203,7 @@ export default async function TranscriptDetailPage({
                 </dt>
 
                 <dd className="mt-1 text-sm font-medium text-slate-200">
-                  {formatDate(transcript.updated_at)}
+                  {formatDate(transcript.updated_at, timeZone)}
                 </dd>
               </div>
             </dl>

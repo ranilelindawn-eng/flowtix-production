@@ -8,7 +8,8 @@ import {
   type CallStatus,
 } from '@/lib/calls'
 
-function formatDateTime(value: string): string {
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+function formatDateTime(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -16,6 +17,7 @@ function formatDateTime(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -93,6 +95,7 @@ function getCallAgainHref(call: Call): string | null {
 }
 
 export default async function CallsPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   await requirePermission('calls.view')
 
   const { calls, count } = await getCalls({
@@ -241,7 +244,7 @@ export default async function CallsPage() {
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-300">
-                          {formatDateTime(call.started_at)}
+                          {formatDateTime(call.started_at, timeZone)}
                         </td>
 
                         <td className="px-5 py-4 text-sm text-slate-300">
@@ -307,7 +310,7 @@ export default async function CallsPage() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-white">
-                          {formatDateTime(call.started_at)}
+                          {formatDateTime(call.started_at, timeZone)}
                         </p>
 
                         <p className="mt-1 truncate text-sm text-slate-400">

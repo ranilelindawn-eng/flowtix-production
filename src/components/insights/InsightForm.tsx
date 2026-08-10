@@ -15,6 +15,7 @@ import type {
   InsightSummaryOption,
 } from '@/lib/insights'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type InsightFormProps = {
   insight?: Insight
   transcripts: InsightTranscriptOption[]
@@ -67,6 +68,7 @@ export default function InsightForm({
   transcripts,
   summaries,
 }: InsightFormProps) {
+  const timeZone = useOrganizationTimezone()
   const editing = Boolean(insight)
 
   const [transcriptId, setTranscriptId] = useState(
@@ -149,7 +151,7 @@ export default function InsightForm({
                 {transcript.language} •{' '}
                 {new Date(
                   transcript.created_at
-                ).toLocaleDateString()}
+                ).toLocaleDateString('en-US', { timeZone })}
               </option>
             ))}
           </select>

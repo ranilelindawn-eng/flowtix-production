@@ -6,6 +6,7 @@ import {
   type Insight,
 } from '@/lib/insights'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type InsightsPageProps = {
   searchParams: Promise<{
     page?: string
@@ -25,7 +26,7 @@ function parsePage(value: string | undefined): number {
   return page
 }
 
-function formatDate(value: string): string {
+function formatDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -33,6 +34,7 @@ function formatDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
@@ -96,8 +98,10 @@ function buildPageHref(
 
 function InsightCard({
   insight,
+  timeZone,
 }: {
   insight: Insight
+  timeZone: string
 }) {
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
@@ -112,7 +116,7 @@ function InsightCard({
           </h2>
 
           <p className="mt-1 text-xs text-slate-500">
-            {formatDate(insight.created_at)}
+            {formatDate(insight.created_at, timeZone)}
           </p>
         </div>
 
@@ -182,6 +186,7 @@ function InsightCard({
 export default async function InsightsPage({
   searchParams,
 }: InsightsPageProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 
   const page = parsePage(params.page)
@@ -297,6 +302,7 @@ export default async function InsightsPage({
               <InsightCard
                 key={insight.id}
                 insight={insight}
+                timeZone={timeZone}
               />
             ))}
           </div>

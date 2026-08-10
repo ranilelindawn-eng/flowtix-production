@@ -6,6 +6,8 @@ import { Pencil, Plus } from 'lucide-react'
 import { createAdvancedTask, updateAdvancedTask } from '@/app/dashboard/tasks/actions'
 import type { AdvancedTask } from '@/lib/task-advanced'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 type ContactOption = { id: string; label: string }
 type MemberOption = { membershipId: string; label: string }
 
@@ -17,15 +19,8 @@ type SharedProps = {
 const fieldClass = 'min-h-11 w-full rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-cyan-500'
 const labelClass = 'mb-2 block text-sm font-medium text-slate-200'
 
-function toLocal(value: string | null): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const offset = date.getTimezoneOffset()
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16)
-}
-
 function TaskFields({ contacts, members, task }: SharedProps & { task?: AdvancedTask }) {
+  const timeZone = useOrganizationTimezone()
   return <div className="grid gap-5 sm:grid-cols-2">
     <div className="sm:col-span-2"><label className={labelClass}>Title</label><input name="title" required maxLength={200} defaultValue={task?.title ?? ''} className={fieldClass}/></div>
     <div className="sm:col-span-2"><label className={labelClass}>Description</label><textarea name="description" rows={4} maxLength={5000} defaultValue={task?.description ?? ''} className={`${fieldClass} py-3`}/></div>
@@ -34,9 +29,9 @@ function TaskFields({ contacts, members, task }: SharedProps & { task?: Advanced
     <div><label className={labelClass}>Priority</label><select name="priority" defaultValue={task?.priority ?? 'medium'} className={fieldClass}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></div>
     {task && <div><label className={labelClass}>Status</label><select name="status" defaultValue={task.status} className={fieldClass}><option value="pending">Pending</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></div>}
     {!task && <div><label className={labelClass}>Assignee</label><select name="owner_membership_id" defaultValue="" className={fieldClass}><option value="">Assign to me</option>{members.map(member => <option key={member.membershipId} value={member.membershipId}>{member.label}</option>)}</select></div>}
-    <div><label className={labelClass}>Start date</label><input name="startAt" type="datetime-local" defaultValue={toLocal(task?.start_at ?? null)} className={fieldClass}/></div>
-    <div><label className={labelClass}>Due date</label><input name="dueAt" type="datetime-local" defaultValue={toLocal(task?.due_at ?? null)} className={fieldClass}/></div>
-    <div><label className={labelClass}>Reminder</label><input name="reminderAt" type="datetime-local" defaultValue={toLocal(task?.reminder_at ?? null)} className={fieldClass}/></div>
+    <div><label className={labelClass}>Start date</label><input name="startAt" type="datetime-local" defaultValue={toOrganizationDateTimeLocal(task?.start_at ?? null, timeZone)} className={fieldClass}/></div>
+    <div><label className={labelClass}>Due date</label><input name="dueAt" type="datetime-local" defaultValue={toOrganizationDateTimeLocal(task?.due_at ?? null, timeZone)} className={fieldClass}/></div>
+    <div><label className={labelClass}>Reminder</label><input name="reminderAt" type="datetime-local" defaultValue={toOrganizationDateTimeLocal(task?.reminder_at ?? null, timeZone)} className={fieldClass}/></div>
     <div><label className={labelClass}>Estimated minutes</label><input name="estimatedMinutes" type="number" min={1} max={10080} defaultValue={task?.estimated_minutes ?? ''} className={fieldClass}/></div>
     {task && <div><label className={labelClass}>Actual minutes</label><input name="actualMinutes" type="number" min={0} max={10080} defaultValue={task.actual_minutes ?? ''} className={fieldClass}/></div>}
     <div><label className={labelClass}>Recurrence rule</label><input name="recurrenceRule" maxLength={300} placeholder="Optional, for example FREQ=WEEKLY" defaultValue={task?.recurrence_rule ?? ''} className={fieldClass}/></div>

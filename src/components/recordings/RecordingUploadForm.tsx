@@ -6,6 +6,7 @@ import { useFormStatus } from 'react-dom'
 import { uploadRecording } from '@/app/dashboard/recordings/actions'
 import type { RecordingCallOption } from '@/lib/recordings'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type RecordingUploadFormProps = {
   calls: RecordingCallOption[]
 }
@@ -31,7 +32,7 @@ const acceptedFileTypes = [
 const acceptedFileExtensions =
   '.mp3,.wav,.webm,.ogg,.m4a,.mp4'
 
-function formatCallDate(date: string): string {
+function formatCallDate(date: string, timeZone: string): string {
   const parsedDate = new Date(date)
 
   if (Number.isNaN(parsedDate.getTime())) {
@@ -39,6 +40,7 @@ function formatCallDate(date: string): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(parsedDate)
@@ -118,6 +120,7 @@ function SubmitButton({
 export default function RecordingUploadForm({
   calls,
 }: RecordingUploadFormProps) {
+  const timeZone = useOrganizationTimezone()
   const [selectedCallId, setSelectedCallId] = useState('')
   const [selectedFile, setSelectedFile] =
     useState<File | null>(null)
@@ -241,7 +244,7 @@ export default function RecordingUploadForm({
                 <option key={call.id} value={call.id}>
                   {formatDirection(call.direction)} ·{' '}
                   {formatStatus(call.status)} ·{' '}
-                  {formatCallDate(call.started_at)}
+                  {formatCallDate(call.started_at, timeZone)}
                 </option>
               ))}
             </select>
@@ -281,7 +284,7 @@ export default function RecordingUploadForm({
                   <span className="text-slate-400">
                     Started:{' '}
                     <strong className="font-medium text-slate-200">
-                      {formatCallDate(selectedCall.started_at)}
+                      {formatCallDate(selectedCall.started_at, timeZone)}
                     </strong>
                   </span>
                 </div>

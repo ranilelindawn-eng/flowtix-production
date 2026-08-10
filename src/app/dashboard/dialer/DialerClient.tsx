@@ -27,6 +27,8 @@ import {
   type DialerContact,
 } from './actions'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { organizationLocalDateTimeToUtc, toOrganizationDateTimeLocal } from '@/lib/timezone'
 type DialerPhoneNumber = {
   id: string
   phoneNumber: string
@@ -310,13 +312,10 @@ function describeProviderError(payload?: unknown): string {
   return 'Unknown provider error'
 }
 
-function getDefaultFollowUpDate() {
-  const date = new Date()
-  date.setDate(date.getDate() + 1)
-  date.setMinutes(0, 0, 0)
-
-  const offset = date.getTimezoneOffset()
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16)
+function getDefaultFollowUpDate(timeZone: string) {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  date.setUTCMinutes(0, 0, 0)
+  return toOrganizationDateTimeLocal(date, timeZone)
 }
 
 export default function DialerClient({
@@ -325,6 +324,7 @@ export default function DialerClient({
   callerIds = [],
   assignedContacts = [],
 }: DialerClientProps) {
+  const timeZone = useOrganizationTimezone()
   const [phoneNumber, setPhoneNumber] = useState(
     initialContact?.phoneNumber ?? initialPhoneNumber,
   )
@@ -359,7 +359,7 @@ export default function DialerClient({
   const [callOutcome, setCallOutcome] = useState('connected')
   const [leadStatus, setLeadStatus] = useState('contacted')
   const [callNotes, setCallNotes] = useState('')
-  const [followUpAt, setFollowUpAt] = useState(getDefaultFollowUpDate)
+  const [followUpAt, setFollowUpAt] = useState(() => getDefaultFollowUpDate(timeZone))
   const [createFollowUpTask, setCreateFollowUpTask] = useState(false)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveMessage, setSaveMessage] = useState('')
@@ -1183,7 +1183,7 @@ export default function DialerClient({
     try {
       const followUpIso =
         createFollowUpTask && followUpAt
-          ? new Date(followUpAt).toISOString()
+          ? organizationLocalDateTimeToUtc(followUpAt, timeZone) ?? undefined
           : undefined
 
       await saveDialerContactUpdate({

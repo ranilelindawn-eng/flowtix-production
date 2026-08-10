@@ -4,12 +4,13 @@ import type { ContactNote } from '@/lib/contact-notes'
 
 import AddNoteDialog from './AddNoteDialog'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type ContactNotesProps = {
   contactId: string
   notes: ContactNote[]
 }
 
-function formatNoteDate(value: string): string {
+function formatNoteDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -17,6 +18,7 @@ function formatNoteDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -25,10 +27,11 @@ function formatNoteDate(value: string): string {
   }).format(date)
 }
 
-export default function ContactNotes({
+export default async function ContactNotes({
   contactId,
   notes,
 }: ContactNotesProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
       <div className="flex flex-col gap-4 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -73,7 +76,7 @@ export default function ContactNotes({
                 className="px-6 py-5 transition hover:bg-white/[0.02]"
               >
                 <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span>{formatNoteDate(note.created_at)}</span>
+                  <span>{formatNoteDate(note.created_at, timeZone)}</span>
 
                   {wasEdited ? (
                     <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5">

@@ -1,5 +1,8 @@
 'use server'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+import { organizationLocalDateTimeToUtc } from '@/lib/timezone'
+
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
@@ -434,6 +437,7 @@ export async function deletePipeline(formData: FormData) {
 
 export async function createOpportunity(formData: FormData) {
   const { membership, supabase, user } = await context('opportunities.create')
+  const timeZone = await getCurrentOrganizationTimezone()
   const name = text(formData, 'name')
   if (!name) throw new Error('Opportunity name is required.')
   const pipelineId = text(formData, 'pipeline_id')
@@ -465,7 +469,10 @@ export async function createOpportunity(formData: FormData) {
     recurring_amount: text(formData, 'recurring_amount') ? Number(text(formData, 'recurring_amount')) : null,
     recurring_interval: optional(text(formData, 'recurring_interval')),
     next_step: optional(text(formData, 'next_step')),
-    next_step_due_at: optional(text(formData, 'next_step_due_at')),
+    next_step_due_at: organizationLocalDateTimeToUtc(
+      text(formData, 'next_step_due_at'),
+      timeZone,
+    ),
     loss_reason: optional(text(formData, 'loss_reason')),
     competitor_names: text(formData, 'competitor_names').split(',').map(value => value.trim()).filter(Boolean),
     status: text(formData, 'status') || 'open',
@@ -480,6 +487,7 @@ export async function createOpportunity(formData: FormData) {
 
 export async function updateOpportunity(formData: FormData) {
   const { membership, supabase } = await context('opportunities.update')
+  const timeZone = await getCurrentOrganizationTimezone()
   const opportunityId = text(formData, 'id')
   const pipelineId = text(formData, 'pipeline_id')
   const stageId = text(formData, 'stage_id')
@@ -556,7 +564,10 @@ export async function updateOpportunity(formData: FormData) {
       recurring_amount: text(formData, 'recurring_amount') ? Number(text(formData, 'recurring_amount')) : null,
       recurring_interval: optional(text(formData, 'recurring_interval')),
       next_step: optional(text(formData, 'next_step')),
-      next_step_due_at: optional(text(formData, 'next_step_due_at')),
+      next_step_due_at: organizationLocalDateTimeToUtc(
+        text(formData, 'next_step_due_at'),
+        timeZone,
+      ),
       loss_reason: optional(text(formData, 'loss_reason')),
       competitor_names: text(formData, 'competitor_names').split(',').map(value => value.trim()).filter(Boolean),
       status: text(formData, 'status') || 'open',

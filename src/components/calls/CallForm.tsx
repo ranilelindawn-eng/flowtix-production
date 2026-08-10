@@ -7,6 +7,8 @@ import type {
 } from '@/lib/calls'
 import type { AssignableMember } from '@/lib/ownership'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 type CallFormAction = (formData: FormData) => void | Promise<void>
 
 type CallFormProps = {
@@ -20,22 +22,10 @@ type CallFormProps = {
 }
 
 function getDateTimeLocalValue(
-  value: string | null | undefined
+  value: string | null | undefined,
+  timeZone: string,
 ): string {
-  if (!value) {
-    return ''
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  const offset = date.getTimezoneOffset()
-  const localDate = new Date(date.getTime() - offset * 60_000)
-
-  return localDate.toISOString().slice(0, 16)
+  return toOrganizationDateTimeLocal(value, timeZone)
 }
 
 function getContactName(contact: CallContactOption): string {
@@ -45,7 +35,7 @@ function getContactName(contact: CallContactOption): string {
   return fullName || contact.email
 }
 
-export default function CallForm({
+export default async function CallForm({
   contacts,
   campaigns,
   owners,
@@ -54,6 +44,7 @@ export default function CallForm({
   action,
   submitLabel,
 }: CallFormProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const direction: CallDirection =
     initialValues?.direction ?? 'outbound'
 
@@ -218,8 +209,7 @@ export default function CallForm({
             name="started_at"
             type="datetime-local"
             defaultValue={getDateTimeLocalValue(
-              initialValues?.started_at
-            )}
+              initialValues?.started_at, timeZone)}
             className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 text-sm text-white outline-none transition focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
           />
 

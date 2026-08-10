@@ -24,6 +24,7 @@ import {
   updateCalendarEvent,
 } from '@/app/dashboard/calendar/actions'
 
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 type SelectOption = {
   id: string
   label: string
@@ -79,20 +80,22 @@ const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 const emptySubscribe = () => () => undefined
 
-function dateInputValue(value: Date) {
-  const offset = value.getTimezoneOffset()
-
-  return new Date(value.getTime() - offset * 60_000)
-    .toISOString()
-    .slice(0, 16)
+function organizationDateKey(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(value)
+  const map = Object.fromEntries(
+    parts.filter((part) => part.type !== 'literal').map((part) => [part.type, part.value]),
+  )
+  return `${map.year}-${map.month}-${map.day}`
 }
 
-function sameDay(left: Date, right: Date) {
-  return (
-    left.getFullYear() === right.getFullYear() &&
-    left.getMonth() === right.getMonth() &&
-    left.getDate() === right.getDate()
-  )
+function calendarDayKey(value: Date) {
+  const pad = (part: number) => String(part).padStart(2, '0')
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
 }
 
 function eventTone(type: string) {
@@ -398,13 +401,13 @@ export default function CalendarBoard({
           <div className="grid grid-cols-7">
             {monthCells.map((day) => {
               const dayEvents = sortedEvents.filter((event) =>
-                sameDay(new Date(event.starts_at), day),
+                organizationDateKey(new Date(event.starts_at), timezone) === calendarDayKey(day),
               )
 
               const muted =
                 day.getMonth() !== cursor.getMonth()
 
-              const dayNumberClassName = sameDay(day, today)
+              const dayNumberClassName = calendarDayKey(day) === organizationDateKey(today, timezone)
                 ? 'mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-xs font-semibold text-white'
                 : muted
                   ? 'mb-2 text-xs text-slate-600'
@@ -476,6 +479,7 @@ export default function CalendarBoard({
                   <div className="min-w-20 rounded-2xl bg-white/5 px-3 py-2 text-center">
                     <div className="text-xs uppercase text-slate-500">
                       {eventStart.toLocaleDateString(undefined, {
+                        timeZone: timezone,
                         month: 'short',
                       })}
                     </div>
@@ -493,8 +497,9 @@ export default function CalendarBoard({
                     <div className="mt-1 flex flex-wrap gap-3 text-sm text-slate-400">
                       <span className="inline-flex items-center gap-1">
                         <Clock3 className="h-4 w-4" />
-                        {eventStart.toLocaleString()} –{' '}
+                        {eventStart.toLocaleString('en-US', { timeZone: timezone })} –{' '}
                         {eventEnd.toLocaleTimeString([], {
+                          timeZone: timezone,
                           hour: 'numeric',
                           minute: '2-digit',
                         })}
@@ -615,10 +620,11 @@ export default function CalendarBoard({
                   required
                   type="datetime-local"
                   name="starts_at"
-                  defaultValue={dateInputValue(
+                  defaultValue={toOrganizationDateTimeLocal(
                     selected
                       ? new Date(selected.starts_at)
                       : defaultStart,
+                    timezone,
                   )}
                   className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
                 />
@@ -633,10 +639,11 @@ export default function CalendarBoard({
                   required
                   type="datetime-local"
                   name="ends_at"
-                  defaultValue={dateInputValue(
+                  defaultValue={toOrganizationDateTimeLocal(
                     selected
                       ? new Date(selected.ends_at)
                       : defaultEnd,
+                    timezone,
                   )}
                   className="w-full rounded-2xl border border-white/10 bg-[#07111F] px-4 py-3 text-white"
                 />

@@ -12,12 +12,14 @@ import {
 
 import type { Contact } from '@/types/contact'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type Props = {
   contact: Contact
 }
 
-function formatDate(value: string) {
+function formatDate(value: string, timeZone: string) {
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'long',
     day: 'numeric',
     year: 'numeric',
@@ -54,9 +56,10 @@ function Row({
   )
 }
 
-export default function ContactProfileCard({
+export default async function ContactProfileCard({
   contact,
 }: Props) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const fullName =
     `${contact.first_name} ${contact.last_name}`.trim() ||
     'Unnamed contact'
@@ -158,13 +161,13 @@ export default function ContactProfileCard({
         <Row
           icon={<Calendar className="h-5 w-5" />}
           label="Created"
-          value={formatDate(contact.created_at)}
+          value={formatDate(contact.created_at, timeZone)}
         />
 
         <Row
           icon={<Calendar className="h-5 w-5" />}
           label="Last Updated"
-          value={formatDate(contact.updated_at)}
+          value={formatDate(contact.updated_at, timeZone)}
         />
 
       </div>

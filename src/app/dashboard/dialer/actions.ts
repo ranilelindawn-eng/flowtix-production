@@ -1,5 +1,6 @@
 'use server'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 import { revalidatePath } from 'next/cache'
 
 import { requirePermission } from '@/lib/auth'
@@ -268,6 +269,7 @@ export async function saveDialerContactUpdate(input: {
   followUpAt?: string
   createFollowUpTask?: boolean
 }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const organization = await requirePermission('contacts.update')
   const contactId = input.contactId.trim()
   const outcome = input.outcome.trim()
@@ -352,7 +354,7 @@ export async function saveDialerContactUpdate(input: {
     `Call outcome: ${outcomeLabel}`,
     `Lead status: ${statusLabel}`,
     notes ? `Notes: ${notes}` : '',
-    followUpAt ? `Follow-up: ${new Date(followUpAt).toLocaleString('en-US')}` : '',
+    followUpAt ? `Follow-up: ${new Date(followUpAt).toLocaleString('en-US', { timeZone })}` : '',
   ]
     .filter(Boolean)
     .join('\n')

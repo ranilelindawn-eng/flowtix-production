@@ -4,12 +4,13 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 
 import Sidebar from '@/components/dashboard/Sidebar'
+import { OrganizationTimezoneProvider } from '@/components/timezone/OrganizationTimezoneProvider'
 import TopNav from '@/components/dashboard/TopNav'
 import SessionTracker from '@/components/security/SessionTracker'
 import { getCurrentEntitlements } from '@/lib/entitlements'
 import { getCurrentPlatformMembership } from '@/lib/platform/auth'
 import { createClient } from '@/lib/supabase/server'
-import { getCurrentOrganization } from '@/lib/team'
+import { getCurrentOrganization, getCurrentOrganizationTimezone } from '@/lib/team'
 
 type DashboardLayoutProps = {
   children: ReactNode
@@ -46,7 +47,7 @@ export default async function DashboardLayout({
       ? claims.email
       : ''
 
-  const [profileResult, currentOrganization, entitlementSnapshot] =
+  const [profileResult, currentOrganization, entitlementSnapshot, organizationTimeZone] =
     await Promise.all([
       supabase
         .from('profiles')
@@ -55,6 +56,7 @@ export default async function DashboardLayout({
         .maybeSingle(),
       getCurrentOrganization(),
       getCurrentEntitlements(),
+      getCurrentOrganizationTimezone(),
     ])
 
   const {
@@ -155,9 +157,11 @@ export default async function DashboardLayout({
             }
           />
 
-          <div className="mt-10">
-            {children}
-          </div>
+          <OrganizationTimezoneProvider timeZone={organizationTimeZone}>
+            <div className="mt-10">
+              {children}
+            </div>
+          </OrganizationTimezoneProvider>
         </main>
       </div>
     </div>

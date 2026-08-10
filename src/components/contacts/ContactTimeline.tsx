@@ -26,6 +26,7 @@ import AddNoteDialog from './AddNoteDialog'
 import AddTaskDialog from './AddTaskDialog'
 import EditTaskDialog from './EditTaskDialog'
 
+import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 type ContactTimelineProps = {
   contactId: string
   activities: ContactActivity[]
@@ -38,7 +39,7 @@ type TaskActionButtonProps = {
   className: string
 }
 
-function formatActivityDate(value: string): string {
+function formatActivityDate(value: string, timeZone: string): string {
   const date = new Date(value)
 
   if (Number.isNaN(date.getTime())) {
@@ -46,6 +47,7 @@ function formatActivityDate(value: string): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -125,6 +127,7 @@ export default function ContactTimeline({
   contactId,
   activities,
 }: ContactTimelineProps) {
+  const timeZone = useOrganizationTimezone()
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
       <div className="flex flex-col gap-4 border-b border-white/10 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
@@ -207,7 +210,7 @@ export default function ContactTimeline({
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span>
-                        {formatActivityDate(activity.occurredAt)}
+                        {formatActivityDate(activity.occurredAt, timeZone)}
                       </span>
 
                       <span className="inline-flex items-center gap-1.5">
@@ -232,7 +235,7 @@ export default function ContactTimeline({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-white">{item.title}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{item.event_type}</span><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-400">{item.event_action.replaceAll('_', ' ')}</span></div>
                     {item.description ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">{item.description}</p> : null}
-                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt)} · {item.source_table}</p>
+                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt, timeZone)} · {item.source_table}</p>
                   </div>
                 </article>
               )
@@ -248,7 +251,7 @@ export default function ContactTimeline({
                     <div className="flex flex-wrap items-center gap-2"><h3 className="font-medium text-white">{item.subject}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] capitalize text-slate-300">{item.activity_type.replaceAll('_', ' ')}</span><span className={`rounded-full border px-2.5 py-1 text-[11px] font-medium capitalize ${getStatusClasses(item.status)}`}>{item.status.replaceAll('_', ' ')}</span></div>
                     {item.body ? <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-slate-300">{item.body}</p> : null}
                     {item.outcome ? <p className="mt-2 text-sm text-slate-400"><span className="font-medium text-slate-300">Outcome:</span> {item.outcome}</p> : null}
-                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt)} · {item.direction}</p>
+                    <p className="mt-2 text-xs text-slate-500">{formatActivityDate(activity.occurredAt, timeZone)} · {item.direction}</p>
                   </div>
                 </article>
               )
@@ -329,16 +332,17 @@ export default function ContactTimeline({
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
                       <span>
                         {task.due_at
-                          ? `Due ${formatActivityDate(task.due_at)}`
+                          ? `Due ${formatActivityDate(task.due_at, timeZone)}`
                           : `Created ${formatActivityDate(
                               task.created_at,
+                              timeZone,
                             )}`}
                       </span>
 
                       {task.completed_at ? (
                         <span>
                           Completed{' '}
-                          {formatActivityDate(task.completed_at)}
+                          {formatActivityDate(task.completed_at, timeZone)}
                         </span>
                       ) : null}
                     </div>
@@ -453,7 +457,7 @@ export default function ContactTimeline({
                   </p>
 
                   <p className="mt-2 text-xs text-slate-500">
-                    {formatActivityDate(activity.occurredAt)}
+                    {formatActivityDate(activity.occurredAt, timeZone)}
                   </p>
                 </div>
               </article>

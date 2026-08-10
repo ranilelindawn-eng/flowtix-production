@@ -6,11 +6,12 @@ import type {
   CampaignStatus,
 } from '@/lib/campaigns'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CampaignTableProps = {
   campaigns: Campaign[]
 }
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, timeZone: string): string {
   if (!value) {
     return '—'
   }
@@ -22,6 +23,7 @@ function formatDate(value: string | null): string {
   }
 
   return new Intl.DateTimeFormat('en-US', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -46,9 +48,10 @@ function getStatusClasses(
   }
 }
 
-export default function CampaignTable({
+export default async function CampaignTable({
   campaigns,
 }: CampaignTableProps) {
+  const timeZone = await getCurrentOrganizationTimezone()
   if (campaigns.length === 0) {
     return (
       <div className="rounded-3xl border border-white/10 bg-[#0B1726]/90 px-6 py-16 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
@@ -137,15 +140,15 @@ export default function CampaignTable({
                 </td>
 
                 <td className="px-6 py-4 text-slate-300">
-                  {formatDate(campaign.start_date)}
+                  {formatDate(campaign.start_date, timeZone)}
                 </td>
 
                 <td className="px-6 py-4 text-slate-300">
-                  {formatDate(campaign.end_date)}
+                  {formatDate(campaign.end_date, timeZone)}
                 </td>
 
                 <td className="px-6 py-4 text-slate-400">
-                  {formatDate(campaign.created_at)}
+                  {formatDate(campaign.created_at, timeZone)}
                 </td>
 
                 <td className="px-6 py-4 text-right">
@@ -203,7 +206,7 @@ export default function CampaignTable({
                 </dt>
 
                 <dd className="mt-1 text-slate-200">
-                  {formatDate(campaign.start_date)}
+                  {formatDate(campaign.start_date, timeZone)}
                 </dd>
               </div>
 
@@ -213,7 +216,7 @@ export default function CampaignTable({
                 </dt>
 
                 <dd className="mt-1 text-slate-200">
-                  {formatDate(campaign.end_date)}
+                  {formatDate(campaign.end_date, timeZone)}
                 </dd>
               </div>
 
@@ -223,7 +226,7 @@ export default function CampaignTable({
                 </dt>
 
                 <dd className="mt-1 text-slate-200">
-                  {formatDate(campaign.created_at)}
+                  {formatDate(campaign.created_at, timeZone)}
                 </dd>
               </div>
 

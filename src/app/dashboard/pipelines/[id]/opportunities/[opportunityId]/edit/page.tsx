@@ -8,6 +8,8 @@ import { getAssignableMembers } from '@/lib/ownership'
 
 import { updateOpportunity } from '@/app/dashboard/crm-actions'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
+import { toOrganizationDateTimeLocal } from '@/lib/timezone'
 const input =
   'min-h-11 w-full rounded-xl border border-white/10 bg-[#07111F] px-3 text-sm text-white outline-none focus:border-blue-500'
 
@@ -16,6 +18,7 @@ export default async function EditOpportunityPage({
 }: {
   params: Promise<{ id: string; opportunityId: string }>
 }) {
+  const timeZone = await getCurrentOrganizationTimezone()
   const { id: pipelineId, opportunityId } = await params
   const membership = await requirePermission('opportunities.update')
   const supabase = await createClient()
@@ -244,7 +247,7 @@ export default async function EditOpportunityPage({
         <label className="text-sm text-slate-300">Recurring interval
           <select name="recurring_interval" defaultValue={opportunity.recurring_interval ?? ''} className={`${input} mt-2`}><option value="">Not applicable</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="annual">Annual</option></select>
         </label>
-        <label className="text-sm text-slate-300">Next-step due<input type="datetime-local" name="next_step_due_at" defaultValue={opportunity.next_step_due_at ? new Date(opportunity.next_step_due_at).toISOString().slice(0,16) : ''} className={`${input} mt-2`} /></label>
+        <label className="text-sm text-slate-300">Next-step due<input type="datetime-local" name="next_step_due_at" defaultValue={opportunity.next_step_due_at ? toOrganizationDateTimeLocal(opportunity.next_step_due_at, timeZone) : ''} className={`${input} mt-2`} /></label>
         <label className="text-sm text-slate-300 md:col-span-2">Next step<textarea name="next_step" rows={3} defaultValue={opportunity.next_step ?? ''} className={`${input} mt-2 py-3`} /></label>
         <label className="text-sm text-slate-300 md:col-span-2">Competitors<input name="competitor_names" defaultValue={Array.isArray(opportunity.competitor_names) ? opportunity.competitor_names.join(', ') : ''} placeholder="Comma-separated" className={`${input} mt-2`} /></label>
         <label className="text-sm text-slate-300 md:col-span-2">Loss reason<textarea name="loss_reason" rows={3} defaultValue={opportunity.loss_reason ?? ''} className={`${input} mt-2 py-3`} /></label>

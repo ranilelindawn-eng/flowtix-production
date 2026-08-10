@@ -2,6 +2,7 @@ import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import CommunicationComposer from './CommunicationComposer'
 
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CommunicationMessage = {
   id: string
   channel: string
@@ -16,6 +17,7 @@ type CommunicationMessage = {
 }
 
 export default async function CommunicationsPage() {
+  const timeZone = await getCurrentOrganizationTimezone()
   const membership = await requirePermission('campaigns.view')
   const supabase = await createClient()
 
@@ -87,7 +89,7 @@ export default async function CommunicationsPage() {
 
   function deliveryTime(message: CommunicationMessage) {
     if (message.sent_at) {
-      return new Date(message.sent_at).toLocaleString()
+      return new Date(message.sent_at).toLocaleString('en-US', { timeZone })
     }
 
     if (
