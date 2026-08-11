@@ -11,7 +11,7 @@ export async function parseTwilioForm(request: Request): Promise<URLSearchParams
   return new URLSearchParams(text)
 }
 
-function externalRequestUrl(request: Request): string {
+export function externalRequestUrl(request: Request): string {
   const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim()
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim()
   const host = forwardedHost || request.headers.get('host')?.trim()

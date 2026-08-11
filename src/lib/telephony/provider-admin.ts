@@ -131,3 +131,190 @@ export async function listOwnedProviderNumbers(organizationId: string, provider:
   const data = await jsonRequest<{ objects?: Array<{ id?: string; number: string; alias?: string; type?: string }> }>(`https://api.plivo.com/v1/Account/${encodeURIComponent(authId)}/Number/?limit=20&offset=0`, { headers: { Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}` } })
   return (data.objects ?? []).map((number) => ({ providerNumberId: number.id || number.number, phoneNumber: number.number.startsWith('+') ? number.number : `+${number.number}`, friendlyName: number.alias || number.number, capabilities: { voice: true, sms: /sms/i.test(number.type ?? ''), mms: false, fax: false } }))
 }
+
+
+export async function configureProviderInboundRouting(input: {
+  organizationId: string
+  provider: ConfiguredTelephonyProviderName
+  providerNumberId: string
+  phoneNumber: string
+}) {
+  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
+    input.organizationId,
+    input.provider,
+  )
+  const siteUrl = required(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL').replace(/\/$/, '')
+
+  if (input.provider === 'twilio') {
+    const accountSid = required(connection.credentials.accountSid, 'Twilio Account SID')
+    const authToken = required(connection.credentials.authToken, 'Twilio Auth Token')
+    const body = new URLSearchParams({
+      VoiceUrl: `${siteUrl}/api/telephony/voice/inbound`,
+      VoiceMethod: 'POST',
+    })
+    await jsonRequest(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/IncomingPhoneNumbers/${encodeURIComponent(input.providerNumberId)}.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      },
+    )
+    return
+  }
+
+  if (input.provider === 'signalwire') {
+    const projectId = required(connection.credentials.projectId, 'SignalWire Project ID')
+    const apiToken = required(connection.credentials.apiToken, 'SignalWire API Token')
+    const spaceUrl = normalizeSpaceUrl(connection.config.space_url)
+    const body = new URLSearchParams({
+      VoiceUrl: `${siteUrl}/api/telephony/voice/inbound/signalwire`,
+      VoiceMethod: 'POST',
+    })
+    await jsonRequest(
+      `${spaceUrl}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/IncomingPhoneNumbers/${encodeURIComponent(input.providerNumberId)}.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: body.toString(),
+      },
+    )
+    return
+  }
+
+  if (input.provider === 'telnyx') {
+    const apiKey = required(connection.credentials.apiKey, 'Telnyx API Key')
+    const connectionId = required(connection.config.connection_id, 'Telnyx Credential Connection ID')
+    await jsonRequest(
+      `https://api.telnyx.com/v2/credential_connections/${encodeURIComponent(connectionId)}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          webhook_event_url: `${siteUrl}/api/telephony/voice/inbound/telnyx`,
+          webhook_api_version: '2',
+          webhook_timeout_secs: 25,
+          sip_uri_calling_preference: 'internal',
+        }),
+      },
+    )
+    await jsonRequest(
+      `https://api.telnyx.com/v2/phone_numbers/${encodeURIComponent(input.providerNumberId)}`,
+      {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ connection_id: connectionId }),
+      },
+    )
+    return
+  }
+
+  const authId = required(connection.credentials.authId, 'Plivo Auth ID')
+  const authToken = required(connection.credentials.authToken, 'Plivo Auth Token')
+  let appUuid = typeof connection.config.flowtix_application_uuid === 'string'
+    ? connection.config.flowtix_application_uuid.trim()
+    : ''
+  if (!appUuid) {
+    const app = await jsonRequest<{ app_id?: string; application_uuid?: string }>(
+      `https://api.plivo.com/v1/Account/${encodeURIComponent(authId)}/Application/`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          app_name: `Flowtix ${input.organizationId}`,
+          answer_url: `${siteUrl}/api/telephony/voice/inbound/plivo`,
+          answer_method: 'POST',
+          hangup_url: `${siteUrl}/api/telephony/voice/inbound/plivo`,
+          hangup_method: 'POST',
+        }),
+      },
+    )
+    appUuid = app.app_id || app.application_uuid || ''
+    if (!appUuid) throw new Error('Plivo did not return an Application UUID.')
+  }
+  await jsonRequest(
+    `https://api.plivo.com/v1/Account/${encodeURIComponent(authId)}/Number/${encodeURIComponent(input.phoneNumber.replace(/^\+/, ''))}/`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ app_id: appUuid }),
+    },
+  )
+}
+
+export async function ensureTelnyxAgentCredential(input: {
+  organizationId: string
+  userId: string
+}) {
+  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
+    input.organizationId,
+    'telnyx',
+  )
+  const apiKey = required(connection.credentials.apiKey, 'Telnyx API Key')
+  const connectionId = required(connection.config.connection_id, 'Telnyx Credential Connection ID')
+  const tag = `flowtix-${input.organizationId}-${input.userId}`
+  const search = await jsonRequest<{ data?: Array<{ id?: string; sip_username?: string; sip_password?: string }> }>(
+    `https://api.telnyx.com/v2/telephony_credentials?filter[resource_id]=connection:${encodeURIComponent(connectionId)}&filter[tag]=${encodeURIComponent(tag)}`,
+    { headers: { Authorization: `Bearer ${apiKey}` } },
+  )
+  let credential = search.data?.[0]
+  if (!credential?.id) {
+    const created = await jsonRequest<{ data?: { id?: string; sip_username?: string; sip_password?: string } }>(
+      'https://api.telnyx.com/v2/telephony_credentials',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          connection_id: connectionId,
+          name: `Flowtix ${input.userId}`,
+          tag,
+        }),
+      },
+    )
+    credential = created.data
+  }
+  if (!credential?.id) throw new Error('Unable to provision the Telnyx agent credential.')
+  return { id: credential.id, sipUsername: credential.sip_username || '' }
+}
+
+export async function ensurePlivoAgentEndpoint(input: {
+  organizationId: string
+  userId: string
+}) {
+  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
+    input.organizationId,
+    'plivo',
+  )
+  const authId = required(connection.credentials.authId, 'Plivo Auth ID')
+  const authToken = required(connection.credentials.authToken, 'Plivo Auth Token')
+  const username = `fx_${input.userId.replace(/-/g, '').slice(0, 32)}`
+  const password = Buffer.from(`${input.organizationId}:${input.userId}:${Date.now()}`).toString('base64url').slice(0, 24) + 'A1!'
+  const created = await jsonRequest<{ username?: string; alias?: string }>(
+    `https://api.plivo.com/v1/Account/${encodeURIComponent(authId)}/Endpoint/`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username,
+        password,
+        alias: `Flowtix ${input.userId}`,
+      }),
+    },
+  )
+  return { username: created.username || username, password }
+}

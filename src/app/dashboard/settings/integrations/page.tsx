@@ -199,7 +199,7 @@ const cards: Card[] = [
     provider: 'plivo',
     name: 'Plivo',
     description:
-      'Use the subscriber Plivo account, endpoint, and owned phone numbers.',
+      'Connect the subscriber Plivo account. Flowtix provisions browser endpoints for agents and configures owned numbers when inbound routing is enabled.',
     icon: Phone,
     method: 'credentials',
     fields: [
@@ -210,15 +210,6 @@ const cards: Card[] = [
       {
         name: 'authToken',
         label: 'Auth Token',
-        type: 'password',
-      },
-      {
-        name: 'endpointUsername',
-        label: 'Endpoint Username',
-      },
-      {
-        name: 'endpointPassword',
-        label: 'Endpoint Password',
         type: 'password',
       },
     ],

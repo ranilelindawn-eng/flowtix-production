@@ -13,6 +13,7 @@ import {
   getOrganizationTwilioConfiguration,
 } from '@/lib/telephony/config'
 import { getOrganizationProviderConnection } from '@/lib/telephony/provider-connections'
+import { ensurePlivoAgentEndpoint, ensureTelnyxAgentCredential } from '@/lib/telephony/provider-admin'
 import {
   isTelephonyProvider,
   type ConfiguredTelephonyProviderName,
@@ -151,11 +152,18 @@ export async function GET(request: NextRequest) {
         organization.organization_id,
         callerId,
       )
-      const token = await createTelnyxWebRtcToken(config)
+      const agentCredential = await ensureTelnyxAgentCredential({
+        organizationId: organization.organization_id,
+        userId,
+      })
+      const token = await createTelnyxWebRtcToken({
+        ...config,
+        telephonyCredentialId: agentCredential.id,
+      })
       return NextResponse.json({
         provider: 'telnyx',
         token,
-        identity: `fx_${userId.replace(/-/g, '')}`,
+        identity: agentCredential.sipUsername || `fx_${userId.replace(/-/g, '')}`,
         userId,
         organizationId: organization.organization_id,
         callerId: config.callerId,
@@ -182,23 +190,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (requestedProvider === 'plivo') {
-      const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
+      await getOrganizationProviderConnection<Record<string, unknown>>(
         organization.organization_id,
         'plivo',
       )
-      const username = required(
-        connection.credentials.endpointUsername,
-        'Plivo Endpoint Username',
-      )
-      const password = required(
-        connection.credentials.endpointPassword,
-        'Plivo Endpoint Password',
-      )
+      const endpoint = await ensurePlivoAgentEndpoint({
+        organizationId: organization.organization_id,
+        userId,
+      })
       return NextResponse.json({
         provider: 'plivo',
-        token: password,
-        username,
-        identity: username,
+        token: endpoint.password,
+        username: endpoint.username,
+        identity: endpoint.username,
         userId,
         organizationId: organization.organization_id,
         callerId,

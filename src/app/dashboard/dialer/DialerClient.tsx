@@ -371,6 +371,7 @@ export default function DialerClient({
   const signalWireClientRef = useRef<SignalWireClientLike | null>(null)
   const signalWireCallRef = useRef<SignalWireCallLike | null>(null)
   const plivoSdkRef = useRef<PlivoSdkLike | null>(null)
+  const incomingFromRef = useRef('')
   const plivoCallRegisteredRef = useRef(false)
 
   // These refs keep call-registration data current without making the browser
@@ -493,6 +494,17 @@ export default function DialerClient({
       setMessage('Call connected')
       setElapsed(0)
       setIsOnHold(false)
+      if (call.direction === 'inbound') {
+        void fetch('/api/telephony/inbound/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'telnyx',
+            providerCallId: call.id ?? null,
+            fromNumber: call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? null,
+          }),
+        })
+      }
     } else if (state === 'held') {
       setCallState('connected')
       setIsOnHold(true)
@@ -534,6 +546,17 @@ export default function DialerClient({
       setMessage('Call connected')
       setElapsed(0)
       setIsOnHold(false)
+      if (call.direction === 'inbound') {
+        void fetch('/api/telephony/inbound/claim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'signalwire',
+            providerCallId: call.id ?? null,
+            fromNumber: call.remotePartyNumber ?? null,
+          }),
+        })
+      }
     } else if (state === 'held') {
       setCallState('connected')
       setIsOnHold(true)
@@ -592,11 +615,11 @@ export default function DialerClient({
       deviceKey: deviceKeyRef.current,
       status,
       provider: selectedProvider,
-      providerIdentity: null,
+      providerIdentity: tokenPayload?.identity ?? null,
       supportsInbound: true,
       metadata: { userAgent: navigator.userAgent },
     })
-  }, [selectedProvider, updatePresence])
+  }, [selectedProvider, tokenPayload?.identity, updatePresence])
 
   const changeAvailability = useCallback(async (next: AgentAvailability) => {
     setAvailability(next)
@@ -806,7 +829,9 @@ export default function DialerClient({
           setMessage(`Plivo login failed: ${String(reason ?? 'Unknown error')}`)
         })
         sdk.client.on('onIncomingCall', (callerName: unknown) => {
-          setIncomingFrom(String(callerName ?? 'Unknown caller'))
+          const caller = String(callerName ?? 'Unknown caller')
+          incomingFromRef.current = caller
+          setIncomingFrom(caller)
           setCallState('incoming')
           setMessage('Incoming Plivo call')
         })
@@ -831,6 +856,15 @@ export default function DialerClient({
           setCallState('connected')
           setMessage('Call connected')
           setElapsed(0)
+          void fetch('/api/telephony/inbound/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: 'plivo',
+              providerCallId: sdk.client.getLastCallUUID?.()?.trim() || null,
+              fromNumber: incomingFromRef.current || null,
+            }),
+          })
         })
         sdk.client.on('onCallFailed', (reason: unknown) => {
           setCallState('ended')
@@ -880,7 +914,9 @@ export default function DialerClient({
         void sendDeviceHeartbeat('error')
       })
       device.on('incoming', (call: Call) => {
-        setIncomingFrom(call.parameters.From ?? 'Unknown caller')
+        const caller = call.parameters.From ?? 'Unknown caller'
+        incomingFromRef.current = caller
+        setIncomingFrom(caller)
         attachCallEvents(call, true)
       })
       device.on('tokenWillExpire', async () => {
