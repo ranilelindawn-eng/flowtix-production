@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation'
 import {
   Building2,
   CreditCard,
-  KeyRound,
   ListChecks,
   Workflow,
   Plug,
@@ -42,12 +41,6 @@ const links: SettingsLink[] = [
     label: 'Team',
     icon: UsersRound,
     permission: 'team.view',
-  },
-  {
-    href: '/dashboard/settings/api-keys',
-    label: 'API Keys',
-    icon: KeyRound,
-    permission: 'api_keys.view',
   },
   {
     href: '/dashboard/settings/billing',

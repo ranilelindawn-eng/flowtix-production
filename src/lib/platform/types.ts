@@ -14,6 +14,7 @@ export type PlatformPermission =
   | 'platform.billing.manage'
   | 'platform.telephony.manage'
   | 'platform.ai.manage'
+  | 'platform.api_keys.manage'
   | 'platform.impersonation.use'
   | 'platform.audit.view'
   | 'platform.jobs.view'

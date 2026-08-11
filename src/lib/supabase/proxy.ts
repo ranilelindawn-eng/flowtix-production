@@ -114,7 +114,6 @@ export async function updateSession(request: NextRequest) {
             ['/dashboard/ai-analytics', 'ai.call_analysis'],
             ['/dashboard/insights', 'ai.call_analysis'],
             ['/dashboard/exports', 'reports.export'],
-            ['/dashboard/settings/api-keys', 'api.access'],
             ['/dashboard/roles', 'security.advanced'],
             ['/dashboard/security', 'security.advanced'],
           ]
