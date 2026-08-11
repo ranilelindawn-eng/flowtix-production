@@ -115,18 +115,68 @@ export async function getTelephonyMonitoringOverview(organizationId: string): Pr
   return { snapshot: history[0] ?? null, history, alerts: ((alertRows ?? []) as AlertRow[]).map(mapAlert) }
 }
 
+async function reconcileAvailabilityAlerts(
+  organizationId: string,
+  availableAgents: number,
+): Promise<void> {
+  const admin = createTelephonyAdminClient()
+  const { data, error } = await admin
+    .from('telephony_alerts')
+    .select('id,last_observed_at')
+    .eq('organization_id', organizationId)
+    .eq('rule_key', 'no_available_agents')
+    .in('status', ['open', 'acknowledged'])
+    .order('last_observed_at', { ascending: false })
+
+  if (error) throw new Error(`Unable to reconcile telephony availability alerts: ${error.message}`)
+
+  const rows = (data ?? []) as Array<{ id: string; last_observed_at: string }>
+  if (rows.length === 0) return
+
+  const now = new Date().toISOString()
+
+  // Once an agent is available, every historical open/acknowledged copy of the
+  // no-agent alert is obsolete and must be closed, not just the newest copy.
+  if (availableAgents > 0) {
+    const { error: resolveError } = await admin
+      .from('telephony_alerts')
+      .update({ status: 'resolved', resolved_at: now, last_observed_at: now })
+      .eq('organization_id', organizationId)
+      .eq('rule_key', 'no_available_agents')
+      .in('status', ['open', 'acknowledged'])
+
+    if (resolveError) throw new Error(`Unable to resolve telephony availability alerts: ${resolveError.message}`)
+    return
+  }
+
+  // Older collector versions could create another open alert after the rule's
+  // cooldown elapsed. Keep only the newest active copy so monitoring does not
+  // display the same operational condition multiple times.
+  if (rows.length > 1) {
+    const duplicateIds = rows.slice(1).map((row) => row.id)
+    const { error: dedupeError } = await admin
+      .from('telephony_alerts')
+      .update({ status: 'resolved', resolved_at: now })
+      .in('id', duplicateIds)
+      .eq('organization_id', organizationId)
+
+    if (dedupeError) throw new Error(`Unable to deduplicate telephony availability alerts: ${dedupeError.message}`)
+  }
+}
+
 export async function getFreshTelephonyMonitoringOverview(organizationId: string): Promise<{
   snapshot: TelephonyMonitoringSnapshot | null
   history: TelephonyMonitoringSnapshot[]
   alerts: TelephonyAlert[]
 }> {
-  let overview = await getTelephonyMonitoringOverview(organizationId)
-  const snapshotAgeMilliseconds = overview.snapshot
-    ? Date.now() - new Date(overview.snapshot.capturedAt).getTime()
-    : Number.POSITIVE_INFINITY
+  // Monitoring is an operational screen. Always collect a current snapshot on
+  // page load so browser presence changes are visible immediately instead of
+  // waiting for the previous five-minute cache window to expire.
+  await collectTelephonyMonitoringSnapshot(organizationId)
 
-  if (snapshotAgeMilliseconds > 5 * 60 * 1000) {
-    await collectTelephonyMonitoringSnapshot(organizationId)
+  let overview = await getTelephonyMonitoringOverview(organizationId)
+  if (overview.snapshot) {
+    await reconcileAvailabilityAlerts(organizationId, overview.snapshot.availableAgents)
     overview = await getTelephonyMonitoringOverview(organizationId)
   }
 
