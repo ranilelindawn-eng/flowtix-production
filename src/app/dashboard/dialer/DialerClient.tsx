@@ -466,6 +466,35 @@ export default function DialerClient({
     })
   }, [])
 
+  const syncBrowserCallStatus = useCallback(async (input: {
+    provider: 'telnyx' | 'signalwire' | 'plivo'
+    providerCallId: string | null | undefined
+    status: 'initiating' | 'ringing' | 'connected' | 'on-hold' | 'completed' | 'failed' | 'cancelled'
+    rawStatus?: string
+  }) => {
+    const providerCallId = input.providerCallId?.trim()
+    if (!providerCallId) return
+
+    try {
+      const response = await fetch('/api/telephony/browser-call/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider: input.provider,
+          providerCallId,
+          status: input.status,
+          rawStatus: input.rawStatus ?? input.status,
+        }),
+      })
+      if (!response.ok) {
+        const result = await response.json() as { error?: string }
+        console.error('[Flowtix telephony] browser call state sync failed', result.error)
+      }
+    } catch (error) {
+      console.error('[Flowtix telephony] browser call state sync failed', error)
+    }
+  }, [])
+
   const handleTelnyxNotification = useCallback((payload?: unknown) => {
     const notification = payload as TelnyxNotification | undefined
 
@@ -482,6 +511,7 @@ export default function DialerClient({
     if (state === 'new' || state === 'trying' || state === 'requesting') {
       setCallState('connecting')
       setMessage(`Telnyx call ${state}…`)
+      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'initiating', rawStatus: state })
     } else if (state === 'ringing') {
       const inbound = call.direction === 'inbound'
       setCallState(inbound ? 'incoming' : 'ringing')
@@ -489,11 +519,13 @@ export default function DialerClient({
         call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? 'Unknown caller',
       )
       setMessage(inbound ? 'Incoming Telnyx call' : 'Ringing…')
+      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'ringing', rawStatus: state })
     } else if (state === 'active') {
       setCallState('connected')
       setMessage('Call connected')
       setElapsed(0)
       setIsOnHold(false)
+      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'connected', rawStatus: state })
       if (call.direction === 'inbound') {
         void fetch('/api/telephony/inbound/claim', {
           method: 'POST',
@@ -509,6 +541,7 @@ export default function DialerClient({
       setCallState('connected')
       setIsOnHold(true)
       setMessage('Call on hold')
+      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'on-hold', rawStatus: state })
     } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
       const reason =
         call.sipReason ||
@@ -520,10 +553,16 @@ export default function DialerClient({
       setMessage(`${reason} — complete the call outcome before moving on.`)
       setIsMuted(false)
       setIsOnHold(false)
+      void syncBrowserCallStatus({
+        provider: 'telnyx',
+        providerCallId: call.id,
+        status: reason === 'Call ended' ? 'completed' : 'failed',
+        rawStatus: state,
+      })
       telnyxCallRef.current = null
       window.setTimeout(() => setCallState('idle'), 1200)
     }
-  }, [])
+  }, [syncBrowserCallStatus])
 
   const handleSignalWireNotification = useCallback((payload?: unknown) => {
     const notification = payload as TelnyxNotification | undefined
@@ -536,16 +575,19 @@ export default function DialerClient({
     if (['new', 'trying', 'requesting'].includes(state)) {
       setCallState('connecting')
       setMessage(`SignalWire call ${state}…`)
+      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'initiating', rawStatus: state })
     } else if (state === 'ringing') {
       const inbound = call.direction === 'inbound'
       setCallState(inbound ? 'incoming' : 'ringing')
       setIncomingFrom(call.remotePartyNumber ?? 'Unknown caller')
       setMessage(inbound ? 'Incoming SignalWire call' : 'Ringing…')
+      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'ringing', rawStatus: state })
     } else if (state === 'active') {
       setCallState('connected')
       setMessage('Call connected')
       setElapsed(0)
       setIsOnHold(false)
+      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'connected', rawStatus: state })
       if (call.direction === 'inbound') {
         void fetch('/api/telephony/inbound/claim', {
           method: 'POST',
@@ -561,15 +603,17 @@ export default function DialerClient({
       setCallState('connected')
       setIsOnHold(true)
       setMessage('Call on hold')
+      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'on-hold', rawStatus: state })
     } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
       setCallState('ended')
       setMessage('Call ended — complete the call outcome before moving on.')
       setIsMuted(false)
       setIsOnHold(false)
+      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'completed', rawStatus: state })
       signalWireCallRef.current = null
       window.setTimeout(() => setCallState('idle'), 1200)
     }
-  }, [])
+  }, [syncBrowserCallStatus])
 
   const registerBrowserCall = useCallback(async (input: {
     provider: 'telnyx' | 'signalwire' | 'plivo'
@@ -842,20 +886,24 @@ export default function DialerClient({
             const id = sdk.client.getLastCallUUID?.()?.trim()
             if (id) {
               plivoCallRegisteredRef.current = true
-              void registerBrowserCall({ provider: 'plivo', providerCallId: id }).catch((error) => {
-                console.error('[Flowtix Plivo] call registration failed', error)
-              })
+              void registerBrowserCall({ provider: 'plivo', providerCallId: id })
+                .then(() => syncBrowserCallStatus({ provider: 'plivo', providerCallId: id, status: 'initiating', rawStatus: 'calling' }))
+                .catch((error) => {
+                  console.error('[Flowtix Plivo] call registration failed', error)
+                })
             }
           }
         })
         sdk.client.on('onCallRemoteRinging', () => {
           setCallState('ringing')
           setMessage('Ringing…')
+          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'ringing', rawStatus: 'remote-ringing' })
         })
         sdk.client.on('onCallAnswered', () => {
           setCallState('connected')
           setMessage('Call connected')
           setElapsed(0)
+          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'connected', rawStatus: 'answered' })
           void fetch('/api/telephony/inbound/claim', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -869,12 +917,14 @@ export default function DialerClient({
         sdk.client.on('onCallFailed', (reason: unknown) => {
           setCallState('ended')
           setMessage(`Plivo call failed: ${String(reason ?? 'Unknown error')}`)
+          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'failed', rawStatus: String(reason ?? 'failed') })
         })
         sdk.client.on('onCallTerminated', () => {
           setCallState('ended')
           setMessage('Call ended — complete the call outcome before moving on.')
           setIsMuted(false)
           setIsOnHold(false)
+          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'completed', rawStatus: 'terminated' })
           plivoCallRegisteredRef.current = false
           window.setTimeout(() => setCallState('idle'), 1200)
         })
@@ -942,6 +992,7 @@ export default function DialerClient({
     selectedCallerId,
     selectedProvider,
     sendDeviceHeartbeat,
+    syncBrowserCallStatus,
   ])
 
   useEffect(() => {
