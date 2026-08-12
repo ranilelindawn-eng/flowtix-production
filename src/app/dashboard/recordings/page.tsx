@@ -240,7 +240,7 @@ export default async function RecordingsPage({
   const supabase = await createClient()
   const { data: cloudRecordings } = await supabase
     .from('call_recordings')
-    .select('id, call_id, status, duration_seconds, channels, created_at')
+    .select('id, call_id, provider, provider_recording_sid, status, duration_seconds, channels, created_at')
     .eq('organization_id', organization.organization_id)
     .order('created_at', { ascending: false })
     .limit(12)
@@ -311,26 +311,91 @@ export default async function RecordingsPage({
       <section className="rounded-3xl border border-cyan-400/20 bg-cyan-400/[0.04] p-5 sm:p-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold text-cyan-300">Twilio cloud recordings</p>
-            <h2 className="mt-1 text-xl font-semibold text-white">Automatic call capture</h2>
-            <p className="mt-2 text-sm text-slate-400">Stream recordings securely through Flowtix or download the MP3 file.</p>
+            <p className="text-sm font-semibold text-cyan-300">
+              Provider cloud recordings
+            </p>
+            <h2 className="mt-1 text-xl font-semibold text-white">
+              Automatic call capture
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm text-slate-400">
+              Secure playback, download, transcription, and AI analysis for recordings reported by Twilio, Telnyx, SignalWire, or Plivo.
+            </p>
           </div>
-          <span className="text-sm text-slate-400">{cloudRecordings?.length ?? 0} recent</span>
+          <span className="text-sm text-slate-400">
+            {cloudRecordings?.length ?? 0} recent
+          </span>
         </div>
+
         {(cloudRecordings ?? []).length > 0 ? (
           <div className="mt-5 grid gap-4 lg:grid-cols-2">
-            {(cloudRecordings ?? []).map((recording) => (
-              <article key={recording.id} className="rounded-2xl border border-white/10 bg-slate-950/60 p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div><p className="font-semibold text-white">Call {shortenId(recording.call_id)}</p><p className="mt-1 text-xs text-slate-400">{formatDate(recording.created_at)} · {formatDuration(recording.duration_seconds)}</p></div>
-                  <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold capitalize text-emerald-300">{recording.status}</span>
-                </div>
-                <audio controls preload="none" className="mt-4 w-full" src={`/api/telephony/recordings/media?id=${recording.id}`} />
-                <CloudRecordingActions recordingId={recording.id} callId={recording.call_id} /><div className="mt-3 flex justify-end"><a href={`/api/telephony/recordings/media?id=${recording.id}&download=1`} className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10">Download MP3</a></div>
-              </article>
-            ))}
+            {(cloudRecordings ?? []).map((recording) => {
+              const provider =
+                typeof recording.provider === 'string' && recording.provider
+                  ? recording.provider
+                  : 'twilio'
+              const providerLabel =
+                provider === 'signalwire'
+                  ? 'SignalWire'
+                  : provider.charAt(0).toUpperCase() + provider.slice(1)
+
+              return (
+                <article
+                  key={recording.id}
+                  className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-semibold text-white">
+                          Call {shortenId(recording.call_id)}
+                        </p>
+                        <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">
+                          {providerLabel}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {formatDate(recording.created_at)} ·{' '}
+                        {formatDuration(recording.duration_seconds)}
+                        {recording.channels
+                          ? ` · ${recording.channels} channel${recording.channels === 1 ? '' : 's'}`
+                          : ''}
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold capitalize text-emerald-300">
+                      {recording.status}
+                    </span>
+                  </div>
+
+                  <audio
+                    controls
+                    preload="none"
+                    className="mt-4 w-full"
+                    src={`/api/telephony/recordings/media?id=${recording.id}`}
+                  />
+
+                  <CloudRecordingActions
+                    recordingId={recording.id}
+                    callId={recording.call_id}
+                  />
+
+                  <div className="mt-3 flex justify-end">
+                    <a
+                      href={`/api/telephony/recordings/media?id=${recording.id}&download=1`}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"
+                    >
+                      Download recording
+                    </a>
+                  </div>
+                </article>
+              )
+            })}
           </div>
-        ) : <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">Cloud recordings will appear after Twilio sends its recording callback.</p>}
+        ) : (
+          <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm leading-6 text-slate-400">
+            Provider recordings will appear here after your connected Twilio, Telnyx, SignalWire, or Plivo account reports a completed recording.
+          </p>
+        )}
       </section>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">

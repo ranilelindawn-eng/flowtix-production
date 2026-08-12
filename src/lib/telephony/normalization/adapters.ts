@@ -163,10 +163,20 @@ function normalizeTelnyx(payload: Record<string, unknown>, receivedAt: string): 
     toNumber: nullable(eventPayload.to || eventPayload.to_number),
     durationSeconds: numberValue(eventPayload.duration_secs || eventPayload.duration),
     recordingUrl: nullable(
-      (eventPayload.recording_urls && objectValue(eventPayload.recording_urls).mp3) ||
+      (eventPayload.recording_urls &&
+        (objectValue(eventPayload.recording_urls).mp3 ||
+          objectValue(eventPayload.recording_urls).wav)) ||
+        (eventPayload.public_recording_urls &&
+          (objectValue(eventPayload.public_recording_urls).mp3 ||
+            objectValue(eventPayload.public_recording_urls).wav)) ||
         eventPayload.recording_url,
     ),
-    recordingChannels: numberValue(eventPayload.channels),
+    recordingChannels:
+      text(eventPayload.channels).toLowerCase() === 'dual'
+        ? 2
+        : text(eventPayload.channels).toLowerCase() === 'single'
+          ? 1
+          : numberValue(eventPayload.channels),
     metadata: { eventType, callLegId: nullable(eventPayload.call_leg_id) },
     rawPayload: payload,
   }

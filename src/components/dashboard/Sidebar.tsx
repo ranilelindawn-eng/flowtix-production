@@ -7,6 +7,7 @@ import {
   Activity,
   BadgeDollarSign,
   BarChart3,
+  BookOpenText,
   Briefcase,
   BrainCircuit,
   Building2,
@@ -48,6 +49,7 @@ type NavItem = {
   exact?: boolean
   permission?: Permission
   feature?: FeatureEntitlement
+  ownerOnly?: boolean
 }
 
 const navItems: NavItem[] = [
@@ -223,9 +225,10 @@ const navItems: NavItem[] = [
   {
     id: 'exports',
     feature: 'reports.export',
-    label: 'Exports',
+    label: 'Data Exports',
     href: '/dashboard/exports',
     permission: 'reports.export',
+    ownerOnly: true,
     icon: FolderOpen,
   },
   {
@@ -339,6 +342,12 @@ const navItems: NavItem[] = [
     icon: LockKeyhole,
   },
   {
+    id: 'guide',
+    label: 'Guide',
+    href: '/dashboard/guide',
+    icon: BookOpenText,
+  },
+  {
     id: 'settings',
     label: 'Settings',
     href: '/dashboard/settings',
@@ -371,7 +380,8 @@ export default function Sidebar({
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.permission || hasPermission(role, item.permission)) &&
-      (!item.feature || entitlements.includes(item.feature)),
+      (!item.feature || entitlements.includes(item.feature)) &&
+      (!item.ownerOnly || role === 'owner'),
   )
 
   function isItemActive(item: NavItem): boolean {

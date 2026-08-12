@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import Sidebar from '@/components/dashboard/Sidebar'
 import { OrganizationTimezoneProvider } from '@/components/timezone/OrganizationTimezoneProvider'
 import TopNav from '@/components/dashboard/TopNav'
+import GuideHelpButton from '@/components/guide/GuideHelpButton'
 import SessionTracker from '@/components/security/SessionTracker'
 import { getCurrentEntitlements } from '@/lib/entitlements'
 import { getCurrentPlatformMembership } from '@/lib/platform/auth'
@@ -116,6 +117,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen bg-[#07111F] text-white">
       <SessionTracker />
+      <GuideHelpButton />
 
       <div className="lg:fixed lg:inset-y-0 lg:left-0 lg:w-[280px]">
         <Sidebar

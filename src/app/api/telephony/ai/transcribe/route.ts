@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 
 import { customerAIErrorMessage } from '@/lib/ai/errors'
-
 import { transcribeAI } from '@/lib/ai/service'
 import {
   completeAIUsage,
@@ -9,13 +8,12 @@ import {
   isAIUsageControlError,
   reserveAIUsage,
 } from '@/lib/ai/usage/service'
-
 import {
   assertEntitlement,
   isEntitlementError,
 } from '@/lib/entitlements'
 import { createClient } from '@/lib/supabase/server'
-import { getOrganizationTwilioConfiguration } from '@/lib/telephony/config'
+import { fetchProviderRecordingMedia } from '@/lib/telephony/recording-media'
 import { getCurrentOrganization } from '@/lib/team'
 
 export async function POST(request: Request) {
@@ -38,48 +36,47 @@ export async function POST(request: Request) {
     )
 
     const supabase = await createClient()
-    const { data: recording } = await supabase
+    const { data: recording, error: recordingError } = await supabase
       .from('call_recordings')
-      .select('id, call_id, provider_url')
+      .select('id,call_id,provider,provider_recording_sid,provider_url')
       .eq('id', recordingId)
-      .eq(
-        'organization_id',
-        organization.organization_id,
-      )
+      .eq('organization_id', organization.organization_id)
       .maybeSingle()
 
-    if (!recording) {
+    if (recordingError) {
+      return NextResponse.json(
+        { error: `Unable to load recording: ${recordingError.message}` },
+        { status: 500 },
+      )
+    }
+
+    if (
+      !recording ||
+      !recording.provider_recording_sid ||
+      !recording.provider_url
+    ) {
       return NextResponse.json(
         { error: 'Recording not found.' },
         { status: 404 },
       )
     }
 
-
-
-    const config =
-      await getOrganizationTwilioConfiguration(
-        organization.organization_id,
-      )
-    const audioResponse = await fetch(
-      `${recording.provider_url}.mp3`,
-      {
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            `${config.accountSid}:${config.authToken}`,
-          ).toString('base64')}`,
-        },
+    const media = await fetchProviderRecordingMedia({
+      organizationId: organization.organization_id,
+      recording: {
+        provider: recording.provider,
+        providerRecordingId: recording.provider_recording_sid,
+        providerUrl: recording.provider_url,
       },
+    })
+
+    const audioBuffer = await media.response.arrayBuffer()
+    const audio = new File(
+      [audioBuffer],
+      `call.${media.extension}`,
+      { type: media.contentType },
     )
 
-    if (!audioResponse.ok) {
-      return NextResponse.json(
-        { error: 'Unable to download the recording.' },
-        { status: 502 },
-      )
-    }
-
-    const audio = await audioResponse.blob()
     const reservation = await reserveAIUsage(supabase, {
       organizationId: organization.organization_id,
       feature: 'transcription',
@@ -88,9 +85,7 @@ export async function POST(request: Request) {
 
     let result: Awaited<ReturnType<typeof transcribeAI>>
     try {
-      result = await transcribeAI({
-        file: new File([audio], 'call.mp3', { type: 'audio/mpeg' }),
-      })
+      result = await transcribeAI({ file: audio })
       await completeAIUsage(supabase, reservation.id, {
         provider: result.provider,
         model: result.model,
@@ -100,6 +95,7 @@ export async function POST(request: Request) {
         metadata: {
           recordingId,
           callId: recording.call_id,
+          recordingProvider: recording.provider,
           costCalculated: false,
         },
       })
@@ -107,13 +103,12 @@ export async function POST(request: Request) {
       await failAIUsage(supabase, reservation.id, transcriptionError)
       throw transcriptionError
     }
-    const { data: claims } =
-      await supabase.auth.getClaims()
+
+    const { data: claims } = await supabase.auth.getClaims()
 
     await supabase.from('call_transcripts').upsert(
       {
-        organization_id:
-          organization.organization_id,
+        organization_id: organization.organization_id,
         call_id: recording.call_id,
         recording_id: recording.id,
         provider: result.provider,
@@ -138,7 +133,11 @@ export async function POST(request: Request) {
         ),
       },
       {
-        status: isEntitlementError(error) ? 403 : isAIUsageControlError(error) ? 402 : 500,
+        status: isEntitlementError(error)
+          ? 403
+          : isAIUsageControlError(error)
+            ? 402
+            : 500,
       },
     )
   }

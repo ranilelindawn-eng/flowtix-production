@@ -10,12 +10,6 @@ import { NonRetryableJobError } from '@/lib/jobs/types'
 
 type AITone = 'professional' | 'friendly' | 'concise' | 'persuasive'
 
-type ConfigRow = {
-  ai_enabled: boolean
-  ai_tone: string
-  ai_instructions: string | null
-}
-
 type ExistingGeneration = {
   id: string
   email_subject: string | null

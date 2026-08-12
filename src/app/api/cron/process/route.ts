@@ -194,6 +194,31 @@ export async function GET(request: Request) {
     const sequenceScheduling =
       await scheduleDueSequenceEnrollments(25);
 
+    const exportSchedulerUrl =
+      process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    const exportSchedulerKey =
+      process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+    let exportScheduling = 0;
+    if (exportSchedulerUrl && exportSchedulerKey) {
+      const exportSchedulerClient = createWorkerLogClient(
+        exportSchedulerUrl,
+        exportSchedulerKey,
+      );
+      const scheduledExports = await exportSchedulerClient.rpc(
+        'enqueue_due_export_schedules',
+        { p_limit: 100 },
+      );
+
+      if (scheduledExports.error) {
+        throw new Error(
+          `Unable to schedule due exports: ${scheduledExports.error.message}`,
+        );
+      }
+
+      exportScheduling = Number(scheduledExports.data ?? 0);
+    }
+
     const result = await processJobs({
       workerId,
       queues: [
@@ -204,6 +229,7 @@ export async function GET(request: Request) {
         "campaigns",
         "telephony",
         "ai",
+        "reports",
       ],
       limit: 25,
       leaseSeconds: 300,
@@ -220,6 +246,7 @@ export async function GET(request: Request) {
       workerId,
       processedAt: new Date().toISOString(),
       sequenceScheduling,
+      exportScheduling,
       ...result,
     });
   } catch (error) {
