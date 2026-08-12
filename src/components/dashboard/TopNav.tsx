@@ -7,9 +7,9 @@ import {
   Bell,
   ChevronDown,
   LogOut,
-  Search,
   Settings,
 } from 'lucide-react'
+import GlobalSearch from '@/components/dashboard/GlobalSearch'
 import { createClient } from '@/lib/supabase/client'
 
 type TopNavProps = {
@@ -103,16 +103,7 @@ export default function TopNav({
       </div>
 
       <div className="flex flex-1 flex-col gap-4 xl:ml-8 xl:flex-row xl:items-center">
-        <div className="relative flex w-full items-center overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-slate-300 shadow-[0_20px_50px_-30px_rgba(15,23,42,0.8)] xl:max-w-xl">
-          <Search className="mr-3 h-4 w-4 text-slate-400" />
-
-          <input
-            type="search"
-            placeholder="Search calls, contacts, campaigns"
-            aria-label="Search calls, contacts, and campaigns"
-            className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
-          />
-        </div>
+        <GlobalSearch />
 
         <div className="flex items-center gap-4">
           <button
