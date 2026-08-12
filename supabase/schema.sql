@@ -79,6 +79,11 @@ END $$;
 
 DO $$ BEGIN
   CREATE TYPE public.call_status AS ENUM (
+    'initiating',
+    'queued',
+    'ringing',
+    'connected',
+    'on-hold',
     'completed',
     'failed',
     'scheduled',
