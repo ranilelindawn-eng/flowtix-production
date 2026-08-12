@@ -27,11 +27,11 @@ type PricingPlan = {
 const plans: PricingPlan[] = [
   {
     name: 'Starter',
-    price: '$29',
+    price: '₱1,700',
     suffix: '/month',
     trial: '7-day free trial',
     description:
-      'For freelancers, virtual assistants, and small teams building a reliable calling workflow.',
+      'For freelancers, virtual assistants, and small teams that need the essential Flowtix CRM workspace.',
     href: '/signup?plan=starter',
     featured: false,
     cta: 'Start 7-Day Free Trial',
@@ -39,19 +39,20 @@ const plans: PricingPlan[] = [
       'Up to 5 team members including the owner',
       '1,000 contacts',
       'Core CRM workspace',
-      'Contacts, tasks, and notes',
-      'Campaign and call records',
+      'Contacts, companies, pipelines, tasks, notes, and calendar',
+      'Manual Email & SMS',
+      'Basic campaigns',
       'Basic reporting',
-      'Bring your own calling provider',
+      'Google integration',
     ],
   },
   {
     name: 'Professional',
-    price: '$79',
+    price: '₱4,600',
     suffix: '/month',
     trial: '7-day free trial',
     description:
-      'For active sales teams that need collaboration, recordings, AI, and advanced workflow tools.',
+      'For active sales teams that need cloud calling, AI, sequences, advanced reporting, and premium integrations.',
     href: '/signup?plan=professional',
     featured: true,
     cta: 'Start 7-Day Free Trial',
@@ -59,42 +60,47 @@ const plans: PricingPlan[] = [
       'Everything in Starter',
       'Up to 10 team members including the owner',
       '10,000 contacts',
-      'Team collaboration',
+      'Cloud dialer',
       'Call recordings and transcripts',
+      'AI Workspace and chat',
       'AI summaries and call analysis',
-      'Advanced workflow controls',
-      'Advanced analytics',
-      'Priority support',
+      'AI email and task assistance',
+      'Sequence automation',
+      'Advanced reporting and analytics',
+      'Premium integrations',
     ],
   },
   {
     name: 'Business',
-    price: '$199',
+    price: '₱11,500',
     suffix: '/month',
     trial: '7-day free trial',
     description:
-      'For larger organizations that require advanced permissions, onboarding, and support.',
+      'For larger teams that need advanced automation, exports, permissions, security controls, and API access.',
     href: '/signup?plan=business',
     featured: false,
     cta: 'Start 7-Day Free Trial',
     features: [
       'Everything in Professional',
       'Up to 30 team members including the owner',
-      'Unlimited contact lists',
-      'Advanced permissions',
-      'Custom onboarding',
-      'Security review support',
-      'Integration planning',
-      'Priority implementation support',
+      'Advanced automation controls',
+      'Post-call email and SMS automation',
+      'Campaign automation',
+      'Data exports',
+      'Advanced roles and permissions',
+      'Advanced security controls',
+      'API access',
+      'Premium integrations',
+      'Priority onboarding and support',
     ],
   },
   {
     name: 'Enterprise',
-    price: '$499',
+    price: '₱29,000',
     suffix: '/month',
     trial: '7-day free trial',
     description:
-      'For high-volume organizations that need unlimited capacity, advanced controls, and priority support.',
+      'For high-volume organizations that need unlimited scale, advanced automation, enterprise controls, and priority support.',
     href: '/signup?plan=enterprise',
     featured: false,
     cta: 'Start 7-Day Free Trial',
@@ -102,11 +108,13 @@ const plans: PricingPlan[] = [
       'Everything in Business',
       'Unlimited team members',
       'Unlimited contacts',
-      'Enterprise roles and controls',
+      'Unlimited storage',
+      'Unlimited calls',
+      'Advanced automation controls',
+      'Enterprise roles and security controls',
+      'API access',
       'Priority onboarding and support',
-      'Security and architecture review',
-      'Integration planning',
-      'Priority implementation support',
+      'Premium integrations',
     ],
   },
 ]
@@ -210,9 +218,9 @@ export default function Page() {
         <div className="mt-10 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-sm leading-7 text-slate-400">
           <p className="font-semibold text-white">Usage fees are separate</p>
           <p className="mt-1">
-            Telephone numbers, call minutes, messaging, carrier charges,
-            transcription processing, and other third-party provider fees are
-            not included in the Flowtix subscription price.
+            Telephone numbers, carrier call minutes, SMS delivery, provider usage,
+            and other third-party charges are billed separately from the
+            Flowtix subscription.
           </p>
         </div>
       </ContentSection>
