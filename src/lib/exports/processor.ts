@@ -874,7 +874,7 @@ export async function processExport(payload: JsonValue) {
   const extension = input.format === 'excel' ? 'xls' : input.format
   const mimeType =
     input.format === 'csv'
-      ? 'text/csv; charset=utf-8'
+      ? 'text/csv'
       : input.format === 'excel'
         ? 'application/vnd.ms-excel'
         : 'application/pdf'
