@@ -19,7 +19,7 @@ import {
   getSchedulerRuns,
 } from '@/lib/automation/admin'
 import { getAutomationControl } from '@/lib/automation/operations'
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 
@@ -111,7 +111,10 @@ function smsCapable(number: PhoneNumberRow) {
 
 export default async function AutomationOperationsPage() {
   const timeZone = await getCurrentOrganizationTimezone()
-  const organization = await requirePermission('automation.view')
+  const organization = await requireFeature(
+    'automation.advanced',
+    'automation.view',
+  )
   const supabase = await createClient()
 
   const [

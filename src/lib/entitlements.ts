@@ -19,6 +19,7 @@ export const FEATURE_ENTITLEMENTS = [
   'ai.transcription',
   'automation.sequences',
   'automation.campaigns',
+  'automation.advanced',
   'integrations.google',
   'integrations.premium',
   'api.access',

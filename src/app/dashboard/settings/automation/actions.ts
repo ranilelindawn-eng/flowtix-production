@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import { writeAuditEvent } from '@/lib/security/audit'
 import { createClient } from '@/lib/supabase/server'
 
@@ -45,6 +46,10 @@ export async function updatePostCallAutomation(
 ): Promise<void> {
   const organization = await requirePermission(
     'automation.post_call.manage',
+  )
+  await assertEntitlement(
+    'automation.advanced',
+    organization.organization_id,
   )
   const supabase = await createClient()
 
@@ -162,6 +167,10 @@ export async function updateAutomationControls(
   formData: FormData,
 ): Promise<void> {
   const organization = await requirePermission('automation.manage')
+  await assertEntitlement(
+    'automation.advanced',
+    organization.organization_id,
+  )
   const supabase = await createClient()
   const pauseReason = String(
     formData.get('pauseReason') ?? '',
@@ -220,6 +229,10 @@ export async function updateAutomationControls(
 
 export async function retryAllFailedAutomationJobs(): Promise<void> {
   const organization = await requirePermission('automation.manage')
+  await assertEntitlement(
+    'automation.advanced',
+    organization.organization_id,
+  )
   const supabase = await createClient()
 
   const { data, error } = await supabase.rpc(
@@ -253,6 +266,10 @@ export async function retryAllFailedAutomationJobs(): Promise<void> {
 
 export async function releaseExpiredCampaignReservations(): Promise<void> {
   const organization = await requirePermission('automation.manage')
+  await assertEntitlement(
+    'automation.advanced',
+    organization.organization_id,
+  )
   const supabase = await createClient()
 
   const { data, error } = await supabase.rpc(

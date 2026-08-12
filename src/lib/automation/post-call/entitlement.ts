@@ -97,17 +97,18 @@ async function loadOrganizationEntitlements(
 }
 
 /**
- * Post-call automation itself is a dialer lifecycle feature.
- * Email/SMS quantities are still enforced independently during delivery.
+ * Advanced automation is available only to plans that include the dedicated
+ * automation.advanced entitlement. Email/SMS quantities are still enforced
+ * independently during delivery.
  */
 export async function assertPostCallAutomationEntitlement(
   organizationId: string,
 ) {
   const snapshot = await loadOrganizationEntitlements(organizationId)
 
-  if (!snapshot.entitlements.includes('dialer.cloud')) {
+  if (!snapshot.entitlements.includes('automation.advanced')) {
     throw new NonRetryableJobError(
-      `The ${snapshot.planName} plan does not include cloud dialer automation.`,
+      `The ${snapshot.planName} plan does not include advanced automation.`,
       'POST_CALL_ENTITLEMENT_REQUIRED',
     )
   }
