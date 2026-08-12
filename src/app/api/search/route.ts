@@ -94,6 +94,13 @@ const MODULES: Array<{
     permission: 'campaigns.view',
   },
   {
+    title: 'Email & SMS',
+    keywords: 'email emails sms message messages communication communications inbox',
+    subtitle: 'Open Email & SMS',
+    href: '/dashboard/communications',
+    permission: 'campaigns.view',
+  },
+  {
     title: 'Tasks',
     keywords: 'tasks follow up reminders work',
     subtitle: 'Open tasks',
@@ -229,7 +236,7 @@ export async function GET(request: NextRequest) {
           )
           .eq('organization_id', organizationId)
           .or(
-            `name.ilike.%${safeQuery}%,status.ilike.%${safeQuery}%,forecast_category.ilike.%${safeQuery}%,next_step.ilike.%${safeQuery}%`,
+            `name.ilike.%${safeQuery}%,next_step.ilike.%${safeQuery}%`,
           )
           .order('updated_at', {
             ascending: false,
@@ -274,19 +281,44 @@ export async function GET(request: NextRequest) {
             'id,contact_id,direction,status,started_at,duration_seconds,metadata',
           )
           .eq('organization_id', organizationId)
-          .or(
-            `status.ilike.%${safeQuery}%,direction.ilike.%${safeQuery}%`,
-          )
           .order('started_at', {
             ascending: false,
           })
-          .limit(MAX_RESULTS_PER_GROUP)
+          .limit(100)
 
         if (error) {
           throw new Error(`Call search failed: ${error.message}`)
         }
 
-        return (data ?? []).map((call): SearchResult => {
+        const normalizedSearch = safeQuery.toLowerCase()
+        const matchingCalls = (data ?? [])
+          .filter((call) => {
+            const metadata =
+              call.metadata &&
+              typeof call.metadata === 'object' &&
+              !Array.isArray(call.metadata)
+                ? (call.metadata as Record<string, unknown>)
+                : {}
+
+            const searchable = [
+              call.id,
+              call.status,
+              call.direction,
+              typeof metadata.phone_number === 'string'
+                ? metadata.phone_number
+                : '',
+              typeof metadata.from === 'string' ? metadata.from : '',
+              typeof metadata.to === 'string' ? metadata.to : '',
+            ]
+              .filter(Boolean)
+              .join(' ')
+              .toLowerCase()
+
+            return searchable.includes(normalizedSearch)
+          })
+          .slice(0, MAX_RESULTS_PER_GROUP)
+
+        return matchingCalls.map((call): SearchResult => {
           const metadata =
             call.metadata &&
             typeof call.metadata === 'object' &&
@@ -323,7 +355,7 @@ export async function GET(request: NextRequest) {
           .select('id,name,description,status')
           .eq('organization_id', organizationId)
           .or(
-            `name.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,status.ilike.%${safeQuery}%`,
+            `name.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`,
           )
           .order('updated_at', {
             ascending: false,
@@ -357,7 +389,7 @@ export async function GET(request: NextRequest) {
           .select('id,title,description,status,priority,task_type')
           .eq('organization_id', organizationId)
           .or(
-            `title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%,status.ilike.%${safeQuery}%,priority.ilike.%${safeQuery}%,task_type.ilike.%${safeQuery}%`,
+            `title.ilike.%${safeQuery}%,description.ilike.%${safeQuery}%`,
           )
           .order('updated_at', {
             ascending: false,
@@ -395,7 +427,7 @@ export async function GET(request: NextRequest) {
           )
           .eq('organization_id', organizationId)
           .or(
-            `subject.ilike.%${safeQuery}%,body.ilike.%${safeQuery}%,activity_type.ilike.%${safeQuery}%,status.ilike.%${safeQuery}%`,
+            `subject.ilike.%${safeQuery}%,body.ilike.%${safeQuery}%`,
           )
           .order('occurred_at', {
             ascending: false,
@@ -440,25 +472,22 @@ export async function GET(request: NextRequest) {
       group: 'Flowtix',
     }))
 
-  try {
-    const groupedResults = await Promise.all(searches)
+  const settledSearches = await Promise.allSettled(searches)
+  const groupedResults: SearchResult[][] = []
 
-    return NextResponse.json({
-      results: [...moduleResults, ...groupedResults.flat()].slice(
-        0,
-        30,
-      ),
-    })
-  } catch (error) {
-    console.error('Global search failed:', error)
+  for (const result of settledSearches) {
+    if (result.status === 'fulfilled') {
+      groupedResults.push(result.value)
+      continue
+    }
 
-    return NextResponse.json(
-      {
-        error: 'Unable to search Flowtix right now.',
-      },
-      {
-        status: 500,
-      },
-    )
+    console.error('Global search source failed:', result.reason)
   }
+
+  return NextResponse.json({
+    results: [...moduleResults, ...groupedResults.flat()].slice(
+      0,
+      30,
+    ),
+  })
 }
