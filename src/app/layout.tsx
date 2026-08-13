@@ -4,7 +4,7 @@ import '../styles/globals.css'
 const siteName = 'Flowtix'
 const siteDescription = 'Cloud dialer and CRM workspace for contacts, campaigns, calls, tasks, recordings, transcripts, and team collaboration.'
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  metadataBase: new URL('https://www.flowtix.work'),
   title: { default: siteName, template: `%s | ${siteName}` },
   description: siteDescription, applicationName: siteName,
   keywords: ['cloud dialer','CRM','call management','campaign management','contact management','call transcription'],

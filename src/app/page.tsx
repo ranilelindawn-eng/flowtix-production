@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import FlowtixLandingPage from '@/components/landing/FlowtixLandingPage'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://flowtix.work'),
+  metadataBase: new URL('https://www.flowtix.work'),
   title: 'Flowtix | AI Cloud Dialer and CRM for Modern Sales Teams',
   description:
     'Flowtix combines cloud calling, CRM, AI coaching, call summaries, transcripts, pipelines, campaigns, analytics, and team collaboration in one secure workspace.',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
-    url: 'https://flowtix.work',
+    url: 'https://www.flowtix.work',
     siteName: 'Flowtix',
     title: 'Flowtix | AI Cloud Dialer and CRM',
     description:
@@ -58,7 +58,7 @@ const softwareSchema = {
   name: 'Flowtix',
   applicationCategory: 'BusinessApplication',
   operatingSystem: 'Web',
-  url: 'https://flowtix.work',
+  url: 'https://www.flowtix.work',
   description:
     'AI-powered cloud dialer and CRM for sales teams, call centers, virtual assistants, and growing businesses.',
   offers: {

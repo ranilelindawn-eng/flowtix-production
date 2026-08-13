@@ -1,5 +1,23 @@
 import type { MetadataRoute } from 'next'
+
+const SITE_URL = 'https://www.flowtix.work'
+
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  return { rules: [{ userAgent: '*', allow: '/', disallow: ['/dashboard/','/auth/'] }], sitemap: `${base}/sitemap.xml`, host: base }
+  return {
+    rules: [
+      {
+        userAgent: '*',
+        allow: '/',
+        disallow: [
+          '/api/',
+          '/auth/',
+          '/dashboard/',
+          '/platform/',
+          '/invite/',
+        ],
+      },
+    ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
+  }
 }

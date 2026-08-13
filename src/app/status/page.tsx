@@ -1,4 +1,8 @@
 import type { Metadata } from 'next'
 import { MarketingHero, MarketingShell } from '@/components/MarketingShell'
-export const metadata: Metadata = { title: 'System Status', description: 'Current Flowtix public status information.' }
+export const metadata: Metadata = {
+  title: 'System Status',
+  description: 'Current Flowtix public status information.',
+  robots: { index: false, follow: false },
+}
 export default function Page() { return <MarketingShell><MarketingHero eyebrow="System status" title="Status monitoring is not yet connected" description="This page does not claim real-time operational status. Before serving production customers, connect Flowtix to an independent uptime and incident-monitoring service." /><section className="px-6 py-20"><div className="mx-auto max-w-3xl rounded-3xl border border-amber-300/20 bg-amber-300/5 p-8"><h2 className="text-2xl font-semibold">Public application</h2><p className="mt-4 leading-7 text-slate-300">Availability depends on the active hosting, Supabase project, and configured external providers. Contact the Flowtix team if you are experiencing an access issue.</p></div></section></MarketingShell> }
