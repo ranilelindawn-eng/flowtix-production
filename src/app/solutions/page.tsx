@@ -34,6 +34,11 @@ export default function Page() {
       <ContentSection title="Explore Flowtix">
         <CardGrid items={items} />
       </ContentSection>
+      <ContentSection title="Why conversation-driven teams need shared context" intro="When calling, CRM updates, tasks, and campaign work live in separate tools, teams lose time reconstructing customer history. Flowtix is designed to keep that context inside an organization-scoped workspace.">
+        <div className="grid gap-6 md:grid-cols-3">
+          {[['For managers','Review ownership, activity, campaign progress, call records, and team performance from a common operating view.'],['For agents and sales reps','Open a contact with the notes, tasks, calls, and timeline context needed to prepare for the next interaction.'],['For growing organizations','Use roles, permissions, tenant isolation, usage controls, and structured workflows as the team and customer database expand.']].map(([title, description]) => <article key={title} className="rounded-3xl border border-white/10 bg-white/[0.03] p-7"><h3 className="text-xl font-semibold">{title}</h3><p className="mt-3 leading-7 text-slate-300">{description}</p></article>)}
+        </div>
+      </ContentSection>
       <RelatedLinks
         links={[
           { title: 'Features', description: 'Explore the CRM, cloud communications, campaign, automation, analytics, and team capabilities in Flowtix.', href: '/features' },

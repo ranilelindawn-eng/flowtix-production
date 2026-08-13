@@ -34,6 +34,11 @@ export default function Page() {
       <ContentSection title="Explore Flowtix">
         <CardGrid items={items} />
       </ContentSection>
+      <ContentSection title="AI assistance with the CRM record at the center" intro="Flowtix treats AI output as part of a controlled business workflow rather than a replacement for the underlying customer record. Provider-backed capabilities depend on the AI services configured for the workspace.">
+        <div className="grid gap-6 md:grid-cols-2">
+          {[['From conversation to follow-up','Transcripts and conversation records can support summaries, insights, task assistance, email assistance, and post-call workflows when the required provider capabilities are configured.'],['Human review remains important','Generated content can be reviewed in context before it becomes part of a customer workflow, helping teams keep responsibility for customer-facing decisions.'],['Usage and entitlement controls','AI-related capabilities are designed to work with plan entitlements and usage controls so organizations can manage access as their teams grow.'],['Provider-neutral direction','The AI layer is designed around provider abstraction so the product is not permanently tied to a single language-model or transcription vendor.']].map(([title, description]) => <article key={title} className="rounded-3xl border border-white/10 bg-white/[0.03] p-7"><h3 className="text-xl font-semibold">{title}</h3><p className="mt-3 leading-7 text-slate-300">{description}</p></article>)}
+        </div>
+      </ContentSection>
       <RelatedLinks
         links={[
           { title: 'Features', description: 'See the broader CRM, communications, campaign, and analytics capabilities surrounding AI workflows.', href: '/features' },

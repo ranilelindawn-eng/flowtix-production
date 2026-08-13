@@ -227,6 +227,11 @@ export default function Page() {
         </div>
       </ContentSection>
 
+      <ContentSection title="Choose a plan around your operating needs" intro="Start with the CRM foundation your team needs, then move to plans with cloud communications, AI-assisted workflows, automation, reporting, permissions, security controls, and API access as your operation grows.">
+        <div className="grid gap-6 md:grid-cols-3">
+          {[['Start with CRM','Starter is aimed at smaller teams that need structured contacts, companies, pipelines, tasks, notes, calendar work, campaigns, and reporting.'],['Add communications and automation','Professional adds the cloud dialer, recordings and transcripts, AI-assisted capabilities, sequences, advanced reporting, and premium integrations.'],['Scale governance and operations','Business and Enterprise add stronger automation, exports, permissions, security controls, API access, larger team capacity, and priority support.']].map(([title, description]) => <article key={title} className="rounded-3xl border border-white/10 bg-white/[0.03] p-7"><h3 className="text-xl font-semibold">{title}</h3><p className="mt-3 leading-7 text-slate-300">{description}</p></article>)}
+        </div>
+      </ContentSection>
       <RelatedLinks
         links={[
           { title: 'Features', description: 'Explore the CRM, communications, automation, AI-assisted workflows, analytics, and team capabilities included in Flowtix.', href: '/features' },
