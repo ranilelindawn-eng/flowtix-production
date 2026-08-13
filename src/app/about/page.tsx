@@ -1,7 +1,13 @@
-import type { Metadata } from 'next'
 import { CardGrid, ContentSection, MarketingHero, MarketingShell } from '@/components/MarketingShell'
+import { createMarketingMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = { title: 'About Flowtix', description: 'Flowtix is being built as a secure, multi-tenant cloud dialer and CRM for teams that manage high volumes of customer conversations.' }
+export const metadata = createMarketingMetadata({
+  title: 'About Flowtix AI CRM & Cloud Communications',
+  description:
+    'Learn how Flowtix is building a secure multi-tenant CRM and cloud communications workspace for sales teams, call centers, agencies, and growing businesses.',
+  path: '/about',
+})
+
 const items = [
   { title: 'Our mission', description: 'Help teams turn every customer conversation into clear, organized, actionable work.' },
   { title: 'Product approach', description: 'Combine a practical CRM foundation with calling, campaign, recording, transcript, and insight workflows.' },

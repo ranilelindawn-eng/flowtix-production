@@ -1,6 +1,12 @@
-import type { Metadata } from 'next'
 import PolicyPage from '@/components/PolicyPage'
-export const metadata: Metadata = { title: 'Terms of Service', description: 'Terms governing access to Flowtix.' }
+import { createMarketingMetadata } from '@/lib/seo'
+export const metadata = createMarketingMetadata({
+  title: 'Terms of Service',
+  description:
+    'Read the Flowtix Terms of Service for accounts, workspaces, customer responsibilities, external services, acceptable use, availability, and service terms.',
+  path: '/terms',
+})
+
 export default function Page() { return <PolicyPage eyebrow="Legal" title="Terms of Service" description="Effective July 24, 2026. These terms govern access to the Flowtix website and application.">
 <section><h2>Agreement and eligibility</h2><p>By accessing Flowtix, you agree to these terms and confirm that you are authorized to act for yourself or the organization you represent. Do not use the service where prohibited by law.</p></section>
 <section><h2>Accounts and workspaces</h2><p>You are responsible for accurate registration information, credential security, authorized team access, and activity performed through your workspace. Notify Flowtix promptly of suspected unauthorized access.</p></section>

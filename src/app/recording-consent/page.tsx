@@ -1,6 +1,12 @@
-import type { Metadata } from 'next'
 import PolicyPage from '@/components/PolicyPage'
-export const metadata: Metadata = { title: 'Recording and Consent Notice', description: 'Responsibilities for recording and transcribing calls.' }
+import { createMarketingMetadata } from '@/lib/seo'
+export const metadata = createMarketingMetadata({
+  title: 'Call Recording & Consent Notice',
+  description:
+    'Review Flowtix guidance on call recording, monitoring, transcription, participant notice, consent, access, retention, and connected AI or transcription providers.',
+  path: '/recording-consent',
+})
+
 export default function Page() { return <PolicyPage eyebrow="Compliance" title="Recording and Consent Notice" description="Recording, monitoring, and transcription laws vary. The organization initiating a call must determine and implement the required notice and consent process.">
 <section><h2>Customer responsibility</h2><p>Before recording, monitoring, transcribing, summarizing, or analyzing a communication, customers must identify applicable laws, participant locations, purposes, and consent requirements.</p></section>
 <section><h2>Notice and consent</h2><p>Use clear notices and obtain affirmative consent where required. Do not disable provider notices or use Flowtix for covert or unauthorized interception.</p></section>

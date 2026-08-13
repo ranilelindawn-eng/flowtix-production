@@ -1,6 +1,12 @@
-import type { Metadata } from 'next'
 import { CardGrid, ContentSection, MarketingHero, MarketingShell } from '@/components/MarketingShell'
-export const metadata: Metadata = { title: 'Security', description: 'How Flowtix protects account and organization data.' }
+import { createMarketingMetadata } from '@/lib/seo'
+export const metadata = createMarketingMetadata({
+  title: 'CRM & Cloud Communications Security',
+  description:
+    'Learn how Flowtix approaches authentication, Row Level Security, role-based authorization, secret management, data minimization, and secure multi-tenant SaaS operations.',
+  path: '/security',
+})
+
 const items = [
   { title: 'Supabase SSR authentication', description: 'Sessions are resolved server-side using secure cookie-based authentication patterns.' },
   { title: 'Row Level Security', description: 'PostgreSQL policies scope supported application data to authorized organization members.' },

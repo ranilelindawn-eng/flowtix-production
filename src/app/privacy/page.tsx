@@ -1,6 +1,12 @@
-import type { Metadata } from 'next'
 import PolicyPage from '@/components/PolicyPage'
-export const metadata: Metadata = { title: 'Privacy Policy', description: 'How Flowtix handles personal information.' }
+import { createMarketingMetadata } from '@/lib/seo'
+export const metadata = createMarketingMetadata({
+  title: 'Privacy Policy',
+  description:
+    'Read the Flowtix Privacy Policy covering account data, organization workspaces, communications records, service providers, security, retention, and privacy choices.',
+  path: '/privacy',
+})
+
 export default function Page() { return <PolicyPage eyebrow="Legal" title="Privacy Policy" description="Effective July 24, 2026. This policy explains the information processed through the Flowtix website and application.">
 <section><h2>Information we process</h2><p>Flowtix may process account details, organization membership, contacts, tasks, notes, campaign records, call metadata, uploaded recordings, transcripts, summaries, insights, security logs, and support messages when users choose to provide or create that information.</p></section>
 <section><h2>How information is used</h2><p>Information is used to provide and secure the service, authenticate users, maintain organization workspaces, support requested workflows, respond to inquiries, troubleshoot problems, prevent abuse, and comply with legal obligations.</p></section>

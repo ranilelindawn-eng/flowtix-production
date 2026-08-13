@@ -3,41 +3,34 @@ import FlowtixLandingPage from '@/components/landing/FlowtixLandingPage'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.flowtix.work'),
-  title: 'Flowtix | AI Cloud Dialer and CRM for Modern Sales Teams',
+  title: {
+    absolute: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
+  },
   description:
-    'Flowtix combines cloud calling, CRM, AI coaching, call summaries, transcripts, pipelines, campaigns, analytics, and team collaboration in one secure workspace.',
-  keywords: [
-    'AI cloud dialer',
-    'sales CRM',
-    'cloud calling software',
-    'CRM with dialer',
-    'AI sales assistant',
-    'call center CRM',
-    'sales engagement platform',
-  ],
+    'Flowtix brings CRM, cloud communications, workflow automation, AI-assisted sales tools, analytics, pipelines, and team collaboration into one workspace.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     url: 'https://www.flowtix.work',
     siteName: 'Flowtix',
-    title: 'Flowtix | AI Cloud Dialer and CRM',
+    title: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
     description:
-      'Call, organize, automate, coach, and grow from one intelligent sales workspace.',
+      'Manage customer relationships, communications, automation, AI-assisted workflows, analytics, and team activity from one sales workspace.',
     images: [
       {
-        url: '/social-preview.svg',
+        url: '/social-preview.png',
         width: 1200,
         height: 630,
-        alt: 'Flowtix AI cloud dialer and CRM',
+        alt: 'Flowtix AI cloud communications CRM for sales teams',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Flowtix | AI Cloud Dialer and CRM',
+    title: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
     description:
-      'Call, organize, automate, coach, and grow from one intelligent sales workspace.',
-    images: ['/social-preview.svg'],
+      'Manage customer relationships, communications, automation, AI-assisted workflows, analytics, and team activity from one sales workspace.',
+    images: ['/social-preview.png'],
   },
   robots: {
     index: true,
@@ -60,12 +53,16 @@ const softwareSchema = {
   operatingSystem: 'Web',
   url: 'https://www.flowtix.work',
   description:
-    'AI-powered cloud dialer and CRM for sales teams, call centers, virtual assistants, and growing businesses.',
-  offers: {
-    '@type': 'Offer',
-    price: '29',
-    priceCurrency: 'USD',
-  },
+    'Multi-tenant CRM and cloud communications SaaS for sales teams, call centers, virtual assistants, agencies, and growing businesses.',
+  featureList: [
+    'Customer relationship management',
+    'Sales pipelines',
+    'Workflow automation',
+    'Team and role management',
+    'Analytics and reporting',
+    'Cloud communications workflows',
+    'AI-assisted sales workflows',
+  ],
 }
 
 export default function Home() {

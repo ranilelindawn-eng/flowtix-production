@@ -1,16 +1,18 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
 import {
   ContentSection,
   MarketingHero,
   MarketingShell,
+  RelatedLinks,
 } from '@/components/MarketingShell'
+import { createMarketingMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
-  title: 'Pricing',
+export const metadata = createMarketingMetadata({
+  title: 'AI CRM & Cloud Dialer Pricing',
   description:
-    'Choose a Flowtix plan and start a real 7-day free trial. No payment is taken until you choose to continue after the trial.',
-}
+    'Compare Flowtix CRM and cloud communications plans for sales teams, with a 7-day free trial, automation, analytics, AI-assisted workflows, and team controls.',
+  path: '/pricing',
+})
 
 type PricingPlan = {
   name: string
@@ -224,6 +226,14 @@ export default function Page() {
           </p>
         </div>
       </ContentSection>
+
+      <RelatedLinks
+        links={[
+          { title: 'Features', description: 'Explore the CRM, communications, automation, AI-assisted workflows, analytics, and team capabilities included in Flowtix.', href: '/features' },
+          { title: 'Integrations', description: 'Review the provider-neutral integration architecture for telephony, AI, automation, and business data.', href: '/integrations' },
+          { title: 'Help Center', description: 'Find setup guidance and answers before or during your Flowtix trial.', href: '/help' },
+        ]}
+      />
     </MarketingShell>
   )
 }
