@@ -124,31 +124,79 @@ const workflowSteps = [
 const plans = [
   {
     name: 'Starter',
-    price: '$29',
-    note: 'For solo operators and small teams.',
-    features: ['5 team members', '1,000 contacts', 'Core CRM', 'Tasks and notes', 'Basic reporting'],
+    price: '₱1,700',
+    note:
+      'For freelancers, virtual assistants, and small teams that need the essential Flowtix CRM workspace.',
+    features: [
+      'Up to 5 team members including the owner',
+      '1,000 contacts',
+      'Core CRM workspace',
+      'Contacts, companies, pipelines, tasks, notes, and calendar',
+      'Manual Email & SMS',
+      'Basic campaigns',
+      'Basic reporting',
+      'Google integration',
+    ],
     href: '/signup?plan=starter',
   },
   {
     name: 'Professional',
-    price: '$79',
-    note: 'For growing sales teams.',
-    features: ['10 team members', '10,000 contacts', 'Recordings and transcripts', 'AI summaries', 'Advanced reporting'],
+    price: '₱4,600',
+    note:
+      'For active sales teams that need cloud calling, AI, sequences, advanced reporting, and premium integrations.',
+    features: [
+      'Everything in Starter',
+      'Up to 10 team members including the owner',
+      '10,000 contacts',
+      'Cloud dialer',
+      'Call recordings and transcripts',
+      'AI Workspace and chat',
+      'AI summaries and call analysis',
+      'AI email and task assistance',
+      'Sequence automation',
+      'Advanced reporting and analytics',
+      'Premium integrations',
+    ],
     href: '/signup?plan=professional',
     featured: true,
   },
   {
     name: 'Business',
-    price: '$199',
-    note: 'For larger revenue organizations.',
-    features: ['30 team members', 'Advanced permissions', 'Priority onboarding', 'Security support', 'Premium integrations'],
+    price: '₱11,500',
+    note:
+      'For larger teams that need advanced automation, exports, permissions, security controls, and API access.',
+    features: [
+      'Everything in Professional',
+      'Up to 30 team members including the owner',
+      'Advanced automation controls',
+      'Post-call email and SMS automation',
+      'Campaign automation',
+      'Data exports',
+      'Advanced roles and permissions',
+      'Advanced security controls',
+      'API access',
+      'Premium integrations',
+      'Priority onboarding and support',
+    ],
     href: '/signup?plan=business',
   },
   {
     name: 'Enterprise',
-    price: '$499',
-    note: 'For high-volume organizations.',
-    features: ['Unlimited team members', 'Unlimited contacts', 'Enterprise roles and controls', 'Priority onboarding and support', 'Premium integrations'],
+    price: '₱29,000',
+    note:
+      'For high-volume organizations that need unlimited scale, advanced automation, enterprise controls, and priority support.',
+    features: [
+      'Everything in Business',
+      'Unlimited team members',
+      'Unlimited contacts',
+      'Unlimited storage',
+      'Unlimited calls',
+      'Advanced automation controls',
+      'Enterprise roles and security controls',
+      'API access',
+      'Priority onboarding and support',
+      'Premium integrations',
+    ],
     href: '/signup?plan=enterprise',
   },
 ]
@@ -581,7 +629,7 @@ function PricingSection() {
   return (
     <section id="pricing" className="py-24 sm:py-32">
       <div className="mx-auto max-w-7xl px-5 sm:px-8">
-        <div className="mx-auto max-w-3xl text-center"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Flexible plans</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Start focused. Scale confidently.</h2><p className="mt-5 text-lg text-slate-400">Choose the workspace size that fits your team. Carrier and provider usage are billed separately.</p></div>
+        <div className="mx-auto max-w-3xl text-center"><p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-300">Flexible plans</p><h2 className="mt-4 text-4xl font-semibold tracking-[-0.04em] text-white sm:text-5xl">Start focused. Scale confidently.</h2><p className="mt-5 text-lg text-slate-400">Choose the workspace size that fits your team. Carrier call minutes, SMS delivery, phone numbers, and other provider usage are billed separately.</p></div>
         <div className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => (
             <article key={plan.name} className={`relative rounded-[28px] border p-7 ${plan.featured ? 'border-blue-400/35 bg-gradient-to-b from-blue-500/[0.12] to-[#07111f]' : 'border-white/[0.08] bg-[#07111f]/75'}`}>
