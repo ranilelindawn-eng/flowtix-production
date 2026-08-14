@@ -8,6 +8,10 @@ const routes = [
   '/solutions',
   '/pricing',
   '/ai-features',
+  '/ai-cloud-dialer',
+  '/sales-crm',
+  '/sales-automation',
+  '/call-center-crm',
   '/integrations',
   '/security',
   '/help',
@@ -21,10 +25,22 @@ const routes = [
   '/recording-consent',
 ] as const
 
+const highPriorityRoutes = new Set([
+  '',
+  '/features',
+  '/solutions',
+  '/pricing',
+  '/ai-features',
+  '/ai-cloud-dialer',
+  '/sales-crm',
+  '/sales-automation',
+  '/call-center-crm',
+])
+
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((route) => ({
     url: `${SITE_URL}${route}`,
     changeFrequency: route === '' ? 'weekly' : 'monthly',
-    priority: route === '' ? 1 : 0.7,
+    priority: route === '' ? 1 : highPriorityRoutes.has(route) ? 0.8 : 0.6,
   }))
 }
