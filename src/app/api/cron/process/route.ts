@@ -219,7 +219,7 @@ export async function GET(request: Request) {
       exportScheduling = Number(scheduledExports.data ?? 0);
     }
 
-    const result = await processJobs({
+    const primaryResult = await processJobs({
       workerId,
       queues: [
         "communications",
@@ -235,6 +235,35 @@ export async function GET(request: Request) {
       leaseSeconds: 300,
     });
 
+    // A completed post-call dispatch can enqueue communications.send jobs
+    // after the primary batch has already been claimed. Drain only the
+    // communications queue once more in the same authenticated worker run so
+    // immediate post-call email does not need to wait for the next minute's
+    // cron invocation. The durable queue, consent checks, retries, and
+    // idempotency remain unchanged.
+    const communicationDrainResult = await processJobs({
+      workerId,
+      queues: ["communications"],
+      limit: 25,
+      leaseSeconds: 300,
+    });
+
+    const result: Awaited<ReturnType<typeof processJobs>> = {
+      recovered:
+        primaryResult.recovered + communicationDrainResult.recovered,
+      recoveredDeadLettered:
+        primaryResult.recoveredDeadLettered +
+        communicationDrainResult.recoveredDeadLettered,
+      claimed: primaryResult.claimed + communicationDrainResult.claimed,
+      completed:
+        primaryResult.completed + communicationDrainResult.completed,
+      retried: primaryResult.retried + communicationDrainResult.retried,
+      failed: primaryResult.failed + communicationDrainResult.failed,
+      deadLettered:
+        primaryResult.deadLettered + communicationDrainResult.deadLettered,
+      jobs: [...primaryResult.jobs, ...communicationDrainResult.jobs],
+    };
+
     await completeExecutionLog(
       executionLog,
       startedAt,
@@ -247,6 +276,13 @@ export async function GET(request: Request) {
       processedAt: new Date().toISOString(),
       sequenceScheduling,
       exportScheduling,
+      communicationDrain: {
+        claimed: communicationDrainResult.claimed,
+        completed: communicationDrainResult.completed,
+        retried: communicationDrainResult.retried,
+        failed: communicationDrainResult.failed,
+        deadLettered: communicationDrainResult.deadLettered,
+      },
       ...result,
     });
   } catch (error) {
