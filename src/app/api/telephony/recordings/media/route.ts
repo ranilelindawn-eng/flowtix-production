@@ -45,8 +45,8 @@ export async function GET(request: Request) {
     }
 
     if (
-      !recording?.provider_recording_sid ||
-      (recording.provider !== 'mocean' && !recording.provider_url)
+      !recording?.provider_url ||
+      !recording.provider_recording_sid
     ) {
       return NextResponse.json({ error: 'Recording not found.' }, { status: 404 })
     }

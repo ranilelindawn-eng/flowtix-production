@@ -1,7 +1,5 @@
 import { Buffer } from 'node:buffer'
 
-import { fetchMoceanRecording } from '@/lib/telephony/mocean'
-
 import { getOrganizationProviderConnection } from '@/lib/telephony/provider-connections'
 import {
   isTelephonyProvider,
@@ -188,16 +186,6 @@ export async function fetchProviderRecordingMedia(input: {
   recording: ProviderRecordingReference
 }): Promise<ProviderRecordingMedia> {
   const providerValue = (input.recording.provider ?? 'twilio').trim().toLowerCase()
-  const providerRecordingId = required(
-    input.recording.providerRecordingId,
-    'Provider recording ID',
-  )
-
-  if (providerValue === 'mocean') {
-    const response = await fetchMoceanRecording(providerRecordingId)
-    const contentType = response.headers.get('content-type')?.trim() || 'audio/mpeg'
-    return { response, contentType, extension: contentExtension(contentType) }
-  }
 
   if (!isTelephonyProvider(providerValue)) {
     throw new Error(`Recording media retrieval is not supported for provider "${providerValue || 'unknown'}".`)
@@ -205,6 +193,10 @@ export async function fetchProviderRecordingMedia(input: {
 
   const provider = providerValue as ConfiguredTelephonyProviderName
   const providerUrl = required(input.recording.providerUrl, 'Provider recording URL')
+  const providerRecordingId = required(
+    input.recording.providerRecordingId,
+    'Provider recording ID',
+  )
 
   if (provider === 'twilio') {
     return fetchTwilioMedia(input.organizationId, providerUrl)

@@ -143,7 +143,7 @@ type SignalWireClientLike = {
     callerNumber: string
     audio: boolean
     video?: boolean
-  }) => SignalWireCallLike
+  }) => Promise<SignalWireCallLike>
 }
 
 type PlivoClientLike = {
@@ -1078,7 +1078,10 @@ export default function DialerClient({
       } else if (selectedProvider === 'signalwire') {
         const client = signalWireClientRef.current
         if (!client) throw new Error('SignalWire softphone is not connected.')
-        const call = client.newCall({
+        // SignalWire RELAY Browser SDK v2 returns Promise<Call> from newCall().
+        // Awaiting it is required so provider-side dial failures are surfaced here
+        // and so we register/control the actual Call object rather than the Promise.
+        const call = await client.newCall({
           destinationNumber: phoneNumber.trim(),
           callerNumber: selectedCallerId,
           audio: true,
