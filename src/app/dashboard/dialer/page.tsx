@@ -15,6 +15,8 @@ import {
 import { createClient } from '@/lib/supabase/server'
 
 import DialerClient from './DialerClient'
+import ManagedDialerClient from './ManagedDialerClient'
+import { isMoceanManagedOutboundConfigured } from '@/lib/telephony/mocean'
 import { getAssignedDialerContacts, getDialerContactById } from './actions'
 
 type DialerPageProps = {
@@ -146,6 +148,16 @@ export default async function DialerPage({
       : Promise.resolve(null),
     getAssignedDialerContacts(),
   ])
+
+  if (isMoceanManagedOutboundConfigured()) {
+    return (
+      <ManagedDialerClient
+        initialContact={initialContact}
+        initialPhoneNumber={initialPhoneNumber}
+        assignedContacts={assignedContacts}
+      />
+    )
+  }
 
   const supabase = await createClient()
   const { data: phoneNumberRows, error: phoneNumberError } = await supabase
