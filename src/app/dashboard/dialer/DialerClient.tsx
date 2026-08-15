@@ -242,6 +242,7 @@ export default function DialerClient({
 
   const signalWireClientRef = useRef<SignalWireClientLike | null>(null)
   const signalWireCallRef = useRef<SignalWireCallLike | null>(null)
+  const callConnectedRef = useRef(false)
   const incomingFromRef = useRef('')
 
   // These refs keep call-registration data current without making the browser
@@ -343,6 +344,7 @@ export default function DialerClient({
       setMessage(inbound ? 'Incoming Flowtix call' : 'Ringing…')
       void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'ringing', rawStatus: state })
     } else if (state === 'active') {
+      callConnectedRef.current = true
       setCallState('connected')
       setMessage('Call connected')
       setElapsed(0)
@@ -371,7 +373,10 @@ export default function DialerClient({
         (call.sipCode ? `SIP ${call.sipCode}` : '') ||
         (call.causeCode ? `Cause ${call.causeCode}` : '') ||
         'Call ended'
-      const failed = reason !== 'Call ended'
+      // SignalWire can include a SIP/cause description on a normal hangup.
+      // A call that reached the active state was successfully connected, so
+      // its terminal lifecycle state must be completed rather than failed.
+      const failed = !callConnectedRef.current
 
       console.info('[Flowtix Cloud Calling] call terminated', {
         id: call.id ?? null,
@@ -395,6 +400,7 @@ export default function DialerClient({
         rawStatus: state,
       })
       signalWireCallRef.current = null
+      callConnectedRef.current = false
       window.setTimeout(() => setCallState('idle'), 1200)
     }
   }, [syncBrowserCallStatus])
@@ -679,6 +685,7 @@ export default function DialerClient({
     }
 
     try {
+      callConnectedRef.current = false
       const client = signalWireClientRef.current
       if (!client) throw new Error('Flowtix softphone is not connected.')
 
