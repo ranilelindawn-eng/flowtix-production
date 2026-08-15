@@ -70,7 +70,11 @@ export async function POST(request: Request) {
     if (!call) return NextResponse.json({ ok: true, ignored: true })
 
     const currentStatus = call.status as TelephonyCallStatus
-    if (TERMINAL.has(currentStatus) && !TERMINAL.has(status)) {
+    // Browser SDKs can emit multiple terminal notifications for one call
+    // (for example hangup -> destroyed -> purge). Once Flowtix has persisted a
+    // terminal lifecycle state, keep it immutable so a later duplicate event
+    // cannot downgrade a completed call to failed or fire automation twice.
+    if (TERMINAL.has(currentStatus)) {
       return NextResponse.json({ ok: true, ignored: true, callId: call.id })
     }
 

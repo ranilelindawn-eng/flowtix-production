@@ -243,6 +243,12 @@ export default function DialerClient({
   const signalWireClientRef = useRef<SignalWireClientLike | null>(null)
   const signalWireCallRef = useRef<SignalWireCallLike | null>(null)
   const callConnectedRef = useRef(false)
+  const connectedCallIdsRef = useRef(new Set<string>())
+  const terminalCallIdsRef = useRef(new Set<string>())
+  const outboundCallIdsRef = useRef(new Set<string>())
+  const outboundCallPendingRef = useRef(false)
+  const browserCallRegistrationPromisesRef = useRef(new Map<string, Promise<void>>())
+  const browserCallStatusQueuesRef = useRef(new Map<string, Promise<void>>())
   const incomingFromRef = useRef('')
 
   // These refs keep call-registration data current without making the browser
@@ -296,34 +302,113 @@ export default function DialerClient({
     ).padStart(2, '0')}`
 
 
-  const syncBrowserCallStatus = useCallback(async (input: {
+  const registerBrowserCall = useCallback((input: {
     provider: 'signalwire'
-    providerCallId: string | null | undefined
-    status: 'initiating' | 'ringing' | 'connected' | 'on-hold' | 'completed' | 'failed' | 'cancelled'
-    rawStatus?: string
-  }) => {
-    const providerCallId = input.providerCallId?.trim()
-    if (!providerCallId) return
+    providerCallId: string
+  }): Promise<void> => {
+    const providerCallId = input.providerCallId.trim()
+    if (!providerCallId) return Promise.resolve()
 
-    try {
-      const response = await fetch('/api/telephony/browser-call/status', {
+    const existingRegistration =
+      browserCallRegistrationPromisesRef.current.get(providerCallId)
+    if (existingRegistration) return existingRegistration
+
+    const registration = (async () => {
+      const fromNumber = selectedCallerIdRef.current
+      const toNumber = phoneNumberRef.current.trim()
+      if (!fromNumber || !/^\+[1-9]\d{7,14}$/.test(toNumber)) {
+        throw new Error('Unable to register browser call because the dialed number is invalid.')
+      }
+
+      const response = await fetch('/api/telephony/browser-call', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           provider: input.provider,
           providerCallId,
-          status: input.status,
-          rawStatus: input.rawStatus ?? input.status,
+          fromNumber,
+          toNumber,
+          contactId: initialContactIdRef.current,
         }),
       })
+      const result = await response.json() as { error?: string }
       if (!response.ok) {
-        const result = await response.json() as { error?: string }
-        console.error('[Flowtix telephony] browser call state sync failed', result.error)
+        throw new Error(result.error ?? 'Unable to register browser call.')
       }
-    } catch (error) {
-      console.error('[Flowtix telephony] browser call state sync failed', error)
-    }
+    })()
+
+    browserCallRegistrationPromisesRef.current.set(providerCallId, registration)
+
+    void registration.catch(() => {
+      if (
+        browserCallRegistrationPromisesRef.current.get(providerCallId) ===
+        registration
+      ) {
+        browserCallRegistrationPromisesRef.current.delete(providerCallId)
+      }
+    })
+
+    return registration
   }, [])
+
+  const syncBrowserCallStatus = useCallback((input: {
+    provider: 'signalwire'
+    providerCallId: string | null | undefined
+    direction?: string
+    status: 'initiating' | 'ringing' | 'connected' | 'on-hold' | 'completed' | 'failed' | 'cancelled'
+    rawStatus?: string
+  }): Promise<void> => {
+    const providerCallId = input.providerCallId?.trim()
+    if (!providerCallId) return Promise.resolve()
+
+    const previous =
+      browserCallStatusQueuesRef.current.get(providerCallId) ?? Promise.resolve()
+
+    const task = previous
+      .catch(() => undefined)
+      .then(async () => {
+        try {
+          // SignalWire can emit callUpdate notifications before newCall() resolves.
+          // Ensure the durable calls row exists before any outbound lifecycle status
+          // is persisted, then serialize updates in notification order for this call.
+          if (input.direction === 'outbound') {
+            await registerBrowserCall({
+              provider: input.provider,
+              providerCallId,
+            })
+          }
+
+          const response = await fetch('/api/telephony/browser-call/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: input.provider,
+              providerCallId,
+              status: input.status,
+              rawStatus: input.rawStatus ?? input.status,
+            }),
+          })
+          if (!response.ok) {
+            const result = await response.json() as { error?: string }
+            console.error(
+              '[Flowtix telephony] browser call state sync failed',
+              result.error,
+            )
+          }
+        } catch (error) {
+          console.error('[Flowtix telephony] browser call state sync failed', error)
+        }
+      })
+
+    browserCallStatusQueuesRef.current.set(providerCallId, task)
+    void task.finally(() => {
+      if (browserCallStatusQueuesRef.current.get(providerCallId) === task) {
+        browserCallStatusQueuesRef.current.delete(providerCallId)
+      }
+    })
+
+    return task
+  }, [registerBrowserCall])
 
   const handleSignalWireNotification = useCallback((payload?: unknown) => {
     const notification = payload as SignalWireNotification | undefined
@@ -332,24 +417,50 @@ export default function DialerClient({
     const call = notification.call as SignalWireCallLike
     signalWireCallRef.current = call
     const state = String(call.state ?? '')
+    const providerCallId = call.id?.trim() || null
+    const isOutbound =
+      call.direction === 'outbound' ||
+      (call.direction !== 'inbound' && outboundCallPendingRef.current) ||
+      (providerCallId ? outboundCallIdsRef.current.has(providerCallId) : false)
+    if (isOutbound && providerCallId) outboundCallIdsRef.current.add(providerCallId)
+    const lifecycleDirection = isOutbound ? 'outbound' : call.direction
 
     if (['new', 'trying', 'requesting'].includes(state)) {
       setCallState('connecting')
       setMessage(`Call ${state}…`)
-      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'initiating', rawStatus: state })
+      void syncBrowserCallStatus({
+        provider: 'signalwire',
+        providerCallId,
+        direction: lifecycleDirection,
+        status: 'initiating',
+        rawStatus: state,
+      })
     } else if (state === 'ringing') {
       const inbound = call.direction === 'inbound'
       setCallState(inbound ? 'incoming' : 'ringing')
       setIncomingFrom(call.remotePartyNumber ?? 'Unknown caller')
       setMessage(inbound ? 'Incoming Flowtix call' : 'Ringing…')
-      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'ringing', rawStatus: state })
+      void syncBrowserCallStatus({
+        provider: 'signalwire',
+        providerCallId,
+        direction: lifecycleDirection,
+        status: 'ringing',
+        rawStatus: state,
+      })
     } else if (state === 'active') {
       callConnectedRef.current = true
+      if (providerCallId) connectedCallIdsRef.current.add(providerCallId)
       setCallState('connected')
       setMessage('Call connected')
       setElapsed(0)
       setIsOnHold(false)
-      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'connected', rawStatus: state })
+      void syncBrowserCallStatus({
+        provider: 'signalwire',
+        providerCallId,
+        direction: lifecycleDirection,
+        status: 'connected',
+        rawStatus: state,
+      })
       if (call.direction === 'inbound') {
         void fetch('/api/telephony/inbound/claim', {
           method: 'POST',
@@ -365,18 +476,30 @@ export default function DialerClient({
       setCallState('connected')
       setIsOnHold(true)
       setMessage('Call on hold')
-      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'on-hold', rawStatus: state })
+      void syncBrowserCallStatus({
+        provider: 'signalwire',
+        providerCallId,
+        direction: lifecycleDirection,
+        status: 'on-hold',
+        rawStatus: state,
+      })
     } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
+      // Relay can emit several terminal notifications for the same physical call.
+      // Handle only the first one so a normal completed call cannot be followed by
+      // a second terminal event that reclassifies it as failed.
+      if (providerCallId && terminalCallIdsRef.current.has(providerCallId)) return
+      if (providerCallId) terminalCallIdsRef.current.add(providerCallId)
+
       const reason =
         call.sipReason ||
         call.cause ||
         (call.sipCode ? `SIP ${call.sipCode}` : '') ||
         (call.causeCode ? `Cause ${call.causeCode}` : '') ||
         'Call ended'
-      // SignalWire can include a SIP/cause description on a normal hangup.
-      // A call that reached the active state was successfully connected, so
-      // its terminal lifecycle state must be completed rather than failed.
-      const failed = !callConnectedRef.current
+      const wasConnected = providerCallId
+        ? connectedCallIdsRef.current.has(providerCallId)
+        : callConnectedRef.current
+      const failed = !wasConnected
 
       console.info('[Flowtix Cloud Calling] call terminated', {
         id: call.id ?? null,
@@ -387,6 +510,7 @@ export default function DialerClient({
         sipReason: call.sipReason ?? null,
         cause: call.cause ?? null,
         causeCode: call.causeCode ?? null,
+        wasConnected,
       })
 
       setCallState('ended')
@@ -395,38 +519,27 @@ export default function DialerClient({
       setIsOnHold(false)
       void syncBrowserCallStatus({
         provider: 'signalwire',
-        providerCallId: call.id,
+        providerCallId,
+        direction: lifecycleDirection,
         status: failed ? 'failed' : 'completed',
         rawStatus: state,
       })
       signalWireCallRef.current = null
       callConnectedRef.current = false
+
+      if (providerCallId) {
+        window.setTimeout(() => {
+          connectedCallIdsRef.current.delete(providerCallId)
+          terminalCallIdsRef.current.delete(providerCallId)
+          browserCallRegistrationPromisesRef.current.delete(providerCallId)
+          browserCallStatusQueuesRef.current.delete(providerCallId)
+          outboundCallIdsRef.current.delete(providerCallId)
+        }, 60_000)
+      }
+
       window.setTimeout(() => setCallState('idle'), 1200)
     }
   }, [syncBrowserCallStatus])
-
-  const registerBrowserCall = useCallback(async (input: {
-    provider: 'signalwire'
-    providerCallId: string
-  }) => {
-    const fromNumber = selectedCallerIdRef.current
-    const toNumber = phoneNumberRef.current.trim()
-    if (!fromNumber || !/^\+[1-9]\d{7,14}$/.test(toNumber)) return
-
-    const response = await fetch('/api/telephony/browser-call', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        provider: input.provider,
-        providerCallId: input.providerCallId,
-        fromNumber,
-        toNumber,
-        contactId: initialContactIdRef.current,
-      }),
-    })
-    const result = await response.json() as { error?: string }
-    if (!response.ok) throw new Error(result.error ?? 'Unable to register browser call.')
-  }, [])
 
   const updatePresence = useCallback(async (payload: Record<string, unknown>) => {
     const response = await fetch('/api/telephony/presence', {
@@ -686,6 +799,7 @@ export default function DialerClient({
 
     try {
       callConnectedRef.current = false
+      outboundCallPendingRef.current = true
       const client = signalWireClientRef.current
       if (!client) throw new Error('Flowtix softphone is not connected.')
 
@@ -711,14 +825,19 @@ export default function DialerClient({
 
       signalWireCallRef.current = call
       if (call.id) {
+        outboundCallIdsRef.current.add(call.id)
         void registerBrowserCall({
           provider: 'signalwire',
           providerCallId: call.id,
+        }).catch((error) => {
+          console.error('[Flowtix telephony] browser call registration failed', error)
         })
       }
+      outboundCallPendingRef.current = false
       setCallState('connecting')
       setMessage('Connecting call…')
     } catch (error) {
+      outboundCallPendingRef.current = false
       setMessage(
         error instanceof Error ? error.message : 'Unable to place the call.',
       )
