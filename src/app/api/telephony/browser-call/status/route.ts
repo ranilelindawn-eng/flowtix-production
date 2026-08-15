@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server'
 
+import {
+  enqueueCanonicalPostCallDispatch,
+  evaluateCanonicalPostCallTrigger,
+} from '@/lib/automation/post-call/trigger'
 import { hasPermission } from '@/lib/permissions'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { isTelephonyProvider, type TelephonyCallStatus } from '@/lib/telephony/provider'
@@ -86,6 +90,41 @@ export async function POST(request: Request) {
       .eq('organization_id', organization.organization_id)
 
     if (updateError) throw new Error(updateError.message)
+
+    if (TERMINAL.has(status)) {
+      try {
+        const trigger = await evaluateCanonicalPostCallTrigger({
+          organizationId: organization.organization_id,
+          callId: call.id,
+          previousStatus: currentStatus,
+          status,
+          occurredAt: now,
+        })
+
+        if (trigger.eligible) {
+          const job = await enqueueCanonicalPostCallDispatch(trigger)
+
+          console.info('Canonical post-call automation job queued from browser call status.', {
+            organizationId: trigger.organizationId,
+            callId: trigger.callId,
+            status: trigger.status,
+            emailEnabled: trigger.emailEnabled,
+            smsEnabled: trigger.smsEnabled,
+            delaySeconds: trigger.delaySeconds,
+            jobId: job?.id ?? null,
+            jobStatus: job?.status ?? null,
+            scheduledAt: job?.scheduled_at ?? null,
+          })
+        }
+      } catch (triggerError) {
+        // A post-call automation evaluation failure must never roll back or
+        // invalidate an otherwise valid browser call lifecycle update.
+        console.error(
+          'Unable to evaluate canonical post-call automation trigger from browser call status:',
+          triggerError,
+        )
+      }
+    }
 
     return NextResponse.json({ ok: true, callId: call.id })
   } catch (error) {
