@@ -836,9 +836,6 @@ export default function DialerClient({
           <h1 className="mt-2 text-3xl font-semibold text-white">
             Browser softphone
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Flowtix-managed browser calling with provider infrastructure handled securely by the platform.
-          </p>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -892,32 +889,11 @@ export default function DialerClient({
             <Radio className="h-5 w-5 text-cyan-300" />
           </div>
 
-          {callerIds.length > 0 ? (
-            <label className="mt-6 block text-sm text-slate-300">
-              Outbound caller ID
-              <select
-                value={selectedCallerId}
-                onChange={(event) => setSelectedCallerId(event.target.value)}
-                disabled={active}
-                className={`${fieldClass} mt-2`}
-              >
-                {callerIds.map((number) => (
-                  <option
-                    key={number.id}
-                    value={number.phoneNumber}
-                    className="bg-white text-slate-950"
-                  >
-                    {number.friendlyName} · {number.phoneNumber} · {providerDisplayName(number.provider)}
-                    {number.isDefault ? ' · Default' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : (
+          {callerIds.length === 0 ? (
             <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
-              No Flowtix phone number is assigned to this workspace. Contact your workspace owner or Flowtix support.
+              Calling is not available for this workspace yet. Contact your workspace owner or Flowtix support.
             </div>
-          )}
+          ) : null}
 
           {callState === 'incoming' ? (
             <div className="mt-8 rounded-3xl border border-cyan-400/30 bg-cyan-400/10 p-8 text-center">
