@@ -33,6 +33,7 @@ type StoredSnapshotRow = {
 
 const connectedStatuses = new Set(['answered', 'completed', 'connected', 'in-progress', 'in_progress', 'bridged'])
 const failedStatuses = new Set(['failed', 'busy', 'no-answer', 'no_answer', 'canceled', 'cancelled', 'missed'])
+const SNAPSHOT_FRESHNESS_MS = 15 * 60 * 1000
 
 function text(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -112,6 +113,70 @@ function mapStored(row: StoredSnapshotRow): AgentAnalyticsSnapshot {
   }
 }
 
+
+async function applyCurrentAttendancePresence(
+  snapshot: AgentAnalyticsSnapshot,
+  organizationId: string,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<AgentAnalyticsSnapshot> {
+  const [attendanceResult, presenceResult] = await Promise.all([
+    supabase
+      .from('attendance_entries')
+      .select('user_id')
+      .eq('organization_id', organizationId)
+      .is('clocked_out_at', null),
+    supabase
+      .from('agent_presence')
+      .select('user_id,availability,activity_state')
+      .eq('organization_id', organizationId),
+  ])
+
+  if (attendanceResult.error) return snapshot
+
+  const onDutyUsers = new Set(
+    (attendanceResult.data ?? [])
+      .map((row) => text(row.user_id))
+      .filter(Boolean),
+  )
+  const livePresence = new Map(
+    (presenceResult.data ?? []).map((row) => [text(row.user_id), row as Row]),
+  )
+
+  const agents = snapshot.agents.map((agent) => {
+    const state = livePresence.get(agent.userId)
+    return {
+      ...agent,
+      onDuty: onDutyUsers.has(agent.userId),
+      availability: (text(state?.availability) || agent.availability || 'offline') as AgentPerformanceMetric['availability'],
+      activityState: (text(state?.activity_state) || agent.activityState || 'idle') as AgentPerformanceMetric['activityState'],
+    }
+  })
+
+  const availableAgents = agents.filter(
+    (agent) => agent.onDuty && agent.activityState === 'idle',
+  ).length
+  const busyAgents = agents.filter(
+    (agent) =>
+      agent.onDuty &&
+      ['busy', 'ringing', 'wrap_up'].includes(agent.activityState),
+  ).length
+  const awayAgents = agents.filter(
+    (agent) =>
+      agent.onDuty &&
+      (agent.availability === 'away' || agent.availability === 'dnd'),
+  ).length
+  const offlineAgents = agents.filter((agent) => !agent.onDuty).length
+
+  return {
+    ...snapshot,
+    agents,
+    availableAgents,
+    busyAgents,
+    awayAgents,
+    offlineAgents,
+  }
+}
+
 export function normalizeAgentAnalyticsPeriod(value: string | undefined): ReportRange {
   return normalizeReportRange(value)
 }
@@ -134,7 +199,12 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
     supabase.from('calls').select('id,status,provider_status_raw,routing_status,started_at,ended_at,duration_seconds,owner_user_id,owner_membership_id,created_by').eq('organization_id', organizationId).gte('started_at', startIso).lte('started_at', endIso),
     supabase.from('contact_tasks').select('id,status,due_at,completed_at,assigned_to,owner_membership_id,created_by').eq('organization_id', organizationId).or(`created_at.gte.${startIso},completed_at.gte.${startIso}`),
     supabase.from('crm_activities').select('id,status,occurred_at,owner_membership_id,created_by').eq('organization_id', organizationId).gte('occurred_at', startIso).lte('occurred_at', endIso),
-    supabase.from('attendance_entries').select('user_id,clocked_in_at,clocked_out_at').eq('organization_id', organizationId).gte('clocked_in_at', startIso).lte('clocked_in_at', endIso),
+    supabase
+      .from('attendance_entries')
+      .select('user_id,clocked_in_at,clocked_out_at')
+      .eq('organization_id', organizationId)
+      .or(`clocked_out_at.is.null,clocked_in_at.gte.${startIso}`)
+      .lte('clocked_in_at', endIso),
     supabase.from('ai_coaching_analyses').select('agent_user_id,overall_score,created_at').eq('organization_id', organizationId).gte('created_at', startIso).lte('created_at', endIso),
   ])
 
@@ -151,6 +221,12 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
   const activities = (activitiesResult.data ?? []) as Row[]
   const attendance = attendanceAccessible ? ((attendanceResult.data ?? []) as Row[]) : []
   const coaching = (coachingResult.data ?? []) as Row[]
+  const onDutyUsers = new Set(
+    attendance
+      .filter((row) => !text(row.clocked_out_at))
+      .map((row) => text(row.user_id))
+      .filter(Boolean),
+  )
 
   const profileByUser = new Map(profiles.map((row) => [text(row.id), row]))
   const membershipById = new Map(members.map((row) => [text(row.id), row]))
@@ -170,6 +246,7 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
       role: text(member.role) || 'member',
       availability: (text(state?.availability) || 'offline') as Mutable['availability'],
       activityState: (text(state?.activity_state) || 'idle') as Mutable['activityState'],
+      onDuty: onDutyUsers.has(userId),
       totalCalls: 0, connectedCalls: 0, failedCalls: 0, connectRate: 0, talkSeconds: 0, averageCallSeconds: 0,
       assignedTasks: 0, completedTasks: 0, overdueTasks: 0, taskCompletionRate: 0,
       completedActivities: 0, attendanceSeconds: 0, utilizationRate: 0,
@@ -183,7 +260,10 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
     const userId = text(call.owner_user_id) || text(membershipOwner?.user_id) || text(call.created_by)
     const metric = metrics.get(userId)
     if (!metric) continue
-    const status = (text(call.provider_status_raw) || text(call.routing_status) || text(call.status)).toLowerCase()
+    // Flowtix's canonical lifecycle is authoritative. Provider/raw routing
+    // values are diagnostic fallbacks only and may contain values such as
+    // NORMAL_CLEARING that do not map directly to analytics outcomes.
+    const status = (text(call.status) || text(call.routing_status) || text(call.provider_status_raw)).toLowerCase()
     const connected = connectedStatuses.has(status)
     metric.totalCalls += 1
     if (connected) metric.connectedCalls += 1
@@ -249,6 +329,7 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
       role: metric.role,
       availability: metric.availability,
       activityState: metric.activityState,
+      onDuty: metric.onDuty,
       totalCalls: metric.totalCalls,
       connectedCalls: metric.connectedCalls,
       failedCalls: metric.failedCalls,
@@ -269,10 +350,13 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
   }).sort((a, b) => b.productivityScore - a.productivityScore || a.name.localeCompare(b.name))
 
   const totalAgents = agents.length
-  const availableAgents = agents.filter((agent) => agent.availability === 'available' && agent.activityState === 'idle').length
-  const busyAgents = agents.filter((agent) => ['busy', 'ringing', 'wrap_up'].includes(agent.activityState)).length
-  const awayAgents = agents.filter((agent) => agent.availability === 'away' || agent.availability === 'dnd').length
-  const offlineAgents = agents.filter((agent) => agent.availability === 'offline').length
+  // Workforce presence is driven by attendance: Time In means on duty and
+  // Time Out means off duty. Telephony activity remains a separate indicator
+  // of whether an on-duty agent is idle/ringing/busy/in wrap-up.
+  const availableAgents = agents.filter((agent) => agent.onDuty && agent.activityState === 'idle').length
+  const busyAgents = agents.filter((agent) => agent.onDuty && ['busy', 'ringing', 'wrap_up'].includes(agent.activityState)).length
+  const awayAgents = agents.filter((agent) => agent.onDuty && (agent.availability === 'away' || agent.availability === 'dnd')).length
+  const offlineAgents = agents.filter((agent) => !agent.onDuty).length
   const totalCalls = agents.reduce((sum, agent) => sum + agent.totalCalls, 0)
   const connectedCalls = agents.reduce((sum, agent) => sum + agent.connectedCalls, 0)
   const totalTalkSeconds = agents.reduce((sum, agent) => sum + agent.talkSeconds, 0)
@@ -291,7 +375,7 @@ export async function collectAgentAnalyticsSnapshot(period: ReportRange): Promis
     completed_tasks: completedTasks, overdue_tasks: overdueTasks, completed_activities: completedActivities, attendance_seconds: Math.round(attendanceSeconds),
     average_coaching_score: averageCoachingScore, average_productivity_score: averageProductivityScore,
     agent_metrics: agents, trend_metrics: trend, captured_by: membership.user_id,
-    metadata: { attendanceAccessible, source: 'flowtix-agent-analytics-v1' },
+    metadata: { attendanceAccessible, source: 'flowtix-agent-analytics-v2' },
   }
   const { data, error } = await supabase.from('agent_analytics_snapshots').insert(payload).select('*').single()
   if (error) throw new Error(`Unable to save agent analytics snapshot: ${error.message}`)
@@ -304,7 +388,16 @@ export async function getAgentAnalyticsOverview(period: ReportRange): Promise<Ag
   const { data, error } = await supabase.from('agent_analytics_snapshots').select('*').eq('organization_id', membership.organization_id).eq('period', period).order('captured_at', { ascending: false }).limit(25)
   if (error) throw new Error(`Unable to load agent analytics: ${error.message}`)
   const rows = (data ?? []) as StoredSnapshotRow[]
-  const snapshot = rows[0] ? mapStored(rows[0]) : await collectAgentAnalyticsSnapshot(period)
+  const latest = rows[0]
+  const capturedAt = latest ? new Date(latest.captured_at).getTime() : 0
+  const stale = !latest || !Number.isFinite(capturedAt) || Date.now() - capturedAt > SNAPSHOT_FRESHNESS_MS
+  const storedSnapshot = stale ? await collectAgentAnalyticsSnapshot(period) : mapStored(latest)
+  const snapshot = await applyCurrentAttendancePresence(
+    storedSnapshot,
+    membership.organization_id,
+    supabase,
+  )
+
   return {
     snapshot,
     history: rows.map((row) => ({ id: row.id, period: row.period, periodStart: row.period_start, periodEnd: row.period_end, capturedAt: row.captured_at })),

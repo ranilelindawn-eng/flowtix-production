@@ -232,8 +232,16 @@ function UserPlusIcon({ className = 'h-5 w-5' }: IconProps) {
   )
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours()
+function getGreeting(timeZone: string): string {
+  const hourPart = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    hour: '2-digit',
+    hourCycle: 'h23',
+  })
+    .formatToParts(new Date())
+    .find((part) => part.type === 'hour')?.value
+
+  const hour = Number(hourPart ?? 0)
 
   if (hour < 12) {
     return 'Good morning'
@@ -265,7 +273,10 @@ function formatDate(value: string | null | undefined, timeZone: string): string 
   }).format(date)
 }
 
-function formatActivityTime(value: string | null | undefined): string {
+function formatActivityTime(
+  value: string | null | undefined,
+  timeZone: string,
+): string {
   if (!value) {
     return 'Recently'
   }
@@ -277,6 +288,7 @@ function formatActivityTime(value: string | null | undefined): string {
   }
 
   return new Intl.DateTimeFormat('en', {
+    timeZone,
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
@@ -396,7 +408,7 @@ function AnalyticsCard({
 
 export default async function DashboardPage() {
   const timeZone = await getCurrentOrganizationTimezone()
-  const dashboard = await getDashboardData()
+  const dashboard = await getDashboardData(timeZone)
 
   const userName = dashboard.userName || 'there'
   const organizationName =
@@ -669,7 +681,7 @@ export default async function DashboardPage() {
             </div>
 
             <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              {getGreeting()}, {userName}.
+              {getGreeting(timeZone)}, {userName}.
             </h1>
 
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
@@ -937,7 +949,7 @@ export default async function DashboardPage() {
                         </p>
 
                         <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-600">
-                          {formatActivityTime(item.time)}
+                          {formatActivityTime(item.time, timeZone)}
                         </p>
                       </div>
                     </div>

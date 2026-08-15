@@ -39,6 +39,8 @@ type StoredSnapshotRow = {
   trend_metrics: unknown
 }
 
+const SALES_ANALYTICS_MAX_SNAPSHOT_AGE_MS = 15 * 60 * 1000
+
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
@@ -64,6 +66,22 @@ function dateDifferenceDays(start: unknown, end: Date): number {
   const date = new Date(asString(start))
   if (Number.isNaN(date.getTime())) return 0
   return Math.max(0, (end.getTime() - date.getTime()) / 86_400_000)
+}
+
+function isDateInPeriod(value: unknown, start: Date, end: Date): boolean {
+  const date = new Date(asString(value))
+  return !Number.isNaN(date.getTime()) && date >= start && date <= end
+}
+
+function getOpportunityClosedAt(opportunity: DbRow): Date | null {
+  const value =
+    asString(opportunity.closed_at) ||
+    asString(opportunity.won_at) ||
+    asString(opportunity.lost_at) ||
+    asString(opportunity.updated_at)
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
 }
 
 function parseJsonArray<T>(value: unknown): T[] {
@@ -186,6 +204,10 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
     const probability = Math.min(100, Math.max(0, asNumber(opportunity.probability)))
     const createdAt = new Date(asString(opportunity.created_at))
     const createdInPeriod = !Number.isNaN(createdAt.getTime()) && createdAt >= start && createdAt <= now
+    const wonDateValue = asString(opportunity.won_at) || asString(opportunity.closed_at) || asString(opportunity.updated_at)
+    const lostDateValue = asString(opportunity.lost_at) || asString(opportunity.closed_at) || asString(opportunity.updated_at)
+    const wonInPeriod = status === 'won' && isDateInPeriod(wonDateValue, start, now)
+    const lostInPeriod = status === 'lost' && isDateInPeriod(lostDateValue, start, now)
     if (createdInPeriod) {
       createdDeals += 1
       const point = trendByDate.get(createdAt.toISOString().slice(0, 10))
@@ -193,8 +215,8 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
     }
 
     if (status === 'won') {
-      const wonDate = new Date(asString(opportunity.won_at) || asString(opportunity.closed_at) || asString(opportunity.updated_at))
-      if (!Number.isNaN(wonDate.getTime()) && wonDate >= start && wonDate <= now) {
+      const wonDate = new Date(wonDateValue)
+      if (wonInPeriod) {
         wonDeals += 1
         wonRevenue += value
         const point = trendByDate.get(wonDate.toISOString().slice(0, 10))
@@ -208,8 +230,8 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
         }
       }
     } else if (status === 'lost') {
-      const lostDate = new Date(asString(opportunity.lost_at) || asString(opportunity.closed_at) || asString(opportunity.updated_at))
-      if (!Number.isNaN(lostDate.getTime()) && lostDate >= start && lostDate <= now) {
+      const lostDate = new Date(lostDateValue)
+      if (lostInPeriod) {
         lostDeals += 1
         const point = trendByDate.get(lostDate.toISOString().slice(0, 10))
         if (point) point.lostDeals += 1
@@ -245,8 +267,11 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
     stageMetric.dealCount += 1
     stageMetric.totalValue += value
     stageMetric.weightedValue += value * (probability / 100)
-    stageMetric.ageTotal += dateDifferenceDays(opportunity.created_at, now)
-    stageMetric.stageAgeTotal += dateDifferenceDays(opportunity.stage_entered_at || opportunity.updated_at, now)
+    const stageAgeEnd = status === 'won' || status === 'lost'
+      ? (getOpportunityClosedAt(opportunity) ?? now)
+      : now
+    stageMetric.ageTotal += dateDifferenceDays(opportunity.created_at, stageAgeEnd)
+    stageMetric.stageAgeTotal += dateDifferenceDays(opportunity.stage_entered_at || opportunity.updated_at, stageAgeEnd)
     stageMap.set(stageKey, stageMetric)
 
     const membershipId = asNullableString(opportunity.owner_membership_id)
@@ -269,10 +294,12 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
       averageDealSize: 0,
     }
     if (status === 'won') {
-      owner.wonDeals += 1
-      owner.wonRevenue += value
+      if (wonInPeriod) {
+        owner.wonDeals += 1
+        owner.wonRevenue += value
+      }
     } else if (status === 'lost') {
-      owner.lostDeals += 1
+      if (lostInPeriod) owner.lostDeals += 1
     } else {
       owner.openDeals += 1
       owner.pipelineValue += value
@@ -283,16 +310,18 @@ export async function collectSalesAnalyticsSnapshot(period: ReportRange): Promis
     const source = asString(opportunity.source) || 'Unspecified'
     const sourceMetric = sourceMap.get(source) ?? { source, dealCount: 0, pipelineValue: 0, wonRevenue: 0 }
     sourceMetric.dealCount += 1
-    if (status === 'won') sourceMetric.wonRevenue += value
-    else if (status !== 'lost') sourceMetric.pipelineValue += value
+    if (status === 'won' && wonInPeriod) sourceMetric.wonRevenue += value
+    else if (status !== 'lost' && status !== 'won') sourceMetric.pipelineValue += value
     sourceMap.set(source, sourceMetric)
 
-    const category = asString(opportunity.forecast_category) || 'pipeline'
-    const forecast = forecastMap.get(category) ?? { category, dealCount: 0, totalValue: 0, weightedValue: 0 }
-    forecast.dealCount += 1
-    forecast.totalValue += value
-    forecast.weightedValue += value * (probability / 100)
-    forecastMap.set(category, forecast)
+    if (status !== 'won' && status !== 'lost') {
+      const category = asString(opportunity.forecast_category) || 'pipeline'
+      const forecast = forecastMap.get(category) ?? { category, dealCount: 0, totalValue: 0, weightedValue: 0 }
+      forecast.dealCount += 1
+      forecast.totalValue += value
+      forecast.weightedValue += value * (probability / 100)
+      forecastMap.set(category, forecast)
+    }
   }
 
   const stagesResultMetrics: SalesStageMetric[] = [...stageMap.values()]
@@ -367,6 +396,30 @@ export async function getSalesAnalyticsOverview(period: ReportRange, collectWhen
     return { snapshot, history: [{ id: snapshot.id, period: snapshot.period, periodStart: snapshot.periodStart, periodEnd: snapshot.periodEnd, capturedAt: snapshot.capturedAt }] }
   }
   if (rows.length === 0) throw new Error('No sales analytics snapshot is available.')
+
+  const latestCapturedAt = new Date(rows[0].captured_at).getTime()
+  const latestIsStale =
+    !Number.isFinite(latestCapturedAt) ||
+    Date.now() - latestCapturedAt >= SALES_ANALYTICS_MAX_SNAPSHOT_AGE_MS
+
+  if (collectWhenMissing && latestIsStale) {
+    const snapshot = await collectSalesAnalyticsSnapshot(period)
+    const priorHistory = rows.slice(0, 11).map((row) => ({
+      id: row.id,
+      period: row.period,
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
+      capturedAt: row.captured_at,
+    }))
+    return {
+      snapshot,
+      history: [
+        { id: snapshot.id, period: snapshot.period, periodStart: snapshot.periodStart, periodEnd: snapshot.periodEnd, capturedAt: snapshot.capturedAt },
+        ...priorHistory,
+      ],
+    }
+  }
+
   return {
     snapshot: mapStoredSnapshot(rows[0]),
     history: rows.map((row) => ({ id: row.id, period: row.period, periodStart: row.period_start, periodEnd: row.period_end, capturedAt: row.captured_at })),

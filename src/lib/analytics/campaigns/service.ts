@@ -23,6 +23,13 @@ const object = (value: unknown): Record<string, unknown> => value && typeof valu
 const rate = (part: number, total: number): number => total > 0 ? (part / total) * 100 : 0
 const daysFor = (period: ReportRange): number => period === '7d' ? 7 : period === '90d' ? 90 : period === '365d' ? 365 : 30
 const roi = (revenue: number, cost: number): number => cost > 0 ? ((revenue - cost) / cost) * 100 : revenue > 0 ? 100 : 0
+const SNAPSHOT_FRESHNESS_MS = 15 * 60 * 1000
+
+const isFreshSnapshot = (capturedAt: string | undefined): boolean => {
+  if (!capturedAt) return false
+  const captured = new Date(capturedAt).getTime()
+  return Number.isFinite(captured) && Date.now() - captured < SNAPSHOT_FRESHNESS_MS
+}
 
 function mapStored(row: StoredRow): CampaignAnalyticsSnapshot {
   return {
@@ -129,9 +136,49 @@ export async function collectCampaignAnalyticsSnapshot(period: ReportRange): Pro
 }
 
 export async function getCampaignAnalyticsOverview(period: ReportRange): Promise<CampaignAnalyticsOverview> {
-  const membership = await requirePermission('reports.view'); const supabase = await createClient()
-  const { data, error } = await supabase.from('campaign_analytics_snapshots').select('*').eq('organization_id', membership.organization_id).eq('period', period).order('captured_at', { ascending: false }).limit(25)
-  if (error) throw new Error(`Unable to load campaign analytics: ${error.message}`)
-  const stored = (data ?? []) as StoredRow[]; const snapshot = stored[0] ? mapStored(stored[0]) : await collectCampaignAnalyticsSnapshot(period)
-  return { snapshot, history: stored.map((row) => ({ id: row.id, period: row.period, periodStart: row.period_start, periodEnd: row.period_end, capturedAt: row.captured_at })) }
+  const membership = await requirePermission('reports.view')
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('campaign_analytics_snapshots')
+    .select('*')
+    .eq('organization_id', membership.organization_id)
+    .eq('period', period)
+    .order('captured_at', { ascending: false })
+    .limit(25)
+
+  if (error) {
+    throw new Error(`Unable to load campaign analytics: ${error.message}`)
+  }
+
+  const stored = (data ?? []) as StoredRow[]
+  const latest = stored[0]
+  const snapshot =
+    latest && isFreshSnapshot(latest.captured_at)
+      ? mapStored(latest)
+      : await collectCampaignAnalyticsSnapshot(period)
+
+  const historyRows =
+    stored.some((row) => row.id === snapshot.id)
+      ? stored
+      : [
+          {
+            id: snapshot.id,
+            period: snapshot.period,
+            period_start: snapshot.periodStart,
+            period_end: snapshot.periodEnd,
+            captured_at: snapshot.capturedAt,
+          } as StoredRow,
+          ...stored,
+        ].slice(0, 25)
+
+  return {
+    snapshot,
+    history: historyRows.map((row) => ({
+      id: row.id,
+      period: row.period,
+      periodStart: row.period_start,
+      periodEnd: row.period_end,
+      capturedAt: row.captured_at,
+    })),
+  }
 }

@@ -36,6 +36,7 @@ async function runAttendanceAction(
 
     revalidatePath('/dashboard/attendance')
     revalidatePath('/dashboard/team')
+    revalidatePath('/dashboard/agent-analytics')
 
     return {
       status: 'success',

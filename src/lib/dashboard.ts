@@ -1,6 +1,11 @@
 import {
   createClient as createServerSupabaseClient,
 } from '@/lib/supabase/server'
+import { getCurrentOrganization } from '@/lib/team'
+import {
+  normalizeTimeZone,
+  organizationLocalDateTimeToUtc,
+} from '@/lib/timezone'
 
 type SupabaseServerClient = Awaited<
   ReturnType<typeof createServerSupabaseClient>
@@ -14,10 +19,6 @@ type ProfileRow = {
 type OrganizationRow = {
   id: string
   name: string
-}
-
-type MembershipRow = {
-  organization_id: string
 }
 
 type RecentContact = {
@@ -52,6 +53,7 @@ type DashboardCallRow = {
   status: string
   duration_seconds: number | null
   started_at: string
+  ended_at: string | null
   created_at: string
 }
 
@@ -142,7 +144,7 @@ function createEmptyDashboardData(
 
     recentContacts: [],
     recentCalls: [],
-    callsOverTime: createEmptyCallsOverTime(),
+    callsOverTime: createEmptyCallsOverTime('UTC'),
     callOutcomes: [],
     recentActivity: [],
     overdueFollowUps: [],
@@ -208,36 +210,14 @@ async function getProfile(
 }
 
 async function getCurrentOrganizationId(
-  supabase: SupabaseServerClient,
   userId: string,
-  profile: ProfileRow | null,
 ): Promise<string> {
-  if (profile?.organization_id) {
-    return profile.organization_id
-  }
+  const membership = await getCurrentOrganization()
 
-  const { data, error } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .limit(1)
-    .maybeSingle()
-
-  if (error) {
-    console.error(
-      'Organization membership lookup failed:',
-      error,
-    )
-
-    throw new Error(
-      'Unable to determine the current organization.',
-    )
-  }
-
-  const membership = data as MembershipRow | null
-
-  if (membership?.organization_id) {
+  if (
+    membership?.user_id === userId &&
+    membership.organization_id
+  ) {
     return membership.organization_id
   }
 
@@ -275,63 +255,97 @@ async function getOrganizationName(
   )
 }
 
-function getStartOfToday(): Date {
-  const now = new Date()
+function getDatePartsInTimeZone(
+  value: Date,
+  timeZone: string,
+): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: normalizeTimeZone(timeZone),
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(value)
 
-  return new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
+  const values = new Map(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
+
+  return {
+    year: Number(values.get('year')),
+    month: Number(values.get('month')),
+    day: Number(values.get('day')),
+  }
+}
+
+function formatDateKey(
+  year: number,
+  month: number,
+  day: number,
+): string {
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+function getDateKeyInTimeZone(
+  value: Date,
+  timeZone: string,
+): string {
+  const parts = getDatePartsInTimeZone(value, timeZone)
+  return formatDateKey(parts.year, parts.month, parts.day)
+}
+
+function addDaysToDateKey(
+  dateKey: string,
+  days: number,
+): string {
+  const [year, month, day] = dateKey
+    .split('-')
+    .map(Number)
+  const value = new Date(Date.UTC(year, month - 1, day))
+  value.setUTCDate(value.getUTCDate() + days)
+  return formatDateKey(
+    value.getUTCFullYear(),
+    value.getUTCMonth() + 1,
+    value.getUTCDate(),
   )
 }
 
-function getStartOfTodayIso(): string {
-  return getStartOfToday().toISOString()
+function getTodayDateKey(timeZone: string): string {
+  return getDateKeyInTimeZone(new Date(), timeZone)
 }
 
-function getStartOfTomorrow(): Date {
-  const tomorrow = getStartOfToday()
-
-  tomorrow.setDate(tomorrow.getDate() + 1)
-
-  return tomorrow
-}
-
-function getStartOfSevenDayWindowIso(): string {
-  const start = getStartOfToday()
-
-  start.setDate(start.getDate() - 6)
-
-  return start.toISOString()
-}
-
-function getDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(
-    date.getMonth() + 1,
-  ).padStart(2, '0')
-  const day = String(date.getDate()).padStart(
-    2,
-    '0',
+function getStartOfLocalDateIso(
+  dateKey: string,
+  timeZone: string,
+): string {
+  return (
+    organizationLocalDateTimeToUtc(
+      `${dateKey}T00:00`,
+      timeZone,
+    ) ?? new Date(`${dateKey}T00:00:00.000Z`).toISOString()
   )
-
-  return `${year}-${month}-${day}`
 }
 
-function createEmptyCallsOverTime(): CallsOverTimePoint[] {
-  const start = getStartOfToday()
+function createEmptyCallsOverTime(
+  timeZone: string,
+): CallsOverTimePoint[] {
+  const todayKey = getTodayDateKey(timeZone)
   const formatter = new Intl.DateTimeFormat('en', {
+    timeZone: 'UTC',
     weekday: 'short',
   })
 
   return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(start)
-
-    date.setDate(start.getDate() - (6 - index))
+    const date = addDaysToDateKey(
+      todayKey,
+      -(6 - index),
+    )
+    const labelDate = new Date(`${date}T12:00:00.000Z`)
 
     return {
-      date: getDateKey(date),
-      label: formatter.format(date),
+      date,
+      label: formatter.format(labelDate),
       calls: 0,
     }
   })
@@ -339,8 +353,9 @@ function createEmptyCallsOverTime(): CallsOverTimePoint[] {
 
 function createCallsOverTime(
   calls: DashboardCallRow[],
+  timeZone: string,
 ): CallsOverTimePoint[] {
-  const points = createEmptyCallsOverTime()
+  const points = createEmptyCallsOverTime(timeZone)
   const pointMap = new Map(
     points.map((point) => [point.date, point]),
   )
@@ -352,7 +367,7 @@ function createCallsOverTime(
       continue
     }
 
-    const key = getDateKey(startedAt)
+    const key = getDateKeyInTimeZone(startedAt, timeZone)
     const point = pointMap.get(key)
 
     if (point) {
@@ -383,13 +398,82 @@ function createCallOutcomes(
     .sort((first, second) => second.count - first.count)
 }
 
+const connectedCallStatuses = new Set([
+  'answered',
+  'completed',
+  'connected',
+  'in-progress',
+  'in_progress',
+  'bridged',
+])
+
+const failedCallStatuses = new Set([
+  'failed',
+  'busy',
+  'no-answer',
+  'no_answer',
+  'cancelled',
+  'canceled',
+  'missed',
+])
+
+function getCallDurationSeconds(
+  call: DashboardCallRow,
+): number {
+  if (
+    typeof call.duration_seconds === 'number' &&
+    Number.isFinite(call.duration_seconds) &&
+    call.duration_seconds > 0
+  ) {
+    return call.duration_seconds
+  }
+
+  if (!call.ended_at) {
+    return 0
+  }
+
+  const startedAt = new Date(call.started_at)
+  const endedAt = new Date(call.ended_at)
+
+  if (
+    Number.isNaN(startedAt.getTime()) ||
+    Number.isNaN(endedAt.getTime())
+  ) {
+    return 0
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      (endedAt.getTime() - startedAt.getTime()) / 1000,
+    ),
+  )
+}
+
+function isConnectedCall(
+  call: DashboardCallRow,
+): boolean {
+  const status = call.status.trim().toLowerCase()
+
+  if (connectedCallStatuses.has(status)) {
+    return true
+  }
+
+  return (
+    getCallDurationSeconds(call) > 0 &&
+    !failedCallStatuses.has(status)
+  )
+}
+
 function calculateTotalDurationSeconds(
   calls: DashboardCallRow[],
 ): number {
   return calls.reduce(
     (total, call) =>
       total +
-      Math.max(call.duration_seconds ?? 0, 0),
+      (isConnectedCall(call)
+        ? getCallDurationSeconds(call)
+        : 0),
     0,
   )
 }
@@ -397,36 +481,15 @@ function calculateTotalDurationSeconds(
 function calculateAverageDurationSeconds(
   calls: DashboardCallRow[],
 ): number {
-  const callsWithDuration = calls.filter(
-    (call) =>
-      typeof call.duration_seconds === 'number' &&
-      call.duration_seconds > 0,
-  )
+  const connectedCalls = calls.filter(isConnectedCall)
 
-  if (callsWithDuration.length === 0) {
+  if (connectedCalls.length === 0) {
     return 0
   }
 
-  const totalDuration = calculateTotalDurationSeconds(
-    callsWithDuration,
-  )
-
   return Math.round(
-    totalDuration / callsWithDuration.length,
-  )
-}
-
-function isConnectedCall(
-  call: DashboardCallRow,
-): boolean {
-  /*
-   * A positive call duration is used as the provider-neutral
-   * connected-call signal until a telephony provider supplies
-   * a dedicated answered/connected event.
-   */
-  return (
-    typeof call.duration_seconds === 'number' &&
-    call.duration_seconds > 0
+    calculateTotalDurationSeconds(connectedCalls) /
+      connectedCalls.length,
   )
 }
 
@@ -462,13 +525,14 @@ function createContactNameMap(
 function createDashboardFollowUps(
   tasks: DashboardTaskRow[],
   contactNames: Map<string, string>,
+  timeZone: string,
 ): {
   overdue: DashboardFollowUp[]
   today: DashboardFollowUp[]
   upcoming: DashboardFollowUp[]
 } {
-  const startOfToday = getStartOfToday().getTime()
-  const startOfTomorrow = getStartOfTomorrow().getTime()
+  const todayKey = getTodayDateKey(timeZone)
+  const tomorrowKey = addDaysToDateKey(todayKey, 1)
 
   const followUps = tasks
     .map((task): DashboardFollowUp | null => {
@@ -495,16 +559,17 @@ function createDashboardFollowUps(
     )
 
   return {
-    overdue: followUps.filter(
-      (task) => new Date(task.dueAt).getTime() < startOfToday,
+    overdue: followUps.filter((task) =>
+      getDateKeyInTimeZone(new Date(task.dueAt), timeZone) <
+      todayKey,
     ),
-    today: followUps.filter((task) => {
-      const dueAt = new Date(task.dueAt).getTime()
-
-      return dueAt >= startOfToday && dueAt < startOfTomorrow
-    }),
-    upcoming: followUps.filter(
-      (task) => new Date(task.dueAt).getTime() >= startOfTomorrow,
+    today: followUps.filter((task) =>
+      getDateKeyInTimeZone(new Date(task.dueAt), timeZone) ===
+      todayKey,
+    ),
+    upcoming: followUps.filter((task) =>
+      getDateKeyInTimeZone(new Date(task.dueAt), timeZone) >=
+      tomorrowKey,
     ),
   }
 }
@@ -542,7 +607,9 @@ function createRecentActivity(
     .slice(0, 6)
 }
 
-export async function getDashboardData(): Promise<DashboardData> {
+export async function getDashboardData(
+  timeZone = 'UTC',
+): Promise<DashboardData> {
   try {
     const supabase =
       await createServerSupabaseClient()
@@ -557,11 +624,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     )
 
     const organizationId =
-      await getCurrentOrganizationId(
-        supabase,
-        userId,
-        profile,
-      )
+      await getCurrentOrganizationId(userId)
 
     const organizationName =
       await getOrganizationName(
@@ -569,9 +632,20 @@ export async function getDashboardData(): Promise<DashboardData> {
         organizationId,
       )
 
-    const todayIso = getStartOfTodayIso()
-    const sevenDayWindowIso =
-      getStartOfSevenDayWindowIso()
+    const normalizedTimeZone = normalizeTimeZone(timeZone)
+    const todayKey = getTodayDateKey(normalizedTimeZone)
+    const todayIso = getStartOfLocalDateIso(
+      todayKey,
+      normalizedTimeZone,
+    )
+    const tomorrowIso = getStartOfLocalDateIso(
+      addDaysToDateKey(todayKey, 1),
+      normalizedTimeZone,
+    )
+    const sevenDayWindowIso = getStartOfLocalDateIso(
+      addDaysToDateKey(todayKey, -6),
+      normalizedTimeZone,
+    )
 
     const [
       contactsCountResult,
@@ -598,7 +672,8 @@ export async function getDashboardData(): Promise<DashboardData> {
           head: true,
         })
         .eq('organization_id', organizationId)
-        .gte('started_at', todayIso),
+        .gte('started_at', todayIso)
+        .lt('started_at', tomorrowIso),
 
       supabase
         .from('campaigns')
@@ -619,6 +694,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             status,
             duration_seconds,
             started_at,
+            ended_at,
             created_at
           `,
         )
@@ -652,6 +728,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             status,
             duration_seconds,
             started_at,
+            ended_at,
             created_at
           `,
         )
@@ -671,6 +748,7 @@ export async function getDashboardData(): Promise<DashboardData> {
             status,
             duration_seconds,
             started_at,
+            ended_at,
             created_at
           `,
         )
@@ -781,7 +859,7 @@ export async function getDashboardData(): Promise<DashboardData> {
           ? contactNames.get(call.contact_id) ??
             'Unknown contact'
           : 'Unknown contact',
-        durationSeconds: call.duration_seconds,
+        durationSeconds: getCallDurationSeconds(call),
         direction: call.direction,
         status: call.status,
         started_at: call.started_at,
@@ -790,6 +868,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     const followUps = createDashboardFollowUps(
       pendingTasks,
       contactNames,
+      normalizedTimeZone,
     )
 
     const connectedCalls = allCalls.filter(
@@ -832,7 +911,10 @@ export async function getDashboardData(): Promise<DashboardData> {
       recentContacts,
       recentCalls,
       callsOverTime:
-        createCallsOverTime(sevenDayCalls),
+        createCallsOverTime(
+          sevenDayCalls,
+          normalizedTimeZone,
+        ),
       callOutcomes:
         createCallOutcomes(allCalls),
       recentActivity: createRecentActivity(

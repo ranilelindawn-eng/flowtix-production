@@ -32,6 +32,8 @@ type ValueRow = {
   kpi_definitions: DefinitionRow | DefinitionRow[] | null
 }
 
+const KPI_SNAPSHOT_MAX_AGE_MS = 15 * 60 * 1000
+
 const standardDefinitions = [
   ['won_revenue', 'Won revenue', 'sales', 'currency', 'higher_is_better'],
   ['pipeline_value', 'Open pipeline', 'sales', 'currency', 'higher_is_better'],
@@ -229,8 +231,33 @@ export async function getKpiOverview(period: KpiPeriod, collectWhenMissing = tru
     const snapshot = await collectKpiSnapshot(period)
     return { snapshot, history: [snapshot] }
   }
+
   const current = (snapshots?.[0] ?? null) as SnapshotRow | null
   if (!current) return { snapshot: null, history: [] }
+
+  if (collectWhenMissing) {
+    const capturedAt = new Date(current.captured_at).getTime()
+    const snapshotIsStale =
+      !Number.isFinite(capturedAt) ||
+      Date.now() - capturedAt >= KPI_SNAPSHOT_MAX_AGE_MS
+
+    if (snapshotIsStale) {
+      const snapshot = await collectKpiSnapshot(period)
+      return {
+        snapshot,
+        history: [
+          snapshot,
+          ...((snapshots ?? []) as SnapshotRow[]).map((row) => ({
+            id: row.id,
+            period: row.period,
+            periodStart: row.period_start,
+            periodEnd: row.period_end,
+            capturedAt: row.captured_at,
+          })),
+        ].slice(0, 12),
+      }
+    }
+  }
   const { data: valueRows, error: valueError } = await supabase
     .from('kpi_values')
     .select('definition_id,value,previous_value,change_percent,kpi_definitions(id,key,name,description,category,value_format,direction,target_value,is_active,position)')

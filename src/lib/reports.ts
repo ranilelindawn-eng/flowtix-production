@@ -59,8 +59,9 @@ export type ReportsData = {
   agents: AgentPerformance[]
 }
 
-const connectedStatuses = new Set(['answered', 'completed', 'connected', 'in-progress'])
-const missedStatuses = new Set(['busy', 'failed', 'no-answer', 'canceled', 'missed'])
+const connectedStatuses = new Set(['answered', 'completed', 'connected', 'in-progress', 'in_progress', 'bridged'])
+const failedStatuses = new Set(['failed', 'busy', 'no-answer', 'no_answer', 'canceled', 'cancelled', 'missed'])
+const missedStatuses = new Set(['busy', 'no-answer', 'no_answer', 'missed'])
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : ''
@@ -76,6 +77,16 @@ function dateKey(value: unknown): string | null {
   const date = new Date(raw)
   if (!raw || Number.isNaN(date.getTime())) return null
   return date.toISOString().slice(0, 10)
+}
+
+function dateSeconds(startValue: unknown, endValue: unknown): number {
+  const startRaw = asString(startValue)
+  const endRaw = asString(endValue)
+  if (!startRaw || !endRaw) return 0
+  const start = new Date(startRaw).getTime()
+  const end = new Date(endRaw).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0
+  return Math.round((end - start) / 1000)
 }
 
 function getRangeDays(range: ReportRange): number {
@@ -147,7 +158,7 @@ export async function getReportsData(range: ReportRange): Promise<ReportsData> {
   ] = await Promise.all([
     supabase
       .from('calls')
-      .select('id,status,duration_seconds,created_by,started_at,created_at')
+      .select('id,status,duration_seconds,created_by,started_at,ended_at,created_at,provider_status_raw,routing_status')
       .eq('organization_id', organizationId)
       .gte('created_at', startIso),
     supabase
@@ -239,21 +250,32 @@ export async function getReportsData(range: ReportRange): Promise<ReportsData> {
   }
 
   for (const call of calls) {
-    const status = asString(call.status).toLowerCase()
-    const duration = asNumber(call.duration_seconds)
+    const status = (
+      asString(call.provider_status_raw) ||
+      asString(call.routing_status) ||
+      asString(call.status)
+    ).toLowerCase()
+    const duration = Math.max(
+      0,
+      asNumber(call.duration_seconds) || dateSeconds(call.started_at, call.ended_at),
+    )
     const userId = asString(call.created_by)
     const agent = agentMap.get(userId)
-    const connected = connectedStatuses.has(status) || duration > 0
+    const connected =
+      connectedStatuses.has(status) ||
+      (duration > 0 && !failedStatuses.has(status))
 
     if (connected) connectedCalls += 1
     if (missedStatuses.has(status)) missedCalls += 1
-    totalTalkSeconds += duration
+    if (connected) totalTalkSeconds += duration
 
     if (agent) {
       agent.calls += 1
       agent.activities += 1
-      agent.talkSeconds += duration
-      if (connected) agent.connectedCalls += 1
+      if (connected) {
+        agent.talkSeconds += duration
+        agent.connectedCalls += 1
+      }
     }
 
     incrementDaily(dailyMap, call, 'started_at', (metric) => {
@@ -338,7 +360,7 @@ export async function getReportsData(range: ReportRange): Promise<ReportsData> {
     totalCalls: calls.length,
     connectedCalls,
     missedCalls,
-    averageCallSeconds: calls.length > 0 ? Math.round(totalTalkSeconds / calls.length) : 0,
+    averageCallSeconds: connectedCalls > 0 ? Math.round(totalTalkSeconds / connectedCalls) : 0,
     totalTalkSeconds,
     activity: {
       calls: calls.length,

@@ -44,6 +44,26 @@ export type PlatformAIMetrics = {
   averageLatencyMsLast24Hours: number
 }
 
+export type PlatformAIDimensionMetric = {
+  key: string
+  label: string
+  requests: number
+  completed: number
+  failed: number
+  inputTokens: number
+  outputTokens: number
+  costMicros: number
+  averageLatencyMs: number
+  successRate: number
+}
+
+export type PlatformAIDiagnostics = {
+  featureMetrics: PlatformAIDimensionMetric[]
+  modelMetrics: PlatformAIDimensionMetric[]
+  promptMetrics: PlatformAIDimensionMetric[]
+  providerMetrics: PlatformAIDimensionMetric[]
+}
+
 export type PlatformAIHealthCheck = {
   id: string
   provider: AIProviderName
@@ -142,6 +162,32 @@ export async function getPlatformAIProviders(): Promise<PlatformAIProviderStatus
   })
 }
 
+
+function parseDimensionMetrics(value: unknown): PlatformAIDimensionMetric[] {
+  if (!Array.isArray(value)) return []
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return []
+
+    const key = asString(item.key)
+    const label = asString(item.label)
+    if (!key || !label) return []
+
+    return [{
+      key,
+      label,
+      requests: asNumber(item.requests),
+      completed: asNumber(item.completed),
+      failed: asNumber(item.failed),
+      inputTokens: asNumber(item.inputTokens),
+      outputTokens: asNumber(item.outputTokens),
+      costMicros: asNumber(item.costMicros),
+      averageLatencyMs: asNumber(item.averageLatencyMs),
+      successRate: asNumber(item.successRate),
+    }]
+  })
+}
+
 export async function getPlatformAIMetrics(): Promise<PlatformAIMetrics> {
   await requirePlatformPermission('platform.ai.manage')
 
@@ -178,6 +224,34 @@ export async function getPlatformAIMetrics(): Promise<PlatformAIMetrics> {
     requestsLast24Hours: asNumber(data.requestsLast24Hours),
     failuresLast24Hours: asNumber(data.failuresLast24Hours),
     averageLatencyMsLast24Hours: asNumber(data.averageLatencyMsLast24Hours),
+  }
+}
+
+
+export async function getPlatformAIDiagnostics(): Promise<PlatformAIDiagnostics> {
+  await requirePlatformPermission('platform.ai.manage')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('platform_ai_metrics')
+
+  if (error) {
+    throw new Error(`Unable to load platform AI diagnostics: ${error.message}`)
+  }
+
+  if (!isRecord(data)) {
+    return {
+      featureMetrics: [],
+      modelMetrics: [],
+      promptMetrics: [],
+      providerMetrics: [],
+    }
+  }
+
+  return {
+    featureMetrics: parseDimensionMetrics(data.featureMetrics),
+    modelMetrics: parseDimensionMetrics(data.modelMetrics),
+    promptMetrics: parseDimensionMetrics(data.promptMetrics),
+    providerMetrics: parseDimensionMetrics(data.providerMetrics),
   }
 }
 

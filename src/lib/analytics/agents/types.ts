@@ -9,6 +9,7 @@ export type AgentPerformanceMetric = {
   role: string
   availability: 'available' | 'away' | 'offline' | 'dnd'
   activityState: 'idle' | 'ringing' | 'busy' | 'wrap_up'
+  onDuty: boolean
   totalCalls: number
   connectedCalls: number
   failedCalls: number

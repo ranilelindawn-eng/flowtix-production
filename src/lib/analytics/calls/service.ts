@@ -82,7 +82,14 @@ function dateSeconds(start: unknown, end: unknown): number {
 }
 
 function effectiveStatus(row: DbRow): string {
-  return (asString(row.provider_status_raw) || asString(row.routing_status) || asString(row.status)).toLowerCase()
+  // Flowtix's canonical call lifecycle is the source of truth. Provider/raw
+  // statuses are diagnostic and can contain values such as NORMAL_CLEARING
+  // that should not override a canonical `completed` call. Fall back to
+  // routing/provider values only for older/incomplete records without a
+  // canonical status.
+  const canonical = asString(row.status).toLowerCase()
+  if (canonical) return canonical
+  return (asString(row.routing_status) || asString(row.provider_status_raw)).toLowerCase()
 }
 
 function buildTrend(period: ReportRange, end: Date): CallTrendPoint[] {
@@ -453,8 +460,13 @@ export async function getCallAnalyticsOverview(period: ReportRange): Promise<Cal
     .maybeSingle()
   if (error) throw new Error(`Unable to load call analytics: ${error.message}`)
 
-  const snapshot = latest
-    ? mapStoredSnapshot(latest as StoredSnapshotRow)
+  const latestSnapshot = latest ? mapStoredSnapshot(latest as StoredSnapshotRow) : null
+  const latestCapturedAt = latestSnapshot ? new Date(latestSnapshot.capturedAt).getTime() : Number.NaN
+  const snapshotIsFresh = Number.isFinite(latestCapturedAt)
+    && Date.now() - latestCapturedAt < 15 * 60 * 1000
+
+  const snapshot = latestSnapshot && snapshotIsFresh
+    ? latestSnapshot
     : await collectCallAnalyticsSnapshot(period)
 
   const { data: history, error: historyError } = await supabase

@@ -3,9 +3,11 @@ import { Activity, Bot, BrainCircuit, Clock3, ShieldCheck } from 'lucide-react'
 
 import PlatformAIProviderCard from '@/components/platform/PlatformAIProviderCard'
 import {
+  getPlatformAIDiagnostics,
   getPlatformAIHealthChecks,
   getPlatformAIMetrics,
   getPlatformAIProviders,
+  type PlatformAIDimensionMetric,
 } from '@/lib/platform/ai'
 
 function formatDate(value: string): string {
@@ -26,9 +28,10 @@ function cost(micros: number): string {
 }
 
 export default async function PlatformAIPage() {
-  const [providers, metrics, healthChecks] = await Promise.all([
+  const [providers, metrics, diagnostics, healthChecks] = await Promise.all([
     getPlatformAIProviders(),
     getPlatformAIMetrics(),
+    getPlatformAIDiagnostics(),
     getPlatformAIHealthChecks(),
   ])
 
@@ -129,6 +132,24 @@ export default async function PlatformAIPage() {
         ))}
       </section>
 
+      <section>
+        <div>
+          <p className="text-sm font-medium text-blue-300">Developer diagnostics</p>
+          <h2 className="mt-2 text-xl font-semibold text-white">AI performance breakdowns</h2>
+          <p className="mt-2 text-sm text-slate-500">
+            Platform-wide aggregates for the last 30 days. These diagnostics are restricted
+            to authorized Flowtix Platform staff and are not exposed in customer workspaces.
+          </p>
+        </div>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          <PlatformAIDimension title="Feature adoption" rows={diagnostics.featureMetrics} />
+          <PlatformAIDimension title="Model performance" rows={diagnostics.modelMetrics} />
+          <PlatformAIDimension title="Prompt performance" rows={diagnostics.promptMetrics} />
+          <PlatformAIDimension title="Provider performance" rows={diagnostics.providerMetrics} />
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
         <div className="border-b border-white/10 px-6 py-5">
           <h2 className="font-semibold text-white">Provider verification history</h2>
@@ -191,5 +212,58 @@ export default async function PlatformAIPage() {
         )}
       </section>
     </div>
+  )
+}
+
+
+function PlatformAIDimension({
+  title,
+  rows,
+}: {
+  title: string
+  rows: PlatformAIDimensionMetric[]
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+      <div className="border-b border-white/10 px-6 py-5">
+        <h3 className="font-semibold text-white">{title}</h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-white/10 text-left text-sm">
+          <thead className="bg-white/[0.025] text-xs uppercase tracking-wider text-slate-500">
+            <tr>
+              <th className="px-5 py-3 font-medium">Name</th>
+              <th className="px-5 py-3 font-medium">Requests</th>
+              <th className="px-5 py-3 font-medium">Success</th>
+              <th className="px-5 py-3 font-medium">Latency</th>
+              <th className="px-5 py-3 font-medium">Tokens</th>
+              <th className="px-5 py-3 font-medium">Cost</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/10">
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-5 py-8 text-center text-slate-500">
+                  No AI usage recorded in the last 30 days.
+                </td>
+              </tr>
+            ) : (
+              rows.slice(0, 12).map((row) => (
+                <tr key={row.key}>
+                  <td className="px-5 py-3 capitalize text-slate-200">{row.label}</td>
+                  <td className="px-5 py-3 text-slate-300">{row.requests.toLocaleString()}</td>
+                  <td className="px-5 py-3 text-emerald-300">{row.successRate.toFixed(1)}%</td>
+                  <td className="px-5 py-3 text-slate-300">{row.averageLatencyMs.toFixed(0)} ms</td>
+                  <td className="px-5 py-3 text-slate-300">
+                    {(row.inputTokens + row.outputTokens).toLocaleString()}
+                  </td>
+                  <td className="px-5 py-3 text-blue-300">{cost(row.costMicros)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
