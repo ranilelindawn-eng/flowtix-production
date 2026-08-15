@@ -43,7 +43,7 @@ export async function getOrCreateCallControlSession(input: {
     .upsert({
       organization_id: input.organizationId,
       call_id: input.callId,
-      provider: input.provider ?? 'twilio',
+      provider: input.provider ?? 'signalwire',
       conference_name: conferenceName,
       state: 'preparing',
     }, { onConflict: 'organization_id,call_id' })

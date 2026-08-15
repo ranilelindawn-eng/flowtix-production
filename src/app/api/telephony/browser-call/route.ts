@@ -42,13 +42,13 @@ export async function POST(request: Request) {
     const toNumber = text(payload.toNumber)
     const contactId = text(payload.contactId) || null
 
-    if (!isTelephonyProvider(providerValue) || providerValue === 'twilio') {
+    if (!isTelephonyProvider(providerValue) || providerValue !== 'signalwire') {
       return NextResponse.json(
-        { error: 'Browser call registration is only required for Telnyx, SignalWire, or Plivo.' },
+        { error: 'Only SignalWire browser call registration is supported.' },
         { status: 400 },
       )
     }
-    const provider = providerValue as Exclude<ConfiguredTelephonyProviderName, 'twilio'>
+    const provider: ConfiguredTelephonyProviderName = 'signalwire'
 
     if (
       !providerCallId ||

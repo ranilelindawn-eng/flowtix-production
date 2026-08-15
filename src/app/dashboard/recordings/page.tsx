@@ -318,7 +318,7 @@ export default async function RecordingsPage({
               Automatic call capture
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-400">
-              Secure playback, download, transcription, and AI analysis for recordings reported by Twilio, Telnyx, SignalWire, or Plivo.
+              Secure playback, download, transcription, and AI analysis for SignalWire call recordings.
             </p>
           </div>
           <span className="text-sm text-slate-400">
@@ -332,7 +332,7 @@ export default async function RecordingsPage({
               const provider =
                 typeof recording.provider === 'string' && recording.provider
                   ? recording.provider
-                  : 'twilio'
+                  : 'signalwire'
               const providerLabel =
                 provider === 'signalwire'
                   ? 'SignalWire'
@@ -393,7 +393,7 @@ export default async function RecordingsPage({
           </div>
         ) : (
           <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm leading-6 text-slate-400">
-            Provider recordings will appear here after your connected Twilio, Telnyx, SignalWire, or Plivo account reports a completed recording.
+            SignalWire recordings will appear here after a completed recording is reported.
           </p>
         )}
       </section>

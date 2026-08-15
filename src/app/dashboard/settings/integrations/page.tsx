@@ -122,61 +122,10 @@ const cards: Card[] = [
     href: '/api/integrations/oauth/connect?provider=zoom',
   },
   {
-    provider: 'twilio',
-    name: 'Twilio',
-    description:
-      'Connect the subscriber Twilio account, then securely import its owned phone numbers.',
-    icon: Phone,
-    method: 'credentials',
-    fields: [
-      {
-        name: 'accountSid',
-        label: 'Account SID',
-      },
-      {
-        name: 'authToken',
-        label: 'Auth Token',
-        type: 'password',
-      },
-      {
-        name: 'apiKeySid',
-        label: 'API Key SID',
-      },
-      {
-        name: 'apiKeySecret',
-        label: 'API Key Secret',
-        type: 'password',
-      },
-      {
-        name: 'twimlAppSid',
-        label: 'TwiML App SID',
-      },
-    ],
-  },
-  {
-    provider: 'telnyx',
-    name: 'Telnyx',
-    description:
-      'Connect the subscriber Telnyx API key and Credential SIP Connection. Flowtix securely creates the browser credential automatically.',
-    icon: Phone,
-    method: 'credentials',
-    fields: [
-      {
-        name: 'apiKey',
-        label: 'API Key',
-        type: 'password',
-      },
-      {
-        name: 'config_connection_id',
-        label: 'Credential Connection ID',
-      },
-    ],
-  },
-  {
     provider: 'signalwire',
     name: 'SignalWire',
     description:
-      'Connect the subscriber SignalWire project and space. Flowtix securely creates short-lived browser JWTs for WebRTC calling.',
+      'SignalWire powers Flowtix browser calling. The current workspace connection is used for secure short-lived WebRTC sessions.',
     icon: Phone,
     method: 'credentials',
     fields: [
@@ -192,25 +141,6 @@ const cards: Card[] = [
       {
         name: 'config_space_url',
         label: 'Space URL',
-      },
-    ],
-  },
-  {
-    provider: 'plivo',
-    name: 'Plivo',
-    description:
-      'Connect the subscriber Plivo account. Flowtix provisions browser endpoints for agents and configures owned numbers when inbound routing is enabled.',
-    icon: Phone,
-    method: 'credentials',
-    fields: [
-      {
-        name: 'authId',
-        label: 'Auth ID',
-      },
-      {
-        name: 'authToken',
-        label: 'Auth Token',
-        type: 'password',
       },
     ],
   },
@@ -294,7 +224,7 @@ export default async function IntegrationsPage({
     <div className="space-y-8">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">
-          Subscriber-owned connections
+          Workspace integrations
         </p>
 
         <h1 className="mt-2 text-3xl font-bold">
@@ -302,10 +232,7 @@ export default async function IntegrationsPage({
         </h1>
 
         <p className="mt-2 max-w-3xl text-muted-foreground">
-          Each organization connects its own
-          provider accounts. Provider identities
-          and encrypted credentials are isolated
-          by organization.
+          Connect workspace applications here. Cloud calling is standardized on SignalWire; retired telephony providers are no longer available.
         </p>
       </div>
 
@@ -511,10 +438,7 @@ export default async function IntegrationsPage({
                     ) : null}
 
                     {[
-                      'twilio',
-                      'telnyx',
                       'signalwire',
-                      'plivo',
                     ].includes(
                       card.provider,
                     ) ? (
@@ -577,10 +501,7 @@ export default async function IntegrationsPage({
                 ) : null}
 
                 {[
-                  'twilio',
-                  'telnyx',
                   'signalwire',
-                  'plivo',
                 ].includes(card.provider) &&
                 isConnected
                   ? (() => {

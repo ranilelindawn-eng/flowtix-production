@@ -4,7 +4,7 @@ type ProviderNoticeProps = {
 }
 
 export default function ProviderNotice({
-  providerName = 'Twilio or Telnyx',
+  providerName = 'SignalWire',
   configured = false,
 }: ProviderNoticeProps) {
   if (configured) {
@@ -35,13 +35,13 @@ export default function ProviderNotice({
 
         <div>
           <h3 className="text-sm font-semibold text-blue-300">
-            Calling Provider Required
+            SignalWire Calling Required
           </h3>
 
           <p className="mt-1 text-sm leading-6 text-blue-200/90">
             This dialer interface is fully functional for the
             application workflow, but it will not place real
-            telephone calls until a supported provider such as{' '}
+            telephone calls until SignalWire calling is available for{' '}
             <span className="font-semibold">
               {providerName}
             </span>{' '}

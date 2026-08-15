@@ -330,126 +330,44 @@ function deliveryCallbackUrl(
 async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
   const recipient = normalizeE164(message.recipient, 'SMS recipient')
   const provider = await getOrganizationActiveTelephonyProvider(message.organization_id)
+  if (provider !== 'signalwire') {
+    throw new ProviderRequestError('Flowtix messaging uses SignalWire only.', {
+      retryable: false,
+      code: 'PROVIDER_RETIRED',
+    })
+  }
+
   const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
     message.organization_id,
-    provider,
+    'signalwire',
   )
-  const sender = await getSmsSender(message.organization_id, provider)
-  const statusCallback = deliveryCallbackUrl(
-    provider,
-    message.id,
-  )
-
-  if (provider === 'twilio') {
-    const accountSid = requiredCredential(connection.credentials.accountSid, 'Twilio Account SID')
-    const authToken = requiredCredential(connection.credentials.authToken, 'Twilio Auth Token')
-    const response = await fetch(
-      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          To: recipient,
-          From: sender,
-          Body: message.body,
-          StatusCallback: statusCallback,
-        }),
-        cache: 'no-store',
-      },
-    )
-    const payload = await assertProviderResponse(response, 'Twilio rejected the SMS message.')
-    return {
-      provider,
-      messageId: typeof payload.sid === 'string' ? payload.sid : null,
-      sender,
-    }
-  }
-
-  if (provider === 'telnyx') {
-    const apiKey = requiredCredential(connection.credentials.apiKey, 'Telnyx API Key')
-    const response = await fetch('https://api.telnyx.com/v2/messages', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: sender,
-        to: recipient,
-        text: message.body,
-        webhook_url: statusCallback,
-      }),
-      cache: 'no-store',
-    })
-    const payload = await assertProviderResponse(response, 'Telnyx rejected the SMS message.')
-    const data = payload.data && typeof payload.data === 'object'
-      ? payload.data as Record<string, unknown>
-      : {}
-    return {
-      provider,
-      messageId: typeof data.id === 'string' ? data.id : null,
-      sender,
-    }
-  }
-
-  if (provider === 'signalwire') {
-    const projectId = requiredCredential(connection.credentials.projectId, 'SignalWire Project ID')
-    const apiToken = requiredCredential(connection.credentials.apiToken, 'SignalWire API Token')
-    const rawSpaceUrl = requiredCredential(connection.config.space_url, 'SignalWire Space URL').replace(/\/$/, '')
-    const spaceUrl = /^https?:\/\//i.test(rawSpaceUrl) ? rawSpaceUrl : `https://${rawSpaceUrl}`
-    const response = await fetch(
-      `${spaceUrl}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/Messages.json`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          To: recipient,
-          From: sender,
-          Body: message.body,
-          StatusCallback: statusCallback,
-        }),
-        cache: 'no-store',
-      },
-    )
-    const payload = await assertProviderResponse(response, 'SignalWire rejected the SMS message.')
-    return {
-      provider,
-      messageId: typeof payload.sid === 'string' ? payload.sid : null,
-      sender,
-    }
-  }
-
-  const authId = requiredCredential(connection.credentials.authId, 'Plivo Auth ID')
-  const authToken = requiredCredential(connection.credentials.authToken, 'Plivo Auth Token')
+  const sender = await getSmsSender(message.organization_id, 'signalwire')
+  const statusCallback = deliveryCallbackUrl('signalwire', message.id)
+  const projectId = requiredCredential(connection.credentials.projectId, 'SignalWire Project ID')
+  const apiToken = requiredCredential(connection.credentials.apiToken, 'SignalWire API Token')
+  const rawSpaceUrl = requiredCredential(connection.config.space_url, 'SignalWire Space URL').replace(/\/$/, '')
+  const spaceUrl = /^https?:\/\//i.test(rawSpaceUrl) ? rawSpaceUrl : `https://${rawSpaceUrl}`
   const response = await fetch(
-    `https://api.plivo.com/v1/Account/${encodeURIComponent(authId)}/Message/`,
+    `${spaceUrl}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/Messages.json`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Basic ${Buffer.from(`${authId}:${authToken}`).toString('base64')}`,
-        'Content-Type': 'application/json',
+        Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        src: sender,
-        dst: recipient,
-        text: message.body,
-        url: statusCallback,
-        method: 'POST',
+      body: new URLSearchParams({
+        To: recipient,
+        From: sender,
+        Body: message.body,
+        StatusCallback: statusCallback,
       }),
       cache: 'no-store',
     },
   )
-  const payload = await assertProviderResponse(response, 'Plivo rejected the SMS message.')
-  const uuids = Array.isArray(payload.message_uuid) ? payload.message_uuid : []
+  const payload = await assertProviderResponse(response, 'SignalWire rejected the SMS message.')
   return {
-    provider,
-    messageId: typeof uuids[0] === 'string' ? uuids[0] : null,
+    provider: 'signalwire',
+    messageId: typeof payload.sid === 'string' ? payload.sid : null,
     sender,
   }
 }

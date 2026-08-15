@@ -1,23 +1,12 @@
 import { Buffer } from 'node:buffer'
 
 import { NextRequest, NextResponse } from 'next/server'
-import twilio from 'twilio'
 
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
-import {
-  createTelnyxWebRtcToken,
-  getOrganizationTelnyxConfiguration,
-  getOrganizationTwilioConfiguration,
-} from '@/lib/telephony/config'
 import { getOrganizationProviderConnection } from '@/lib/telephony/provider-connections'
-import { ensurePlivoAgentEndpoint, ensureTelnyxAgentCredential } from '@/lib/telephony/provider-admin'
-import {
-  isTelephonyProvider,
-  type ConfiguredTelephonyProviderName,
-} from '@/lib/telephony/provider'
 
 function required(value: unknown, label: string): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -33,7 +22,6 @@ function normalizeSpaceUrl(value: unknown): string {
 
 async function validateSelectedCallerId(input: {
   organizationId: string
-  provider: ConfiguredTelephonyProviderName
   callerId: string
 }) {
   const supabase = await createClient()
@@ -41,7 +29,7 @@ async function validateSelectedCallerId(input: {
     .from('organization_phone_numbers')
     .select('phone_number,capabilities')
     .eq('organization_id', input.organizationId)
-    .eq('provider', input.provider)
+    .eq('provider', 'signalwire')
     .eq('phone_number', input.callerId)
     .maybeSingle()
 
@@ -55,7 +43,7 @@ async function validateSelectedCallerId(input: {
       : {}
 
   if (!data || capabilities.voice === false) {
-    throw new Error('The selected caller ID is not an active voice number in this workspace.')
+    throw new Error('The selected caller ID is not an active SignalWire voice number in this workspace.')
   }
 }
 
@@ -114,6 +102,7 @@ export async function GET(request: NextRequest) {
     const { data } = await supabase.auth.getClaims()
     const userId = data?.claims?.sub
     const organization = await getCurrentOrganization()
+
     if (typeof userId !== 'string' || !organization) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -123,12 +112,13 @@ export async function GET(request: NextRequest) {
         { status: 403 },
       )
     }
+
     await assertEntitlement('dialer.cloud', organization.organization_id)
 
-    const requestedProvider = request.nextUrl.searchParams.get('provider') ?? ''
-    if (!isTelephonyProvider(requestedProvider)) {
+    const requestedProvider = request.nextUrl.searchParams.get('provider') ?? 'signalwire'
+    if (requestedProvider !== 'signalwire') {
       return NextResponse.json(
-        { error: 'A supported provider is required.' },
+        { error: 'Flowtix cloud calling uses SignalWire only.' },
         { status: 400 },
       )
     }
@@ -143,102 +133,23 @@ export async function GET(request: NextRequest) {
 
     await validateSelectedCallerId({
       organizationId: organization.organization_id,
-      provider: requestedProvider,
       callerId,
     })
 
-    if (requestedProvider === 'telnyx') {
-      const config = await getOrganizationTelnyxConfiguration(
-        organization.organization_id,
-        callerId,
-      )
-      const agentCredential = await ensureTelnyxAgentCredential({
-        organizationId: organization.organization_id,
-        userId,
-      })
-      const token = await createTelnyxWebRtcToken({
-        ...config,
-        telephonyCredentialId: agentCredential.id,
-      })
-      return NextResponse.json({
-        provider: 'telnyx',
-        token,
-        identity: agentCredential.sipUsername || `fx_${userId.replace(/-/g, '')}`,
-        userId,
-        organizationId: organization.organization_id,
-        callerId: config.callerId,
-        expiresIn: 86400,
-      })
-    }
-
-    if (requestedProvider === 'signalwire') {
-      const relay = await createSignalWireRelayJwt({
-        organizationId: organization.organization_id,
-        userId,
-      })
-      return NextResponse.json({
-        provider: 'signalwire',
-        token: relay.token,
-        projectId: relay.projectId,
-        identity: relay.identity,
-        host: relay.host,
-        userId,
-        organizationId: organization.organization_id,
-        callerId,
-        expiresIn: 3600,
-      })
-    }
-
-    if (requestedProvider === 'plivo') {
-      await getOrganizationProviderConnection<Record<string, unknown>>(
-        organization.organization_id,
-        'plivo',
-      )
-      const endpoint = await ensurePlivoAgentEndpoint({
-        organizationId: organization.organization_id,
-        userId,
-      })
-      return NextResponse.json({
-        provider: 'plivo',
-        token: endpoint.password,
-        username: endpoint.username,
-        identity: endpoint.username,
-        userId,
-        organizationId: organization.organization_id,
-        callerId,
-        expiresIn: 3600,
-      })
-    }
-
-    const config = await getOrganizationTwilioConfiguration(
-      organization.organization_id,
-      callerId,
-    )
-    const identity = `cf_${userId.replace(/-/g, '')}`
-    const AccessToken = twilio.jwt.AccessToken
-    const token = new AccessToken(
-      config.accountSid,
-      config.apiKeySid,
-      config.apiKeySecret,
-      {
-        identity,
-        ttl: 3600,
-      },
-    )
-    token.addGrant(
-      new AccessToken.VoiceGrant({
-        outgoingApplicationSid: config.twimlAppSid,
-        incomingAllow: true,
-      }),
-    )
+    const relay = await createSignalWireRelayJwt({
+      organizationId: organization.organization_id,
+      userId,
+    })
 
     return NextResponse.json({
-      provider: 'twilio',
-      token: token.toJwt(),
-      identity,
+      provider: 'signalwire',
+      token: relay.token,
+      projectId: relay.projectId,
+      identity: relay.identity,
+      host: relay.host,
       userId,
       organizationId: organization.organization_id,
-      callerId: config.callerId,
+      callerId,
       expiresIn: 3600,
     })
   } catch (error) {
@@ -247,7 +158,7 @@ export async function GET(request: NextRequest) {
         error:
           error instanceof Error
             ? error.message
-            : 'Unable to create browser calling credentials.',
+            : 'Unable to create SignalWire browser token.',
       },
       { status: isEntitlementError(error) ? 403 : 500 },
     )

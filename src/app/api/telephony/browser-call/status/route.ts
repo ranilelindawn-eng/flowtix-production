@@ -6,7 +6,7 @@ import { isTelephonyProvider, type TelephonyCallStatus } from '@/lib/telephony/p
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
-const BROWSER_PROVIDERS = new Set(['telnyx', 'signalwire', 'plivo'])
+const BROWSER_PROVIDERS = new Set(['signalwire'])
 const ALLOWED_STATUSES = new Set<TelephonyCallStatus>([
   'initiating',
   'ringing',

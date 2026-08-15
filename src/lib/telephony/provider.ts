@@ -5,8 +5,10 @@ export type TelephonyProviderName =
   | 'signalwire'
   | 'plivo'
 
-export const TELEPHONY_PROVIDERS = ['twilio', 'telnyx', 'signalwire', 'plivo'] as const
-export type ConfiguredTelephonyProviderName = (typeof TELEPHONY_PROVIDERS)[number]
+export type ConfiguredTelephonyProviderName = 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
+
+/** Providers retained in persisted historical data. New/live Flowtix telephony is SignalWire-only. */
+export const TELEPHONY_PROVIDERS = ['signalwire'] as const
 
 export type TelephonyProviderStatus =
   | 'unconfigured'
@@ -76,18 +78,31 @@ export interface TelephonyProvider {
 }
 
 export const PROVIDER_DISPLAY_NAMES: Record<ConfiguredTelephonyProviderName, string> = {
-  twilio: 'Twilio',
-  telnyx: 'Telnyx',
+  twilio: 'Twilio (retired)',
+  telnyx: 'Telnyx (retired)',
   signalwire: 'SignalWire',
-  plivo: 'Plivo',
+  plivo: 'Plivo (retired)',
 }
 
 export function isTelephonyProvider(value: string): value is ConfiguredTelephonyProviderName {
-  return TELEPHONY_PROVIDERS.includes(value as ConfiguredTelephonyProviderName)
+  return value === 'signalwire'
 }
 
 export const DEFAULT_PROVIDER_CONFIGURATION: TelephonyProviderConfiguration = {
-  provider: 'unconfigured', displayName: 'No calling provider', status: 'unconfigured', capabilities: [], configuredAt: null, lastCheckedAt: null,
+  provider: 'unconfigured',
+  displayName: 'No calling provider',
+  status: 'unconfigured',
+  capabilities: [],
+  configuredAt: null,
+  lastCheckedAt: null,
 }
-export const PROVIDER_NOT_CONFIGURED_MESSAGE = 'A calling provider has not been configured for this workspace. Connect Twilio, Telnyx, SignalWire, or Plivo before placing live calls.'
-export class ProviderNotConfiguredError extends Error { constructor(message = PROVIDER_NOT_CONFIGURED_MESSAGE) { super(message); this.name = 'ProviderNotConfiguredError' } }
+
+export const PROVIDER_NOT_CONFIGURED_MESSAGE =
+  'SignalWire calling is not configured for this workspace.'
+
+export class ProviderNotConfiguredError extends Error {
+  constructor(message = PROVIDER_NOT_CONFIGURED_MESSAGE) {
+    super(message)
+    this.name = 'ProviderNotConfiguredError'
+  }
+}

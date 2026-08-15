@@ -84,7 +84,7 @@ export async function runTelephonyAcceptanceValidation(
         .from('organization_integrations')
         .select('id,provider,enabled,status,health_status,last_health_check_at,consecutive_failures,reauthorization_required')
         .eq('organization_id', organizationId)
-        .in('provider', ['twilio', 'telnyx', 'signalwire', 'plivo']),
+        .eq('provider', 'signalwire'),
       admin
         .from('organization_integration_secrets')
         .select('integration_id')
@@ -93,7 +93,7 @@ export async function runTelephonyAcceptanceValidation(
         .from('organization_phone_numbers')
         .select('provider,phone_number,capabilities,is_default')
         .eq('organization_id', organizationId)
-        .in('provider', ['twilio', 'telnyx', 'signalwire', 'plivo']),
+        .eq('provider', 'signalwire'),
       admin
         .from('telephony_provider_events')
         .select('provider,processed_at')
@@ -139,7 +139,7 @@ export async function runTelephonyAcceptanceValidation(
   const connected = integrations.filter((row) => row.enabled && row.status === 'connected')
 
   if (connected.length === 0) {
-    checks.push(check('provider-connection', 'Connected voice provider', 'fail', 'No connected Twilio or Telnyx integration is available.'))
+    checks.push(check('provider-connection', 'Connected voice provider', 'fail', 'No connected SignalWire integration is available.'))
   } else {
     checks.push(
       check(

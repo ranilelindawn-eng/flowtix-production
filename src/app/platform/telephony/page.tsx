@@ -26,12 +26,7 @@ type SearchParams = Promise<{
 function normalizeProvider(
   value: string | undefined,
 ): PlatformTelephonyProvider | 'all' {
-  if (
-    value === 'twilio' ||
-    value === 'telnyx' ||
-    value === 'signalwire' ||
-    value === 'plivo'
-  ) {
+  if (value === 'signalwire') {
     return value
   }
   return 'all'
@@ -136,9 +131,7 @@ export default async function PlatformTelephonyPage({
             Telephony Provider Management
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-            Cross-tenant provider health and operational controls for customer-owned
-            Twilio, Telnyx, SignalWire, and Plivo connections. Provider credentials
-            remain encrypted and are never exposed in this interface.
+            Cross-tenant SignalWire health and operational controls. Retired telephony providers are no longer exposed or accepted by Flowtix.
           </p>
         </div>
 
@@ -169,9 +162,7 @@ export default async function PlatformTelephonyPage({
         <div className="flex gap-3">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />
           <p className="text-sm leading-6 text-slate-400">
-            Customer workspaces still own their provider accounts, numbers, and
-            routing. Platform controls only provide operational verification and
-            an audited enable/disable safety switch.
+            SignalWire is the active Flowtix telephony provider. Platform controls provide operational verification and an audited enable/disable safety switch.
           </p>
         </div>
       </section>
@@ -198,10 +189,7 @@ export default async function PlatformTelephonyPage({
             className="h-11 rounded-xl border border-white/10 bg-[#050D18] px-3 text-sm text-white outline-none focus:border-blue-400/50"
           >
             <option value="all">All providers</option>
-            <option value="twilio">Twilio</option>
-            <option value="telnyx">Telnyx</option>
             <option value="signalwire">SignalWire</option>
-            <option value="plivo">Plivo</option>
           </select>
 
           <select

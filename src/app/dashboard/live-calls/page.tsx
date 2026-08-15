@@ -38,7 +38,7 @@ export default async function LiveCallsPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">Operations</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Live calls</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Monitor active calls from Twilio, Telnyx, SignalWire, and Plivo in one provider-neutral view.
+          Monitor active SignalWire calls in one provider-aware view.
         </p>
       </div>
 
@@ -61,7 +61,7 @@ export default async function LiveCallsPage() {
             <Activity className="mx-auto h-9 w-9 text-slate-600" />
             <p className="mt-3 font-semibold text-white">No active calls</p>
             <p className="mt-1 text-sm text-slate-400">
-              Calls appear here automatically when the connected Twilio, Telnyx, SignalWire, or Plivo provider reports an active call.
+              Calls appear here automatically when SignalWire reports an active call.
             </p>
           </div>
         ) : (

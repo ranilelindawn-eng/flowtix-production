@@ -25,6 +25,9 @@ export async function getOrganizationProviderConnection<T extends Record<string,
   organizationId: string,
   provider: ConfiguredTelephonyProviderName,
 ): Promise<ProviderConnection<T>> {
+  if (provider !== 'signalwire') {
+    throw new Error('This telephony provider has been retired. Flowtix uses SignalWire only.')
+  }
   const normalizedOrganizationId = requireOrganizationId(organizationId)
   const admin = createTelephonyAdminClient()
   const { data: integration, error } = await admin
@@ -107,6 +110,6 @@ export async function getOrganizationActiveTelephonyProvider(
   }
 
   throw new Error(
-    'Connect a telephony provider and import an owned voice-capable phone number before using the cloud dialer.',
+    'Connect SignalWire and import an owned voice-capable phone number before using the cloud dialer.',
   )
 }

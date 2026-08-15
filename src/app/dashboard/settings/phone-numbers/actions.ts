@@ -27,7 +27,7 @@ export async function addPhoneNumber(formData: FormData) {
     organization_id: organizationId,
     phone_number: phone,
     friendly_name: clean(formData, 'friendly_name') || phone,
-    provider: clean(formData, 'provider') || 'twilio',
+    provider: 'signalwire',
     capabilities: {
       voice: formData.get('voice') === 'on',
       sms: formData.get('sms') === 'on',
@@ -86,6 +86,10 @@ export async function configurePhoneNumberInboundRoute(formData: FormData) {
     target_queue: queueId,
   })
   if (error) throw new Error(`Unable to configure inbound routing: ${error.message}`)
+
+  if (number.provider !== 'signalwire') {
+    throw new Error('Only SignalWire phone numbers are supported.')
+  }
 
   if (route !== 'none') {
     if (!number.provider_number_id) {

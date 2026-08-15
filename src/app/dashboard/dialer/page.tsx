@@ -29,7 +29,7 @@ export type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
-  provider: 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
+  provider: 'signalwire'
 }
 
 function DialerLocked({
@@ -90,7 +90,7 @@ function DialerLocked({
           {[
             'Browser-based outbound calling',
             'Workspace caller ID selection',
-            'Provider-aware call controls',
+            'SignalWire call controls',
           ].map((feature) => (
             <div
               key={feature}
@@ -154,7 +154,7 @@ export default async function DialerPage({
       'id,provider,phone_number,friendly_name,is_default,capabilities',
     )
     .eq('organization_id', organization.organization_id)
-    .in('provider', ['twilio', 'telnyx', 'signalwire', 'plivo'])
+    .eq('provider', 'signalwire')
     .order('is_default', { ascending: false })
     .order('friendly_name', { ascending: true })
 
@@ -178,12 +178,7 @@ export default async function DialerPage({
       phoneNumber: row.phone_number,
       friendlyName: row.friendly_name,
       isDefault: row.is_default,
-      provider:
-        row.provider === 'telnyx' ||
-        row.provider === 'signalwire' ||
-        row.provider === 'plivo'
-          ? row.provider
-          : 'twilio',
+      provider: 'signalwire',
     }))
 
   return (

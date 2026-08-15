@@ -106,12 +106,7 @@ export type PlatformTelephonyDirectory = {
 }
 
 function parseProvider(value: unknown): PlatformTelephonyProvider | null {
-  if (
-    value === 'twilio' ||
-    value === 'telnyx' ||
-    value === 'signalwire' ||
-    value === 'plivo'
-  ) {
+  if (value === 'signalwire') {
     return value
   }
   return null
@@ -292,7 +287,7 @@ export async function getPlatformTelephonyConnections(input?: {
     'platform_telephony_connection_directory',
     {
       p_search: search || null,
-      p_provider: provider === 'all' ? null : provider,
+      p_provider: provider === 'all' ? 'signalwire' : provider,
       p_status: status === 'all' ? null : status,
       p_limit: limit,
       p_offset: offset,

@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Call, Device } from '@twilio/voice-sdk'
 import {
   CalendarClock,
   CheckCircle2,
@@ -34,7 +33,7 @@ type DialerPhoneNumber = {
   phoneNumber: string
   friendlyName: string
   isDefault: boolean
-  provider: 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
+  provider: 'signalwire'
 }
 
 type DialerClientProps = {
@@ -45,22 +44,13 @@ type DialerClientProps = {
 }
 
 function providerDisplayName(
-  provider: DialerPhoneNumber['provider'],
+  _provider: DialerPhoneNumber['provider'],
 ): string {
-  switch (provider) {
-    case 'telnyx':
-      return 'Telnyx'
-    case 'signalwire':
-      return 'SignalWire'
-    case 'plivo':
-      return 'Plivo'
-    default:
-      return 'Twilio'
-  }
+  return 'SignalWire'
 }
 
 type TokenPayload = {
-  provider: 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
+  provider: 'signalwire'
   token: string
   projectId?: string
   username?: string
@@ -73,17 +63,15 @@ type TokenPayload = {
 }
 
 
-type TelnyxCallLike = {
+type SignalWireCallLike = {
   id?: string
   state?: string
   direction?: string
   remotePartyNumber?: string
-  options?: { remoteCallerNumber?: string }
   cause?: string
   causeCode?: number | string
   sipCode?: number | string
   sipReason?: string
-  on?: (event: string, handler: (payload?: unknown) => void) => TelnyxCallLike
   answer?: () => void | Promise<void>
   hangup?: () => void | Promise<void>
   hold?: () => void | Promise<void>
@@ -95,40 +83,9 @@ type TelnyxCallLike = {
   transfer?: (target: string) => void | Promise<void>
 }
 
-type TelnyxNotification = {
+type SignalWireNotification = {
   type?: string
-  call?: TelnyxCallLike
-  error?: unknown
-  errorName?: string
-  errorMessage?: string
-  state?: string
-  sessionId?: string
-}
-
-type TelnyxErrorLike = {
-  code?: number | string
-  message?: string
-  error?: { code?: number | string; message?: string } | Error | unknown
-  sessionId?: string
-  type?: string
-}
-
-type TelnyxClientLike = {
-  remoteElement?: string
-  connect: () => void
-  disconnect: () => void
-  on: (event: string, handler: (payload?: unknown) => void) => TelnyxClientLike
-  newCall: (options: {
-    destinationNumber: string
-    callerNumber: string
-    audio: boolean
-    customHeaders?: Array<{ name: string; value: string }>
-  }) => TelnyxCallLike
-}
-
-
-type SignalWireCallLike = TelnyxCallLike & {
-  dtmf?: (digits: string) => void
+  call?: SignalWireCallLike
 }
 
 type SignalWireClientLike = {
@@ -146,38 +103,10 @@ type SignalWireClientLike = {
   }) => Promise<SignalWireCallLike>
 }
 
-type PlivoClientLike = {
-  on: (event: string, handler: (...args: unknown[]) => void) => void
-  login: (username: string, password: string) => void
-  logout?: () => void
-  call: (destination: string, extraHeaders?: Record<string, string>) => void
-  answer: () => void
-  reject: () => void
-  hangup: () => void
-  mute?: () => void
-  unmute?: () => void
-  sendDtmf?: (digits: string) => void
-  sendDTMF?: (digits: string) => void
-  sendDigits?: (digits: string) => void
-  getLastCallUUID?: () => string
-}
-
-type PlivoSdkLike = {
-  client: PlivoClientLike
-}
-
-type PlivoConstructor = new (options?: Record<string, unknown>) => PlivoSdkLike
-
 type RelayConstructor = new (options: {
   project: string
   token: string
 }) => SignalWireClientLike
-
-declare global {
-  interface Window {
-    Plivo?: PlivoConstructor
-  }
-}
 
 function ensureUnmanagedAudioElement(id: string, muted = false): HTMLAudioElement {
   const existing = document.getElementById(id)
@@ -199,38 +128,6 @@ function ensureUnmanagedAudioElement(id: string, muted = false): HTMLAudioElemen
 
 function removeUnmanagedAudioElement(id: string) {
   document.getElementById(id)?.remove()
-}
-
-const loadedScripts = new Map<string, Promise<void>>()
-
-function loadBrowserScript(src: string): Promise<void> {
-  const existing = loadedScripts.get(src)
-  if (existing) return existing
-
-  const promise = new Promise<void>((resolve, reject) => {
-    const current = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`)
-    if (current?.dataset.flowtixLoaded === 'true') {
-      resolve()
-      return
-    }
-
-    const script = current ?? document.createElement('script')
-    script.src = src
-    script.async = true
-    script.dataset.flowtixProviderSdk = 'true'
-    script.addEventListener('load', () => {
-      script.dataset.flowtixLoaded = 'true'
-      resolve()
-    }, { once: true })
-    script.addEventListener('error', () => {
-      loadedScripts.delete(src)
-      reject(new Error(`Unable to load browser calling SDK: ${src}`))
-    }, { once: true })
-    if (!current) document.head.appendChild(script)
-  })
-
-  loadedScripts.set(src, promise)
-  return promise
 }
 
 type DeviceState = 'offline' | 'connecting' | 'ready' | 'error'
@@ -256,28 +153,6 @@ const keyRows = [
 
 const fieldClass =
   'min-h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm text-white outline-none transition focus:border-cyan-400/50'
-
-function describeTelnyxError(payload?: unknown) {
-  if (!payload || typeof payload !== 'object') {
-    return { message: String(payload ?? 'Unknown Telnyx error') }
-  }
-
-  const event = payload as TelnyxErrorLike
-  const nested = event.error
-  const nestedRecord =
-    nested && typeof nested === 'object' ? (nested as { code?: unknown; message?: unknown }) : null
-
-  return {
-    code: event.code ?? nestedRecord?.code ?? null,
-    message:
-      event.message ??
-      (typeof nestedRecord?.message === 'string' ? nestedRecord.message : null) ??
-      (nested instanceof Error ? nested.message : null) ??
-      'Unknown Telnyx error',
-    sessionId: event.sessionId ?? null,
-    type: event.type ?? null,
-  }
-}
 
 function describeProviderError(payload?: unknown): string {
   if (payload instanceof Error) return payload.message
@@ -365,15 +240,9 @@ export default function DialerClient({
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [saveMessage, setSaveMessage] = useState('')
 
-  const deviceRef = useRef<Device | null>(null)
-  const callRef = useRef<Call | null>(null)
-  const telnyxClientRef = useRef<TelnyxClientLike | null>(null)
-  const telnyxCallRef = useRef<TelnyxCallLike | null>(null)
   const signalWireClientRef = useRef<SignalWireClientLike | null>(null)
   const signalWireCallRef = useRef<SignalWireCallLike | null>(null)
-  const plivoSdkRef = useRef<PlivoSdkLike | null>(null)
   const incomingFromRef = useRef('')
-  const plivoCallRegisteredRef = useRef(false)
 
   // These refs keep call-registration data current without making the browser
   // softphone connection effect depend on the dialed phone number. Otherwise
@@ -418,61 +287,16 @@ export default function DialerClient({
   const selectedProvider =
     callerIds.find((number) => number.phoneNumber === selectedCallerId)?.provider ??
     callerIds[0]?.provider ??
-    'twilio'
+    'signalwire'
 
   const formatTime = (seconds: number) =>
     `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
       seconds % 60,
     ).padStart(2, '0')}`
 
-  const attachCallEvents = useCallback((call: Call, incoming = false) => {
-    callRef.current = call
-    setCallState(incoming ? 'incoming' : 'connecting')
-    setMessage(incoming ? 'Incoming call' : 'Connecting call…')
-
-    call.on('ringing', () => {
-      setCallState('ringing')
-      setMessage('Ringing…')
-    })
-
-    call.on('accept', () => {
-      setCallState('connected')
-      setMessage('Call connected')
-      setElapsed(0)
-      setSaveState('idle')
-      setSaveMessage('')
-    })
-
-    call.on('disconnect', () => {
-      setCallState('ended')
-      setMessage('Call ended — complete the call outcome before moving on.')
-      setIsMuted(false)
-      setIsOnHold(false)
-      callRef.current = null
-      window.setTimeout(() => setCallState('idle'), 1200)
-    })
-
-    call.on('cancel', () => {
-      setCallState('ended')
-      setMessage('Incoming call cancelled')
-      callRef.current = null
-    })
-
-    call.on('reject', () => {
-      setCallState('ended')
-      setMessage('Call rejected')
-      callRef.current = null
-    })
-
-    call.on('error', (error: Error) => {
-      setCallState('ended')
-      setMessage(error.message)
-      callRef.current = null
-    })
-  }, [])
 
   const syncBrowserCallStatus = useCallback(async (input: {
-    provider: 'telnyx' | 'signalwire' | 'plivo'
+    provider: 'signalwire'
     providerCallId: string | null | undefined
     status: 'initiating' | 'ringing' | 'connected' | 'on-hold' | 'completed' | 'failed' | 'cancelled'
     rawStatus?: string
@@ -500,77 +324,8 @@ export default function DialerClient({
     }
   }, [])
 
-  const handleTelnyxNotification = useCallback((payload?: unknown) => {
-    const notification = payload as TelnyxNotification | undefined
-
-
-    if (notification?.type !== 'callUpdate' || !notification.call) {
-      if (notification?.errorMessage) setMessage(notification.errorMessage)
-      return
-    }
-
-    const call = notification.call
-    telnyxCallRef.current = call
-    const state = String(call.state ?? '')
-
-    if (state === 'new' || state === 'trying' || state === 'requesting') {
-      setCallState('connecting')
-      setMessage(`Telnyx call ${state}…`)
-      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'initiating', rawStatus: state })
-    } else if (state === 'ringing') {
-      const inbound = call.direction === 'inbound'
-      setCallState(inbound ? 'incoming' : 'ringing')
-      setIncomingFrom(
-        call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? 'Unknown caller',
-      )
-      setMessage(inbound ? 'Incoming Telnyx call' : 'Ringing…')
-      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'ringing', rawStatus: state })
-    } else if (state === 'active') {
-      setCallState('connected')
-      setMessage('Call connected')
-      setElapsed(0)
-      setIsOnHold(false)
-      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'connected', rawStatus: state })
-      if (call.direction === 'inbound') {
-        void fetch('/api/telephony/inbound/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'telnyx',
-            providerCallId: call.id ?? null,
-            fromNumber: call.remotePartyNumber ?? call.options?.remoteCallerNumber ?? null,
-          }),
-        })
-      }
-    } else if (state === 'held') {
-      setCallState('connected')
-      setIsOnHold(true)
-      setMessage('Call on hold')
-      void syncBrowserCallStatus({ provider: 'telnyx', providerCallId: call.id, status: 'on-hold', rawStatus: state })
-    } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
-      const reason =
-        call.sipReason ||
-        call.cause ||
-        (call.sipCode ? `SIP ${call.sipCode}` : '') ||
-        'Call ended'
-
-      setCallState('ended')
-      setMessage(`${reason} — complete the call outcome before moving on.`)
-      setIsMuted(false)
-      setIsOnHold(false)
-      void syncBrowserCallStatus({
-        provider: 'telnyx',
-        providerCallId: call.id,
-        status: reason === 'Call ended' ? 'completed' : 'failed',
-        rawStatus: state,
-      })
-      telnyxCallRef.current = null
-      window.setTimeout(() => setCallState('idle'), 1200)
-    }
-  }, [syncBrowserCallStatus])
-
   const handleSignalWireNotification = useCallback((payload?: unknown) => {
-    const notification = payload as TelnyxNotification | undefined
+    const notification = payload as SignalWireNotification | undefined
     if (notification?.type !== 'callUpdate' || !notification.call) return
 
     const call = notification.call as SignalWireCallLike
@@ -645,7 +400,7 @@ export default function DialerClient({
   }, [syncBrowserCallStatus])
 
   const registerBrowserCall = useCallback(async (input: {
-    provider: 'telnyx' | 'signalwire' | 'plivo'
+    provider: 'signalwire'
     providerCallId: string
   }) => {
     const fromNumber = selectedCallerIdRef.current
@@ -733,50 +488,9 @@ export default function DialerClient({
     setMessage(`Connecting ${providerLabel} browser softphone…`)
 
     try {
-      await deviceRef.current?.destroy()
-      deviceRef.current = null
-      telnyxClientRef.current?.disconnect?.()
       signalWireClientRef.current?.disconnect?.()
-      plivoSdkRef.current?.client.logout?.()
-      telnyxClientRef.current = null
-      telnyxCallRef.current = null
       signalWireClientRef.current = null
       signalWireCallRef.current = null
-      plivoSdkRef.current = null
-      plivoCallRegisteredRef.current = false
-
-      if (selectedProvider === 'telnyx') {
-        const [{ TelnyxRTC }, payload] = await Promise.all([
-          import('@telnyx/webrtc'),
-          fetchToken('telnyx'),
-        ])
-
-        const client = new TelnyxRTC({
-          login_token: payload.token,
-          debug: false,
-          enableCallReports: true,
-        }) as unknown as TelnyxClientLike
-        client.remoteElement = 'flowtix-telnyx-remote-audio'
-        client.on('telnyx.ready', () => {
-          setDeviceState('ready')
-          setMessage('Telnyx softphone ready for inbound and outbound calls.')
-        })
-        client.on('telnyx.error', (event?: unknown) => {
-          const error = describeTelnyxError(event)
-          console.error('[Flowtix Telnyx] error', error)
-          setDeviceState('error')
-          setMessage(error.message || 'Telnyx softphone connection failed.')
-        })
-        client.on('telnyx.warning', (event?: unknown) => {
-          console.warn('[Flowtix Telnyx] warning', describeTelnyxError(event))
-        })
-        client.on('telnyx.socket.close', () => setDeviceState('offline'))
-        client.on('telnyx.notification', handleTelnyxNotification)
-        telnyxClientRef.current = client
-        setTokenPayload(payload)
-        client.connect()
-        return
-      }
 
       if (selectedProvider === 'signalwire') {
         const [signalWireModule, payload] = await Promise.all([
@@ -891,143 +605,14 @@ export default function DialerClient({
         return
       }
 
-      if (selectedProvider === 'plivo') {
-        const payload = await fetchToken('plivo')
-        if (!payload.username) throw new Error('Plivo Endpoint Username is unavailable.')
-        await loadBrowserScript('https://cdn.plivo.com/sdk/browser/v2/plivo.min.js')
-        if (!window.Plivo) throw new Error('Plivo browser SDK did not initialize.')
-
-        const sdk = new window.Plivo({
-          debug: 'ERROR',
-          permOnClick: true,
-          codecs: ['OPUS', 'PCMU'],
-          enableTracking: true,
-          closeProtection: true,
-        })
-        sdk.client.on('onLogin', () => {
-          setDeviceState('ready')
-          setMessage('Plivo softphone ready for inbound and outbound calls.')
-        })
-        sdk.client.on('onLoginFailed', (reason: unknown) => {
-          setDeviceState('error')
-          setMessage(`Plivo login failed: ${String(reason ?? 'Unknown error')}`)
-        })
-        sdk.client.on('onIncomingCall', (callerName: unknown) => {
-          const caller = String(callerName ?? 'Unknown caller')
-          incomingFromRef.current = caller
-          setIncomingFrom(caller)
-          setCallState('incoming')
-          setMessage('Incoming Plivo call')
-        })
-        sdk.client.on('onCalling', () => {
-          setCallState('connecting')
-          setMessage('Connecting Plivo call…')
-          if (!plivoCallRegisteredRef.current) {
-            const id = sdk.client.getLastCallUUID?.()?.trim()
-            if (id) {
-              plivoCallRegisteredRef.current = true
-              void registerBrowserCall({ provider: 'plivo', providerCallId: id })
-                .then(() => syncBrowserCallStatus({ provider: 'plivo', providerCallId: id, status: 'initiating', rawStatus: 'calling' }))
-                .catch((error) => {
-                  console.error('[Flowtix Plivo] call registration failed', error)
-                })
-            }
-          }
-        })
-        sdk.client.on('onCallRemoteRinging', () => {
-          setCallState('ringing')
-          setMessage('Ringing…')
-          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'ringing', rawStatus: 'remote-ringing' })
-        })
-        sdk.client.on('onCallAnswered', () => {
-          setCallState('connected')
-          setMessage('Call connected')
-          setElapsed(0)
-          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'connected', rawStatus: 'answered' })
-          void fetch('/api/telephony/inbound/claim', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              provider: 'plivo',
-              providerCallId: sdk.client.getLastCallUUID?.()?.trim() || null,
-              fromNumber: incomingFromRef.current || null,
-            }),
-          })
-        })
-        sdk.client.on('onCallFailed', (reason: unknown) => {
-          setCallState('ended')
-          setMessage(`Plivo call failed: ${String(reason ?? 'Unknown error')}`)
-          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'failed', rawStatus: String(reason ?? 'failed') })
-        })
-        sdk.client.on('onCallTerminated', () => {
-          setCallState('ended')
-          setMessage('Call ended — complete the call outcome before moving on.')
-          setIsMuted(false)
-          setIsOnHold(false)
-          void syncBrowserCallStatus({ provider: 'plivo', providerCallId: sdk.client.getLastCallUUID?.(), status: 'completed', rawStatus: 'terminated' })
-          plivoCallRegisteredRef.current = false
-          window.setTimeout(() => setCallState('idle'), 1200)
-        })
-        sdk.client.on('onIncomingCallCanceled', () => {
-          setCallState('idle')
-          setMessage('Incoming call cancelled')
-        })
-        plivoSdkRef.current = sdk
-        setTokenPayload(payload)
-        sdk.client.login(payload.username, payload.token)
-        return
-      }
-
-      const [{ Device: TwilioDevice }, payload] = await Promise.all([
-        import('@twilio/voice-sdk'),
-        fetchToken('twilio'),
-      ])
-
-      const device = new TwilioDevice(payload.token, {
-        closeProtection: true,
-        enableImprovedSignalingErrorPrecision: true,
-        tokenRefreshMs: 30000,
-      })
-
-      device.on('registered', () => {
-        setDeviceState('ready')
-        setMessage('Twilio softphone ready for inbound and outbound calls.')
-        void sendDeviceHeartbeat('online')
-      })
-      device.on('unregistered', () => {
-        setDeviceState('offline')
-        void sendDeviceHeartbeat('offline')
-      })
-      device.on('error', (error: Error) => {
-        setDeviceState('error')
-        setMessage(error.message)
-        void sendDeviceHeartbeat('error')
-      })
-      device.on('incoming', (call: Call) => {
-        const caller = call.parameters.From ?? 'Unknown caller'
-        incomingFromRef.current = caller
-        setIncomingFrom(caller)
-        attachCallEvents(call, true)
-      })
-      device.on('tokenWillExpire', async () => {
-        try {
-          device.updateToken((await fetchToken('twilio')).token)
-        } catch (error) {
-          setMessage(error instanceof Error ? error.message : 'Token refresh failed.')
-        }
-      })
-
-      deviceRef.current = device
-      await device.register()
+      throw new Error('SignalWire is the only supported Flowtix telephony provider.')
     } catch (error) {
       setDeviceState('error')
       setMessage(error instanceof Error ? error.message : 'Unable to connect the softphone.')
     }
   }, [
-    attachCallEvents,
     fetchToken,
     handleSignalWireNotification,
-    handleTelnyxNotification,
     registerBrowserCall,
     selectedCallerId,
     selectedProvider,
@@ -1048,8 +633,6 @@ export default function DialerClient({
     return () => {
       window.clearTimeout(connectTimer)
       void sendDeviceHeartbeat('offline')
-      void deviceRef.current?.destroy()
-      telnyxClientRef.current?.disconnect?.()
       signalWireClientRef.current?.disconnect?.()
       removeUnmanagedAudioElement('flowtix-signalwire-remote-audio')
       removeUnmanagedAudioElement('flowtix-signalwire-local-audio')
@@ -1083,7 +666,7 @@ export default function DialerClient({
     }
 
     if (!selectedCallerId) {
-      setMessage('Import and select an owned voice number before placing calls.')
+      setMessage('Import and select a SignalWire voice number before placing calls.')
       return
     }
 
@@ -1096,73 +679,38 @@ export default function DialerClient({
     }
 
     try {
-      if (selectedProvider === 'telnyx') {
-        const client = telnyxClientRef.current
-        if (!client) throw new Error('Telnyx softphone is not connected.')
-        const destinationNumber = phoneNumber.trim()
+      const client = signalWireClientRef.current
+      if (!client) throw new Error('SignalWire softphone is not connected.')
 
-        const call = client.newCall({
-          destinationNumber,
-          callerNumber: selectedCallerId,
-          audio: true,
-          customHeaders: [
-            { name: 'X-Flowtix-Organization', value: tokenPayload.organizationId },
-            { name: 'X-Flowtix-User', value: tokenPayload.userId },
-          ],
+      const destinationNumber = phoneNumber.trim()
+      console.info('[Flowtix SignalWire] placing outbound call', {
+        destinationNumber,
+        callerNumber: selectedCallerId,
+      })
+
+      const call = await client.newCall({
+        destinationNumber,
+        callerNumber: selectedCallerId,
+        audio: true,
+        video: false,
+      })
+
+      console.info('[Flowtix SignalWire] outbound call object created', {
+        id: call.id ?? null,
+        state: call.state ?? null,
+        direction: call.direction ?? null,
+        remotePartyNumber: call.remotePartyNumber ?? null,
+      })
+
+      signalWireCallRef.current = call
+      if (call.id) {
+        void registerBrowserCall({
+          provider: 'signalwire',
+          providerCallId: call.id,
         })
-        telnyxCallRef.current = call
-        call.on?.('telnyx.notification', handleTelnyxNotification)
-        if (call.id) void registerBrowserCall({ provider: 'telnyx', providerCallId: call.id })
-        setCallState('connecting')
-        setMessage('Connecting Telnyx call…')
-      } else if (selectedProvider === 'signalwire') {
-        const client = signalWireClientRef.current
-        if (!client) throw new Error('SignalWire softphone is not connected.')
-        // SignalWire RELAY Browser SDK v2 returns Promise<Call> from newCall().
-        // Awaiting it is required so provider-side dial failures are surfaced here
-        // and so we register/control the actual Call object rather than the Promise.
-        const destinationNumber = phoneNumber.trim()
-        console.info('[Flowtix SignalWire] placing outbound call', {
-          destinationNumber,
-          callerNumber: selectedCallerId,
-        })
-        const call = await client.newCall({
-          destinationNumber,
-          callerNumber: selectedCallerId,
-          audio: true,
-          video: false,
-        })
-        console.info('[Flowtix SignalWire] outbound call object created', {
-          id: call.id ?? null,
-          state: call.state ?? null,
-          direction: call.direction ?? null,
-          remotePartyNumber: call.remotePartyNumber ?? null,
-        })
-        signalWireCallRef.current = call
-        if (call.id) void registerBrowserCall({ provider: 'signalwire', providerCallId: call.id })
-        setCallState('connecting')
-        setMessage('Connecting SignalWire call…')
-      } else if (selectedProvider === 'plivo') {
-        const client = plivoSdkRef.current?.client
-        if (!client) throw new Error('Plivo softphone is not connected.')
-        plivoCallRegisteredRef.current = false
-        client.call(phoneNumber.trim(), { 'X-PH-callerId': selectedCallerId })
-        setCallState('connecting')
-        setMessage('Connecting Plivo call…')
-      } else {
-        if (!deviceRef.current) throw new Error('Twilio softphone is not connected.')
-        const call = await deviceRef.current.connect({
-          params: {
-            To: phoneNumber.trim(),
-            FlowtixUserId: tokenPayload.userId,
-            FlowtixOrganizationId: tokenPayload.organizationId,
-            ContactId: activeContact?.id ?? '',
-            CallerId: selectedCallerId,
-            Record: String(isRecording),
-          },
-        })
-        attachCallEvents(call)
       }
+      setCallState('connecting')
+      setMessage('Connecting SignalWire call…')
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : 'Unable to place the call.',
@@ -1171,142 +719,59 @@ export default function DialerClient({
   }
 
   function acceptIncoming() {
-    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.answer?.()
-    else if (selectedProvider === 'signalwire') void signalWireCallRef.current?.answer?.()
-    else if (selectedProvider === 'plivo') plivoSdkRef.current?.client.answer()
-    else callRef.current?.accept()
+    void signalWireCallRef.current?.answer?.()
   }
 
   function rejectIncoming() {
-    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.hangup?.()
-    else if (selectedProvider === 'signalwire') void signalWireCallRef.current?.hangup?.()
-    else if (selectedProvider === 'plivo') plivoSdkRef.current?.client.reject()
-    else callRef.current?.reject()
+    void signalWireCallRef.current?.hangup?.()
     setCallState('idle')
   }
 
   function hangUp() {
-    if (selectedProvider === 'telnyx') void telnyxCallRef.current?.hangup?.()
-    else if (selectedProvider === 'signalwire') void signalWireCallRef.current?.hangup?.()
-    else if (selectedProvider === 'plivo') plivoSdkRef.current?.client.hangup()
-    else callRef.current?.disconnect()
+    void signalWireCallRef.current?.hangup?.()
   }
 
   function toggleMute() {
     const next = !isMuted
-    if (selectedProvider === 'telnyx') {
-      if (next) telnyxCallRef.current?.muteAudio?.()
-      else telnyxCallRef.current?.unmuteAudio?.()
-    } else if (selectedProvider === 'signalwire') {
-      if (next) signalWireCallRef.current?.muteAudio?.()
-      else signalWireCallRef.current?.unmuteAudio?.()
-    } else if (selectedProvider === 'plivo') {
-      if (next) plivoSdkRef.current?.client.mute?.()
-      else plivoSdkRef.current?.client.unmute?.()
-    } else {
-      callRef.current?.mute(next)
-    }
+    if (next) signalWireCallRef.current?.muteAudio?.()
+    else signalWireCallRef.current?.unmuteAudio?.()
     setIsMuted(next)
   }
 
   function toggleHold() {
     const next = !isOnHold
-    if (selectedProvider === 'telnyx') {
-      void (next ? telnyxCallRef.current?.hold?.() : telnyxCallRef.current?.unhold?.())
-      setMessage(next ? 'Call on hold' : 'Call resumed')
-    } else if (selectedProvider === 'signalwire') {
-      void (next ? signalWireCallRef.current?.hold?.() : signalWireCallRef.current?.unhold?.())
-      setMessage(next ? 'Call on hold' : 'Call resumed')
-    } else if (selectedProvider === 'plivo') {
-      setMessage('Plivo Browser SDK does not expose hold/resume in this softphone session.')
-      return
-    } else {
-      callRef.current?.mute(next)
-      setMessage(next ? 'Call on hold (local audio muted)' : 'Call resumed')
-    }
+    void (next
+      ? signalWireCallRef.current?.hold?.()
+      : signalWireCallRef.current?.unhold?.())
+    setMessage(next ? 'Call on hold' : 'Call resumed')
     setIsOnHold(next)
   }
 
   function sendDigit(digit: string) {
     if (callState === 'connected') {
-      if (selectedProvider === 'telnyx') {
-        if (typeof telnyxCallRef.current?.sendDigits === 'function') telnyxCallRef.current.sendDigits(digit)
-        else telnyxCallRef.current?.dtmf?.(digit)
-      } else if (selectedProvider === 'signalwire') {
-        if (typeof signalWireCallRef.current?.sendDigits === 'function') signalWireCallRef.current.sendDigits(digit)
-        else signalWireCallRef.current?.dtmf?.(digit)
-      } else if (selectedProvider === 'plivo') {
-        const client = plivoSdkRef.current?.client
-        if (typeof client?.sendDtmf === 'function') client.sendDtmf(digit)
-        else if (typeof client?.sendDTMF === 'function') client.sendDTMF(digit)
-        else client?.sendDigits?.(digit)
-      } else callRef.current?.sendDigits(digit)
+      if (typeof signalWireCallRef.current?.sendDigits === 'function') {
+        signalWireCallRef.current.sendDigits(digit)
+      } else {
+        signalWireCallRef.current?.dtmf?.(digit)
+      }
     } else {
       setPhoneNumber((value) => `${value}${digit}`)
     }
   }
 
   async function transferCall() {
-    if (selectedProvider === 'telnyx') {
-      if (!transferTarget.trim()) {
-        setMessage('Enter a transfer destination.')
-        return
-      }
-      const call = telnyxCallRef.current
-      if (typeof call?.transfer === 'function') {
-        await call.transfer(transferTarget.trim())
-        setMessage('Transfer requested.')
-      } else {
-        setMessage('Telnyx transfer is not available in this SDK session.')
-      }
-      return
-    }
-
-    if (selectedProvider === 'signalwire') {
-      const call = signalWireCallRef.current
-      if (!transferTarget.trim()) {
-        setMessage('Enter a transfer destination.')
-        return
-      }
-      if (typeof call?.transfer === 'function') {
-        await call.transfer(transferTarget.trim())
-        setMessage('Transfer requested.')
-      } else {
-        setMessage('SignalWire transfer is not available in this browser session.')
-      }
-      return
-    }
-
-    if (selectedProvider === 'plivo') {
-      setMessage('Plivo browser transfer is not available from this softphone control.')
-      return
-    }
-
-    const callSid = callRef.current?.parameters.CallSid
-
-    if (!callSid || !transferTarget.trim()) {
+    if (!transferTarget.trim()) {
       setMessage('Enter a transfer destination.')
       return
     }
 
-    const response = await fetch('/api/telephony/calls/transfer', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        callId: callSid,
-        target: transferTarget.trim(),
-      }),
-    })
-
-    const result = (await response.json()) as {
-      error?: string
+    const call = signalWireCallRef.current
+    if (typeof call?.transfer === 'function') {
+      await call.transfer(transferTarget.trim())
+      setMessage('Transfer requested.')
+    } else {
+      setMessage('SignalWire transfer is not available in this browser session.')
     }
-
-    setMessage(
-      response.ok ? 'Transfer requested.' : result.error ?? 'Transfer failed.',
-    )
   }
 
   async function saveClientUpdate(openContactAfterSave = false) {
@@ -1363,7 +828,6 @@ export default function DialerClient({
 
   return (
     <div className="space-y-6">
-      <audio id="flowtix-telnyx-remote-audio" autoPlay className="hidden" />
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
@@ -1373,7 +837,7 @@ export default function DialerClient({
             Browser softphone
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            Subscriber-owned Twilio, Telnyx, SignalWire, and Plivo browser calling with provider-aware controls and inbound registration where supported.
+            SignalWire-powered browser calling with the same provider-aware controls and inbound registration where supported.
           </p>
         </div>
 
@@ -1451,7 +915,7 @@ export default function DialerClient({
             </label>
           ) : (
             <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
-              No supported voice number is available. Connect Twilio, Telnyx, SignalWire, or Plivo and add an owned voice number in Settings before placing calls.
+              No SignalWire voice number is available. Add or import a SignalWire voice number in Settings before placing calls.
             </div>
           )}
 
@@ -1851,7 +1315,7 @@ export default function DialerClient({
           <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
             <h2 className="text-lg font-semibold text-white">Cold transfer</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Transfer to an E.164 number or Twilio client identity.
+              Transfer to an E.164 phone number.
             </p>
             <div className="mt-4 flex gap-2">
               <input
