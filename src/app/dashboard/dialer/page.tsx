@@ -90,7 +90,7 @@ function DialerLocked({
           {[
             'Browser-based outbound calling',
             'Workspace caller ID selection',
-            'SignalWire call controls',
+            'Flowtix call controls',
           ].map((feature) => (
             <div
               key={feature}

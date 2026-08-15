@@ -318,7 +318,7 @@ export default async function RecordingsPage({
               Automatic call capture
             </h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-400">
-              Secure playback, download, transcription, and AI analysis for SignalWire call recordings.
+              Secure playback, download, transcription, and AI analysis for Flowtix call recordings.
             </p>
           </div>
           <span className="text-sm text-slate-400">
@@ -335,7 +335,7 @@ export default async function RecordingsPage({
                   : 'signalwire'
               const providerLabel =
                 provider === 'signalwire'
-                  ? 'SignalWire'
+                  ? 'Flowtix'
                   : provider.charAt(0).toUpperCase() + provider.slice(1)
 
               return (
@@ -393,7 +393,7 @@ export default async function RecordingsPage({
           </div>
         ) : (
           <p className="mt-5 rounded-2xl border border-dashed border-white/10 p-6 text-center text-sm leading-6 text-slate-400">
-            SignalWire recordings will appear here after a completed recording is reported.
+            Recordings will appear here after a completed Flowtix call recording is reported.
           </p>
         )}
       </section>

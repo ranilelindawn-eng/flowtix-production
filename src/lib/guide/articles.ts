@@ -173,7 +173,7 @@ export const guideArticles: GuideArticle[] = [
     ], successChecks: ['Softphone shows online.', 'Provider logs show the attempted call.', 'Flowtix creates/updates the call lifecycle.', 'Completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider receives only a browser/WebRTC leg, inspect provider PSTN permissions/routing before changing unrelated CRM code.'], related: ['phone-numbers','live-calls','telephony-monitoring','calls']
   },
   {
-    slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active SignalWire calls in one provider-aware view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
+    slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active Flowtix calls in one operational view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
     steps: [
       { title: 'Understand the counters', instructions: ['Ringing shows calls that are alerting.', 'Connected shows active conversations.', 'Queued shows callers waiting in a queue.'] },
       { title: 'Use it during live operations', instructions: ['Keep this page open while agents are calling or receiving calls.', 'If it stays empty, confirm a real provider call has reached an active lifecycle state.'] },

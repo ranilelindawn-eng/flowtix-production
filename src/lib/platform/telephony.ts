@@ -22,11 +22,7 @@ const asNumber = (value: unknown): number => {
 
 const asBoolean = (value: unknown): boolean => value === true
 
-export type PlatformTelephonyProvider =
-  | 'twilio'
-  | 'telnyx'
-  | 'signalwire'
-  | 'plivo'
+export type PlatformTelephonyProvider = 'signalwire'
 
 export type PlatformTelephonyMetrics = {
   connectedIntegrations: number

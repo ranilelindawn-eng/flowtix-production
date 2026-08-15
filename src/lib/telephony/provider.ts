@@ -1,13 +1,6 @@
-export type TelephonyProviderName =
-  | 'unconfigured'
-  | 'twilio'
-  | 'telnyx'
-  | 'signalwire'
-  | 'plivo'
+export type TelephonyProviderName = 'unconfigured' | 'signalwire'
+export type ConfiguredTelephonyProviderName = 'signalwire'
 
-export type ConfiguredTelephonyProviderName = 'twilio' | 'telnyx' | 'signalwire' | 'plivo'
-
-/** Providers retained in persisted historical data. New/live Flowtix telephony is SignalWire-only. */
 export const TELEPHONY_PROVIDERS = ['signalwire'] as const
 
 export type TelephonyProviderStatus =
@@ -78,10 +71,7 @@ export interface TelephonyProvider {
 }
 
 export const PROVIDER_DISPLAY_NAMES: Record<ConfiguredTelephonyProviderName, string> = {
-  twilio: 'Twilio (retired)',
-  telnyx: 'Telnyx (retired)',
-  signalwire: 'SignalWire',
-  plivo: 'Plivo (retired)',
+  signalwire: 'Flowtix Cloud Calling',
 }
 
 export function isTelephonyProvider(value: string): value is ConfiguredTelephonyProviderName {
@@ -90,7 +80,7 @@ export function isTelephonyProvider(value: string): value is ConfiguredTelephony
 
 export const DEFAULT_PROVIDER_CONFIGURATION: TelephonyProviderConfiguration = {
   provider: 'unconfigured',
-  displayName: 'No calling provider',
+  displayName: 'Flowtix Cloud Calling',
   status: 'unconfigured',
   capabilities: [],
   configuredAt: null,
@@ -98,7 +88,7 @@ export const DEFAULT_PROVIDER_CONFIGURATION: TelephonyProviderConfiguration = {
 }
 
 export const PROVIDER_NOT_CONFIGURED_MESSAGE =
-  'SignalWire calling is not configured for this workspace.'
+  'Cloud calling is not configured for this workspace.'
 
 export class ProviderNotConfiguredError extends Error {
   constructor(message = PROVIDER_NOT_CONFIGURED_MESSAGE) {

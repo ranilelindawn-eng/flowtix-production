@@ -3,61 +3,23 @@
 import { revalidatePath } from 'next/cache'
 
 import { canManageSettings, requireSettingsContext } from '@/lib/settings-context'
-import { assertPhoneNumberCapacity } from '@/lib/usage-limits'
 import { configureProviderInboundRouting } from '@/lib/telephony/provider-admin'
 
-const clean = (formData: FormData, key: string) =>
-  String(formData.get(key) ?? '').trim()
-
-export async function addPhoneNumber(formData: FormData) {
-  const { supabase, organizationId, role } = await requireSettingsContext()
-
-  if (!canManageSettings(role)) {
-    throw new Error('Owner or admin access is required.')
-  }
-
-  await assertPhoneNumberCapacity(organizationId)
-
-  const phone = clean(formData, 'phone_number')
-  if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
-    throw new Error('Use E.164 format, for example +15551234567.')
-  }
-
-  const { error } = await supabase.from('organization_phone_numbers').insert({
-    organization_id: organizationId,
-    phone_number: phone,
-    friendly_name: clean(formData, 'friendly_name') || phone,
-    provider: 'signalwire',
-    capabilities: {
-      voice: formData.get('voice') === 'on',
-      sms: formData.get('sms') === 'on',
-    },
-  })
-
-  if (error) throw new Error(error.message)
-  revalidatePath('/dashboard/settings/phone-numbers')
-}
+const clean = (formData: FormData, key: string) => String(formData.get(key) ?? '').trim()
 
 export async function setDefaultPhoneNumber(formData: FormData) {
   const { supabase, organizationId, role } = await requireSettingsContext()
   if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
 
   const id = clean(formData, 'id')
-  await supabase.from('organization_phone_numbers').update({ is_default: false }).eq('organization_id', organizationId)
-  const { error } = await supabase.from('organization_phone_numbers').update({ is_default: true }).eq('id', id).eq('organization_id', organizationId)
-  if (error) throw new Error(error.message)
+  const { error } = await supabase.rpc('set_workspace_default_phone_number', {
+    target_organization: organizationId,
+    target_phone_number: id,
+  })
+  if (error) throw new Error(`Unable to set the default caller ID: ${error.message}`)
   revalidatePath('/dashboard/settings/phone-numbers')
+  revalidatePath('/dashboard/dialer')
 }
-
-export async function removePhoneNumber(formData: FormData) {
-  const { supabase, organizationId, role } = await requireSettingsContext()
-  if (!canManageSettings(role)) throw new Error('Owner or admin access is required.')
-
-  const { error } = await supabase.from('organization_phone_numbers').delete().eq('id', clean(formData, 'id')).eq('organization_id', organizationId)
-  if (error) throw new Error(error.message)
-  revalidatePath('/dashboard/settings/phone-numbers')
-}
-
 
 export async function configurePhoneNumberInboundRoute(formData: FormData) {
   const { supabase, organizationId, role } = await requireSettingsContext()
@@ -87,17 +49,11 @@ export async function configurePhoneNumberInboundRoute(formData: FormData) {
   })
   if (error) throw new Error(`Unable to configure inbound routing: ${error.message}`)
 
-  if (number.provider !== 'signalwire') {
-    throw new Error('Only SignalWire phone numbers are supported.')
-  }
-
   if (route !== 'none') {
-    if (!number.provider_number_id) {
-      throw new Error(`Re-import this ${number.provider} number before enabling inbound routing.`)
-    }
+    if (!number.provider_number_id) throw new Error('This Flowtix number must be synchronized by the platform before inbound routing can be enabled.')
     await configureProviderInboundRouting({
       organizationId,
-      provider: number.provider,
+      provider: 'signalwire',
       providerNumberId: number.provider_number_id,
       phoneNumber: number.phone_number,
     })

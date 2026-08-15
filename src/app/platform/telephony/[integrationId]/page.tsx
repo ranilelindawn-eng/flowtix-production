@@ -49,7 +49,7 @@ export default async function PlatformTelephonyConnectionPage({
           className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to telephony providers
+          Back to telephony infrastructure
         </Link>
 
         <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
@@ -190,9 +190,9 @@ export default async function PlatformTelephonyConnectionPage({
 
       <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
         <div className="border-b border-white/10 px-6 py-5">
-          <h2 className="font-semibold text-white">Customer-owned phone numbers</h2>
+          <h2 className="font-semibold text-white">Flowtix-managed phone numbers</h2>
           <p className="mt-1 text-sm text-slate-500">
-            These remain managed by the customer workspace. Platform staff can inspect them but this phase does not purchase, import, or delete numbers.
+            These numbers are managed by Flowtix platform staff and assigned to customer workspaces. Subscribers never receive carrier credentials or provider-management controls.
           </p>
         </div>
         {connection.numbers.length === 0 ? (

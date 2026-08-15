@@ -94,7 +94,7 @@ export default async function PlatformTelephonyPage({
 
   const metricCards = [
     {
-      label: 'Connected providers',
+      label: 'Active connections',
       value: metrics.connectedIntegrations,
       detail: `${metrics.enabledIntegrations} enabled`,
     },
@@ -106,7 +106,7 @@ export default async function PlatformTelephonyPage({
     {
       label: 'Phone numbers',
       value: metrics.phoneNumbers,
-      detail: 'Imported customer-owned numbers',
+      detail: 'Flowtix-assigned numbers',
     },
     {
       label: 'Calls / 24h',
@@ -128,7 +128,7 @@ export default async function PlatformTelephonyPage({
             Platform operations
           </p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-            Telephony Provider Management
+            Telephony Infrastructure
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
             Cross-tenant SignalWire health and operational controls. Retired telephony providers are no longer exposed or accepted by Flowtix.

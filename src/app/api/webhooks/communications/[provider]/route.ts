@@ -5,7 +5,7 @@ import {
   normalizeResendDeliveryEvent,
   validateCallbackToken,
   validateResendSignature,
-  validateTwilioCompatibleSignature,
+  validateSignalWireSignature,
   type DeliveryProvider,
 } from '@/lib/communications/delivery-status'
 
@@ -86,15 +86,13 @@ export async function POST(
 
     const signature =
       request.headers.get('x-signalwire-signature') ||
-      request.headers.get('x-twilio-signature') ||
       ''
 
-    const valid = await validateTwilioCompatibleSignature({
+    const valid = await validateSignalWireSignature({
       requestUrl: request.url,
       signature,
       form,
       organizationId: message.organization_id,
-      provider: 'signalwire',
     })
 
     if (!valid) return json({ error: 'Invalid webhook signature.' }, 401)

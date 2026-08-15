@@ -46,7 +46,7 @@ type DialerClientProps = {
 function providerDisplayName(
   _provider: DialerPhoneNumber['provider'],
 ): string {
-  return 'SignalWire'
+  return 'Flowtix'
 }
 
 type TokenPayload = {
@@ -334,13 +334,13 @@ export default function DialerClient({
 
     if (['new', 'trying', 'requesting'].includes(state)) {
       setCallState('connecting')
-      setMessage(`SignalWire call ${state}…`)
+      setMessage(`Call ${state}…`)
       void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'initiating', rawStatus: state })
     } else if (state === 'ringing') {
       const inbound = call.direction === 'inbound'
       setCallState(inbound ? 'incoming' : 'ringing')
       setIncomingFrom(call.remotePartyNumber ?? 'Unknown caller')
-      setMessage(inbound ? 'Incoming SignalWire call' : 'Ringing…')
+      setMessage(inbound ? 'Incoming Flowtix call' : 'Ringing…')
       void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'ringing', rawStatus: state })
     } else if (state === 'active') {
       setCallState('connected')
@@ -373,7 +373,7 @@ export default function DialerClient({
         'Call ended'
       const failed = reason !== 'Call ended'
 
-      console.info('[Flowtix SignalWire] call terminated', {
+      console.info('[Flowtix Cloud Calling] call terminated', {
         id: call.id ?? null,
         state,
         direction: call.direction ?? null,
@@ -515,7 +515,7 @@ export default function DialerClient({
           window.clearTimeout(connectTimeout)
           window.clearInterval(connectionPoll)
           setDeviceState('ready')
-          setMessage('SignalWire softphone ready for inbound and outbound calls.')
+          setMessage('Flowtix softphone ready for inbound and outbound calls.')
         }
         const markFailed = (payload?: unknown) => {
           if (settled) return
@@ -523,14 +523,14 @@ export default function DialerClient({
           window.clearTimeout(connectTimeout)
           window.clearInterval(connectionPoll)
           const detail = describeProviderError(payload)
-          console.error('[Flowtix SignalWire] connection failed', payload)
+          console.error('[Flowtix Cloud Calling] connection failed', payload)
           setDeviceState('error')
-          setMessage(`SignalWire softphone connection failed: ${detail}`)
+          setMessage(`Flowtix softphone connection failed: ${detail}`)
         }
         const reportRuntimeError = (payload?: unknown) => {
           const detail = describeProviderError(payload)
-          console.error('[Flowtix SignalWire] runtime error', payload)
-          setMessage(`SignalWire call error: ${detail}`)
+          console.error('[Flowtix Cloud Calling] runtime error', payload)
+          setMessage(`Flowtix call error: ${detail}`)
         }
 
         // Keep SignalWire media elements outside React's managed DOM. The Relay SDK
@@ -552,7 +552,7 @@ export default function DialerClient({
             return
           }
           markFailed(
-            'Timed out waiting for SignalWire session authentication/readiness. Check the browser console and SignalWire logs for the underlying websocket or authorization error.',
+            'Timed out waiting for the Flowtix calling session. Please reconnect or contact support if the issue persists.',
           )
         }, 15000)
 
@@ -568,7 +568,7 @@ export default function DialerClient({
         })
         client.on('signalwire.socket.error', (event?: unknown) => {
           console.warn(
-            '[Flowtix SignalWire] websocket transport error event',
+            '[Flowtix Cloud Calling] websocket transport error event',
             event,
           )
         })
@@ -582,7 +582,7 @@ export default function DialerClient({
         client.on('signalwire.socket.close', (event?: unknown) => {
           if (!settled) {
             console.warn(
-              '[Flowtix SignalWire] socket closed before ready',
+              '[Flowtix Cloud Calling] socket closed before ready',
               event,
             )
             return
@@ -605,7 +605,7 @@ export default function DialerClient({
         return
       }
 
-      throw new Error('SignalWire is the only supported Flowtix telephony provider.')
+      throw new Error('Flowtix Cloud Calling is the supported telephony service.')
     } catch (error) {
       setDeviceState('error')
       setMessage(error instanceof Error ? error.message : 'Unable to connect the softphone.')
@@ -666,7 +666,7 @@ export default function DialerClient({
     }
 
     if (!selectedCallerId) {
-      setMessage('Import and select a SignalWire voice number before placing calls.')
+      setMessage('No Flowtix caller ID is assigned to this workspace yet.')
       return
     }
 
@@ -680,10 +680,10 @@ export default function DialerClient({
 
     try {
       const client = signalWireClientRef.current
-      if (!client) throw new Error('SignalWire softphone is not connected.')
+      if (!client) throw new Error('Flowtix softphone is not connected.')
 
       const destinationNumber = phoneNumber.trim()
-      console.info('[Flowtix SignalWire] placing outbound call', {
+      console.info('[Flowtix Cloud Calling] placing outbound call', {
         destinationNumber,
         callerNumber: selectedCallerId,
       })
@@ -695,7 +695,7 @@ export default function DialerClient({
         video: false,
       })
 
-      console.info('[Flowtix SignalWire] outbound call object created', {
+      console.info('[Flowtix Cloud Calling] outbound call object created', {
         id: call.id ?? null,
         state: call.state ?? null,
         direction: call.direction ?? null,
@@ -710,7 +710,7 @@ export default function DialerClient({
         })
       }
       setCallState('connecting')
-      setMessage('Connecting SignalWire call…')
+      setMessage('Connecting call…')
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : 'Unable to place the call.',
@@ -770,7 +770,7 @@ export default function DialerClient({
       await call.transfer(transferTarget.trim())
       setMessage('Transfer requested.')
     } else {
-      setMessage('SignalWire transfer is not available in this browser session.')
+      setMessage('Call transfer is not available in this browser session.')
     }
   }
 
@@ -837,7 +837,7 @@ export default function DialerClient({
             Browser softphone
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">
-            SignalWire-powered browser calling with the same provider-aware controls and inbound registration where supported.
+            Flowtix-managed browser calling with provider infrastructure handled securely by the platform.
           </p>
         </div>
 
@@ -915,7 +915,7 @@ export default function DialerClient({
             </label>
           ) : (
             <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
-              No SignalWire voice number is available. Add or import a SignalWire voice number in Settings before placing calls.
+              No Flowtix phone number is assigned to this workspace. Contact your workspace owner or Flowtix support.
             </div>
           )}
 

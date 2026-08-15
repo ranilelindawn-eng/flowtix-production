@@ -39,7 +39,7 @@ const items: Item[] = [
   { label: 'Organizations', href: '/platform/organizations', icon: Building2, permission: 'platform.organizations.manage' },
   { label: 'Subscriptions', href: '/platform/subscriptions', icon: CreditCard, permission: 'platform.subscriptions.manage' },
   { label: 'Billing & PayMongo', href: '/platform/billing', icon: CreditCard, permission: 'platform.billing.view' },
-  { label: 'Telephony Providers', href: '/platform/telephony', icon: Radio, permission: 'platform.telephony.manage' },
+  { label: 'Telephony Infrastructure', href: '/platform/telephony', icon: Radio, permission: 'platform.telephony.manage' },
   { label: 'AI Providers', href: '/platform/ai', icon: Bot, permission: 'platform.ai.manage' },
   { label: 'API Keys', href: '/platform/api-keys', icon: KeyRound, permission: 'platform.api_keys.manage' },
   { label: 'Support Access', href: '/platform/support', icon: Headphones, permission: 'platform.impersonation.use' },
