@@ -605,11 +605,35 @@ export default function DialerClient({
       setMessage('Call on hold')
       void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'on-hold', rawStatus: state })
     } else if (['hangup', 'destroyed', 'destroy', 'purge'].includes(state)) {
+      const reason =
+        call.sipReason ||
+        call.cause ||
+        (call.sipCode ? `SIP ${call.sipCode}` : '') ||
+        (call.causeCode ? `Cause ${call.causeCode}` : '') ||
+        'Call ended'
+      const failed = reason !== 'Call ended'
+
+      console.info('[Flowtix SignalWire] call terminated', {
+        id: call.id ?? null,
+        state,
+        direction: call.direction ?? null,
+        remotePartyNumber: call.remotePartyNumber ?? null,
+        sipCode: call.sipCode ?? null,
+        sipReason: call.sipReason ?? null,
+        cause: call.cause ?? null,
+        causeCode: call.causeCode ?? null,
+      })
+
       setCallState('ended')
-      setMessage('Call ended — complete the call outcome before moving on.')
+      setMessage(`${reason} — complete the call outcome before moving on.`)
       setIsMuted(false)
       setIsOnHold(false)
-      void syncBrowserCallStatus({ provider: 'signalwire', providerCallId: call.id, status: 'completed', rawStatus: state })
+      void syncBrowserCallStatus({
+        provider: 'signalwire',
+        providerCallId: call.id,
+        status: failed ? 'failed' : 'completed',
+        rawStatus: state,
+      })
       signalWireCallRef.current = null
       window.setTimeout(() => setCallState('idle'), 1200)
     }
@@ -784,6 +808,11 @@ export default function DialerClient({
           setDeviceState('error')
           setMessage(`SignalWire softphone connection failed: ${detail}`)
         }
+        const reportRuntimeError = (payload?: unknown) => {
+          const detail = describeProviderError(payload)
+          console.error('[Flowtix SignalWire] runtime error', payload)
+          setMessage(`SignalWire call error: ${detail}`)
+        }
 
         // Keep SignalWire media elements outside React's managed DOM. The Relay SDK
         // resolves these IDs to HTMLMediaElements internally; React-managed nodes carry
@@ -824,7 +853,13 @@ export default function DialerClient({
             event,
           )
         })
-        client.on('signalwire.error', markFailed)
+        client.on('signalwire.error', (event?: unknown) => {
+          if (!settled) {
+            markFailed(event)
+            return
+          }
+          reportRuntimeError(event)
+        })
         client.on('signalwire.socket.close', (event?: unknown) => {
           if (!settled) {
             console.warn(
@@ -1081,11 +1116,22 @@ export default function DialerClient({
         // SignalWire RELAY Browser SDK v2 returns Promise<Call> from newCall().
         // Awaiting it is required so provider-side dial failures are surfaced here
         // and so we register/control the actual Call object rather than the Promise.
+        const destinationNumber = phoneNumber.trim()
+        console.info('[Flowtix SignalWire] placing outbound call', {
+          destinationNumber,
+          callerNumber: selectedCallerId,
+        })
         const call = await client.newCall({
-          destinationNumber: phoneNumber.trim(),
+          destinationNumber,
           callerNumber: selectedCallerId,
           audio: true,
           video: false,
+        })
+        console.info('[Flowtix SignalWire] outbound call object created', {
+          id: call.id ?? null,
+          state: call.state ?? null,
+          direction: call.direction ?? null,
+          remotePartyNumber: call.remotePartyNumber ?? null,
         })
         signalWireCallRef.current = call
         if (call.id) void registerBrowserCall({ provider: 'signalwire', providerCallId: call.id })
