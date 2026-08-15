@@ -4,6 +4,8 @@ import { requirePermission } from '@/lib/auth'
 import { PROVIDER_DISPLAY_NAMES, isTelephonyProvider } from '@/lib/telephony/provider'
 import { createClient } from '@/lib/supabase/server'
 
+import LiveCallsAutoRefresh from './LiveCallsAutoRefresh'
+
 export const dynamic = 'force-dynamic'
 
 const ACTIVE_CALL_STATUSES = ['initiating', 'queued', 'ringing', 'connected'] as const
@@ -21,6 +23,7 @@ export default async function LiveCallsPage() {
     .select('id, direction, status, from_number, to_number, started_at, provider')
     .eq('organization_id', organization.organization_id)
     .in('status', [...ACTIVE_CALL_STATUSES])
+    .is('ended_at', null)
     .order('started_at', { ascending: false })
 
   if (error) throw new Error(`Unable to load live calls: ${error.message}`)
@@ -34,6 +37,7 @@ export default async function LiveCallsPage() {
 
   return (
     <div className="space-y-6">
+      <LiveCallsAutoRefresh />
       <div>
         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">Operations</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Live calls</h1>
