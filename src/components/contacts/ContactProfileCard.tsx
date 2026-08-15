@@ -5,7 +5,6 @@ import {
   Mail,
   Phone,
   UserRound,
-  ShieldAlert,
   Gauge,
   Globe2,
 } from 'lucide-react'
@@ -146,16 +145,6 @@ export default async function ContactProfileCard({
           icon={<Globe2 className="h-5 w-5" />}
           label="Source / Timezone"
           value={`${contact.source || 'manual'}${contact.timezone ? ` · ${contact.timezone}` : ''}`}
-        />
-
-        <Row
-          icon={<ShieldAlert className="h-5 w-5" />}
-          label="Communication Restrictions"
-          value={[
-            contact.do_not_email ? 'Email' : null,
-            contact.do_not_sms ? 'SMS' : null,
-            contact.do_not_call ? 'Calls' : null,
-          ].filter(Boolean).join(', ') || 'None'}
         />
 
         <Row

@@ -29,9 +29,6 @@ type ContactFormState = {
   lead_score: string
   timezone: string
   locale: string
-  do_not_email: boolean
-  do_not_sms: boolean
-  do_not_call: boolean
   next_follow_up_at: string
   email_consent_status: ConsentStatus
   sms_consent_status: ConsentStatus
@@ -95,9 +92,6 @@ export default function ContactForm({
     lead_score: String(initialValues.lead_score ?? 0),
     timezone: initialValues.timezone ?? '',
     locale: initialValues.locale ?? '',
-    do_not_email: initialValues.do_not_email ?? false,
-    do_not_sms: initialValues.do_not_sms ?? false,
-    do_not_call: initialValues.do_not_call ?? false,
     next_follow_up_at: initialValues.next_follow_up_at
       ? toOrganizationDateTimeLocal(initialValues.next_follow_up_at, timeZone)
       : '',
@@ -405,33 +399,6 @@ export default function ContactForm({
         </fieldset>
       ) : null}
 
-      <fieldset className="rounded-3xl border border-white/10 bg-white/[0.02] p-5">
-        <legend className="px-2 text-sm font-semibold text-white">Communication restrictions</legend>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {[
-            ['do_not_email', 'Do not email'],
-            ['do_not_sms', 'Do not SMS'],
-            ['do_not_call', 'Do not call'],
-          ].map(([field, label]) => (
-            <label key={field} className="flex items-center gap-3 text-sm text-slate-300">
-              <input
-                type="checkbox"
-                name={field}
-                value="true"
-                checked={form[field as 'do_not_email' | 'do_not_sms' | 'do_not_call']}
-                onChange={(event) =>
-                  setForm((previous) => ({
-                    ...previous,
-                    [field]: event.target.checked,
-                  }))
-                }
-                className="h-4 w-4 rounded border-white/20 bg-[#07111F]"
-              />
-              {label}
-            </label>
-          ))}
-        </div>
-      </fieldset>
 
       <label className="block">
         <span className="text-sm text-slate-300">Tags</span>

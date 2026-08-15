@@ -105,8 +105,18 @@ function connectedEmailIdentity(integrations: IntegrationRow[]) {
 }
 
 function smsCapable(number: PhoneNumberRow) {
+  if (number.provider !== 'signalwire') return false
   const capabilities = number.capabilities ?? {}
   return capabilities.sms !== false
+}
+
+function signalWireConnected(integrations: IntegrationRow[]) {
+  return integrations.some(
+    (item) =>
+      item.provider === 'signalwire' &&
+      item.enabled &&
+      item.status === 'connected',
+  )
 }
 
 export default async function AutomationOperationsPage() {
@@ -177,6 +187,7 @@ export default async function AutomationOperationsPage() {
     (phoneNumberResult.data ?? []) as PhoneNumberRow[]
 
   const emailIdentity = connectedEmailIdentity(integrations)
+  const smsInfrastructureConnected = signalWireConnected(integrations)
   const defaultSmsNumber =
     phoneNumbers.find(
       (number) => number.is_default && smsCapable(number),
@@ -336,7 +347,7 @@ export default async function AutomationOperationsPage() {
 
           <div
             className={`rounded-lg border p-4 ${
-              defaultSmsNumber
+              smsInfrastructureConnected && defaultSmsNumber
                 ? 'border-emerald-500/30 bg-emerald-500/5'
                 : 'border-amber-500/30 bg-amber-500/5'
             }`}
@@ -346,23 +357,25 @@ export default async function AutomationOperationsPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-medium">SMS sender</p>
-                  {defaultSmsNumber ? (
+                  {smsInfrastructureConnected && defaultSmsNumber ? (
                     <CheckCircle2 className="h-4 w-4 text-emerald-300" />
                   ) : (
                     <CircleOff className="h-4 w-4 text-amber-300" />
                   )}
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {defaultSmsNumber
-                    ? `${defaultSmsNumber.friendly_name} · ${defaultSmsNumber.phone_number} · ${defaultSmsNumber.provider}`
-                    : 'No SMS-capable organization phone number is configured.'}
+                  {smsInfrastructureConnected && defaultSmsNumber
+                    ? `${defaultSmsNumber.friendly_name} · ${defaultSmsNumber.phone_number}`
+                    : !smsInfrastructureConnected
+                      ? 'Flowtix SMS infrastructure is not currently connected for this workspace.'
+                      : 'No SMS-capable Flowtix phone number is assigned to this workspace.'}
                 </p>
-                {!defaultSmsNumber ? (
+                {smsInfrastructureConnected && !defaultSmsNumber ? (
                   <Link
                     href="/dashboard/settings/phone-numbers"
                     className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
                   >
-                    Configure phone number
+                    View assigned phone numbers
                   </Link>
                 ) : null}
               </div>
