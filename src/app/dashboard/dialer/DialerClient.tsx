@@ -352,6 +352,7 @@ export default function DialerClient({
   const [transferTarget, setTransferTarget] = useState('')
   const [incomingFrom, setIncomingFrom] = useState('')
   const [tokenPayload, setTokenPayload] = useState<TokenPayload | null>(null)
+  const tokenPayloadRef = useRef<TokenPayload | null>(null)
   const [availability, setAvailability] = useState<AgentAvailability>('available')
   const [presence, setPresence] = useState<PresenceSnapshot | null>(null)
   const deviceKeyRef = useRef('')
@@ -381,6 +382,10 @@ export default function DialerClient({
   const phoneNumberRef = useRef(phoneNumber)
   const selectedCallerIdRef = useRef(selectedCallerId)
   const initialContactIdRef = useRef(activeContact?.id ?? null)
+
+  useEffect(() => {
+    tokenPayloadRef.current = tokenPayload
+  }, [tokenPayload])
 
   useEffect(() => {
     phoneNumberRef.current = phoneNumber
@@ -683,11 +688,11 @@ export default function DialerClient({
       deviceKey: deviceKeyRef.current,
       status,
       provider: selectedProvider,
-      providerIdentity: tokenPayload?.identity ?? null,
+      providerIdentity: tokenPayloadRef.current?.identity ?? null,
       supportsInbound: true,
       metadata: { userAgent: navigator.userAgent },
     })
-  }, [selectedProvider, tokenPayload?.identity, updatePresence])
+  }, [selectedProvider, updatePresence])
 
   const changeAvailability = useCallback(async (next: AgentAvailability) => {
     setAvailability(next)
