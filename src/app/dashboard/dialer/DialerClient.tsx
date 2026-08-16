@@ -5,6 +5,7 @@ import {
   CalendarClock,
   CheckCircle2,
   ExternalLink,
+  FileText,
   Loader2,
   Mic,
   MicOff,
@@ -15,8 +16,6 @@ import {
   Radio,
   RefreshCw,
   Search,
-  Send,
-  StopCircle,
   UserRoundCheck,
 } from 'lucide-react'
 
@@ -37,15 +36,14 @@ type DialerPhoneNumber = {
 }
 
 type DialerClientProps = {
+  organizationId: string
   initialContact?: DialerContact | null
   initialPhoneNumber?: string
   callerIds?: DialerPhoneNumber[]
   assignedContacts?: DialerContact[]
 }
 
-function providerDisplayName(
-  _provider: DialerPhoneNumber['provider'],
-): string {
+function providerDisplayName(): string {
   return 'Flowtix'
 }
 
@@ -80,7 +78,6 @@ type SignalWireCallLike = {
   unmuteAudio?: () => void
   sendDigits?: (digits: string) => void
   dtmf?: (digits: string) => void
-  transfer?: (target: string) => void | Promise<void>
 }
 
 type SignalWireNotification = {
@@ -194,6 +191,7 @@ function getDefaultFollowUpDate(timeZone: string) {
 }
 
 export default function DialerClient({
+  organizationId,
   initialContact = null,
   initialPhoneNumber = '',
   callerIds = [],
@@ -210,7 +208,7 @@ export default function DialerClient({
     useState<DialerContact[]>(assignedContacts)
   const [contactSearchState, setContactSearchState] =
     useState<'idle' | 'loading' | 'error'>('idle')
-  const [selectedCallerId, setSelectedCallerId] = useState(
+  const [selectedCallerId] = useState(
     callerIds.find((number) => number.isDefault)?.phoneNumber ??
       callerIds[0]?.phoneNumber ??
       '',
@@ -222,10 +220,8 @@ export default function DialerClient({
   )
   const [isMuted, setIsMuted] = useState(false)
   const [isOnHold, setIsOnHold] = useState(false)
-  const [isRecording, setIsRecording] = useState(true)
-  const isRecordingRef = useRef(true)
   const [elapsed, setElapsed] = useState(0)
-  const [transferTarget, setTransferTarget] = useState('')
+  const [callScript, setCallScript] = useState('')
   const [incomingFrom, setIncomingFrom] = useState('')
   const [tokenPayload, setTokenPayload] = useState<TokenPayload | null>(null)
   const tokenPayloadRef = useRef<TokenPayload | null>(null)
@@ -250,7 +246,6 @@ export default function DialerClient({
   const outboundCallPendingRef = useRef(false)
   const browserCallRegistrationPromisesRef = useRef(new Map<string, Promise<void>>())
   const browserCallStatusQueuesRef = useRef(new Map<string, Promise<void>>())
-  const incomingFromRef = useRef('')
 
   // These refs keep call-registration data current without making the browser
   // softphone connection effect depend on the dialed phone number. Otherwise
@@ -273,8 +268,21 @@ export default function DialerClient({
   }, [selectedCallerId])
 
   useEffect(() => {
-    isRecordingRef.current = isRecording
-  }, [isRecording])
+    let saved: string | null = null
+    try {
+      saved = window.localStorage.getItem(`flowtix:dialer-script:${organizationId}`)
+    } catch {
+      // Browser storage can be unavailable in privacy-restricted sessions.
+    }
+
+    if (saved === null) return
+
+    const timer = window.setTimeout(() => {
+      setCallScript(saved ?? '')
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [organizationId])
 
   useEffect(() => {
     initialContactIdRef.current = activeContact?.id ?? null
@@ -391,7 +399,6 @@ export default function DialerClient({
               providerCallId,
               status: input.status,
               rawStatus: input.rawStatus ?? input.status,
-              recordingEnabled: isRecordingRef.current,
             }),
           })
           if (!response.ok) {
@@ -609,7 +616,7 @@ export default function DialerClient({
     }
 
     setDeviceState('connecting')
-    const providerLabel = providerDisplayName(selectedProvider)
+    const providerLabel = providerDisplayName()
     setMessage(`Connecting ${providerLabel} browser softphone…`)
 
     try {
@@ -640,7 +647,7 @@ export default function DialerClient({
           window.clearTimeout(connectTimeout)
           window.clearInterval(connectionPoll)
           setDeviceState('ready')
-          setMessage('Flowtix softphone ready for inbound and outbound calls.')
+          setMessage('Flowtix softphone ready for outbound calls.')
         }
         const markFailed = (payload?: unknown) => {
           if (settled) return
@@ -738,11 +745,8 @@ export default function DialerClient({
   }, [
     fetchToken,
     handleSignalWireNotification,
-    registerBrowserCall,
     selectedCallerId,
     selectedProvider,
-    sendDeviceHeartbeat,
-    syncBrowserCallStatus,
   ])
 
   useEffect(() => {
@@ -891,20 +895,6 @@ export default function DialerClient({
     }
   }
 
-  async function transferCall() {
-    if (!transferTarget.trim()) {
-      setMessage('Enter a transfer destination.')
-      return
-    }
-
-    const call = signalWireCallRef.current
-    if (typeof call?.transfer === 'function') {
-      await call.transfer(transferTarget.trim())
-      setMessage('Transfer requested.')
-    } else {
-      setMessage('Call transfer is not available in this browser session.')
-    }
-  }
 
   async function saveClientUpdate(openContactAfterSave = false) {
     if (!activeContact) {
@@ -1011,7 +1001,7 @@ export default function DialerClient({
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(420px,0.75fr)]">
         <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-2xl">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -1208,71 +1198,96 @@ export default function DialerClient({
           )}
         </section>
 
-        <div className="space-y-6">
-          <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">
-                Live controls
-              </h2>
-              <span className="font-mono text-2xl text-cyan-300">
-                {formatTime(elapsed)}
-              </span>
+
+        <aside className="flex min-h-[720px] flex-col rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-2xl">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-cyan-400/10">
+              <FileText className="h-5 w-5 text-cyan-300" />
             </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={toggleMute}
-                disabled={callState !== 'connected'}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {isMuted ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-                {isMuted ? 'Unmute' : 'Mute'}
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleHold}
-                disabled={callState !== 'connected'}
-                className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {isOnHold ? (
-                  <Play className="h-4 w-4" />
-                ) : (
-                  <Pause className="h-4 w-4" />
-                )}
-                {isOnHold ? 'Resume' : 'Hold'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsRecording((value) => !value)}
-                disabled={active}
-                title="Choose whether Flowtix should record the next connected call."
-                className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {isRecording ? (
-                  <StopCircle className="h-4 w-4" />
-                ) : (
-                  <Radio className="h-4 w-4" />
-                )}
-                {isRecording ? 'Recording on' : 'Recording off'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPhoneNumber('')}
-                disabled={active}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                Clear
-              </button>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Call script notepad</h2>
+              <p className="mt-1 text-sm leading-6 text-slate-400">
+                Keep your call script, discovery questions, rebuttals, and talking points visible while you dial.
+              </p>
             </div>
-          </section>
+          </div>
+
+          <textarea
+            value={callScript}
+            onChange={(event) => {
+              const value = event.target.value
+              setCallScript(value)
+              try {
+                window.localStorage.setItem(`flowtix:dialer-script:${organizationId}`, value)
+              } catch {
+                // Keep the notepad usable even when browser storage is unavailable.
+              }
+            }}
+            placeholder={`Example:
+
+Opening:
+Hi {{first_name}}, this is ...
+
+Discovery questions:
+• What are you using today?
+• What is the biggest challenge?
+
+Key points / objection handling:`}
+            className="mt-5 min-h-[590px] flex-1 resize-y rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-[15px] leading-7 text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/40"
+          />
+
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            Saved in this browser for the current Flowtix workspace. This script is not written to the contact record.
+          </p>
+        </aside>
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[0.72fr_1.28fr]">
+        <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-white">Live controls</h2>
+              <p className="mt-1 text-sm text-slate-400">
+                Calls are recorded automatically after they connect.
+              </p>
+            </div>
+            <span className="font-mono text-2xl text-cyan-300">
+              {formatTime(elapsed)}
+            </span>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={toggleMute}
+              disabled={callState !== 'connected'}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              {isMuted ? 'Unmute' : 'Mute'}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleHold}
+              disabled={callState !== 'connected'}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
+            >
+              {isOnHold ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+              {isOnHold ? 'Resume' : 'Hold'}
+            </button>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-emerald-400/15 bg-emerald-400/[0.05] px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-emerald-200">
+              <Radio className="h-4 w-4" />
+              Automatic recording enabled
+            </div>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              Flowtix requests provider recording when the call reaches the connected state.
+            </p>
+          </div>
+        </section>
 
           <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
             <div className="flex items-start justify-between gap-4">
@@ -1436,29 +1451,6 @@ export default function DialerClient({
             </div>
           </section>
 
-          <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6">
-            <h2 className="text-lg font-semibold text-white">Cold transfer</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Transfer to an E.164 phone number.
-            </p>
-            <div className="mt-4 flex gap-2">
-              <input
-                value={transferTarget}
-                onChange={(event) => setTransferTarget(event.target.value)}
-                placeholder="+14155550123"
-                className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none"
-              />
-              <button
-                type="button"
-                onClick={() => void transferCall()}
-                disabled={callState !== 'connected'}
-                className="rounded-2xl bg-cyan-500 px-4 py-3 text-white disabled:opacity-40"
-              >
-                <Send className="h-4 w-4" />
-              </button>
-            </div>
-          </section>
-        </div>
       </div>
     </div>
   )

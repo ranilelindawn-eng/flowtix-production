@@ -46,7 +46,6 @@ export async function POST(request: Request) {
     const providerCallId = text(payload.providerCallId)
     const status = text(payload.status) as TelephonyCallStatus
     const rawStatus = text(payload.rawStatus) || status
-    const recordingEnabled = payload.recordingEnabled !== false
 
     if (
       !isTelephonyProvider(provider) ||
@@ -99,8 +98,7 @@ export async function POST(request: Request) {
 
     if (
       status === 'connected' &&
-      currentStatus !== 'connected' &&
-      recordingEnabled
+      currentStatus !== 'connected'
     ) {
       const currentMetadata =
         call.metadata && typeof call.metadata === 'object' && !Array.isArray(call.metadata)

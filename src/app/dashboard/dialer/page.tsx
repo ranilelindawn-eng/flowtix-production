@@ -183,6 +183,7 @@ export default async function DialerPage({
 
   return (
     <DialerClient
+      organizationId={organization.organization_id}
       initialContact={initialContact}
       initialPhoneNumber={initialPhoneNumber}
       callerIds={callerIds}
