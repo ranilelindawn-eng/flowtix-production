@@ -31,7 +31,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
       </div>
       <div className="lg:pl-[280px]">
         <PlatformTopNav email={email} />
-        <main className="mx-auto max-w-7xl px-6 py-8 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1800px] px-6 py-8 lg:px-8 xl:px-10">{children}</main>
       </div>
     </div>
   )

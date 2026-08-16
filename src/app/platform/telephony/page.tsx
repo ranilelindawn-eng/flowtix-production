@@ -97,26 +97,31 @@ export default async function PlatformTelephonyPage({
       label: 'Active connections',
       value: metrics.connectedIntegrations,
       detail: `${metrics.enabledIntegrations} enabled`,
+      href: '/platform/telephony?status=connected',
     },
     {
       label: 'Organizations',
       value: metrics.organizationsWithTelephony,
       detail: 'With telephony configured',
+      href: '/platform/organizations',
     },
     {
       label: 'Phone numbers',
       value: metrics.phoneNumbers,
       detail: 'Flowtix-assigned numbers',
+      href: '/platform/telephony#connections',
     },
     {
       label: 'Calls / 24h',
       value: metrics.callsLast24Hours,
       detail: `${metrics.failedCallsLast24Hours} failed`,
+      href: '/platform/telephony#connections',
     },
     {
       label: 'Provider errors / 24h',
       value: metrics.providerErrorsLast24Hours,
       detail: `${metrics.verificationFailuresLast24Hours} failed verifications`,
+      href: '/platform/providers/validation',
     },
   ]
 
@@ -145,16 +150,17 @@ export default async function PlatformTelephonyPage({
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {metricCards.map((metric) => (
-          <article
+          <Link
             key={metric.label}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+            href={metric.href}
+            className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:-translate-y-0.5 hover:border-blue-400/30 hover:bg-blue-400/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
           >
             <p className="text-sm text-slate-500">{metric.label}</p>
             <p className="mt-3 text-2xl font-semibold text-white">
               {metric.value.toLocaleString()}
             </p>
             <p className="mt-2 text-xs text-slate-500">{metric.detail}</p>
-          </article>
+          </Link>
         ))}
       </section>
 
@@ -214,7 +220,7 @@ export default async function PlatformTelephonyPage({
         </form>
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+      <section id="connections" className="scroll-mt-24 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
         {directory.items.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <Radio className="mx-auto h-9 w-9 text-slate-600" />

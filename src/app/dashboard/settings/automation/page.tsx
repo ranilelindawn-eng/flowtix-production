@@ -371,12 +371,9 @@ export default async function AutomationOperationsPage() {
                       : 'No SMS-capable Flowtix phone number is assigned to this workspace.'}
                 </p>
                 {smsInfrastructureConnected && !defaultSmsNumber ? (
-                  <Link
-                    href="/dashboard/settings/phone-numbers"
-                    className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
-                  >
-                    View assigned phone numbers
-                  </Link>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Outbound phone numbers are assigned by the Flowtix Platform team.
+                  </p>
                 ) : null}
               </div>
             </div>

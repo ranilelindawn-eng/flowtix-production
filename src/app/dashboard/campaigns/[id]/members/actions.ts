@@ -31,5 +31,4 @@ export async function queueCampaignMembersAction(
   revalidatePath(
     `/dashboard/campaigns/${campaignId}/members`,
   )
-  revalidatePath('/dashboard/settings/jobs')
 }

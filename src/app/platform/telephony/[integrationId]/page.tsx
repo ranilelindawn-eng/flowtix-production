@@ -90,28 +90,28 @@ export default async function PlatformTelephonyConnectionPage({
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <a href="#phone-numbers" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-blue-400/30 hover:bg-blue-400/[0.06]">
           <Phone className="h-5 w-5 text-blue-300" />
           <p className="mt-4 text-sm text-slate-500">Phone numbers</p>
           <p className="mt-1 text-2xl font-semibold text-white">
             {connection.phoneNumberCount}
           </p>
-        </article>
-        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        </a>
+        <a href="#provider-events" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-blue-400/30 hover:bg-blue-400/[0.06]">
           <Radio className="h-5 w-5 text-blue-300" />
           <p className="mt-4 text-sm text-slate-500">Calls / 24h</p>
           <p className="mt-1 text-2xl font-semibold text-white">
             {connection.callsLast24Hours}
           </p>
-        </article>
-        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        </a>
+        <a href="#provider-events" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-blue-400/30 hover:bg-blue-400/[0.06]">
           <ShieldAlert className="h-5 w-5 text-amber-300" />
           <p className="mt-4 text-sm text-slate-500">Provider errors / 24h</p>
           <p className="mt-1 text-2xl font-semibold text-white">
             {connection.providerErrorsLast24Hours}
           </p>
-        </article>
-        <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        </a>
+        <a href="#verification-history" className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-blue-400/30 hover:bg-blue-400/[0.06]">
           {connection.lastVerificationStatus === 'success' ? (
             <CheckCircle2 className="h-5 w-5 text-emerald-300" />
           ) : (
@@ -124,10 +124,10 @@ export default async function PlatformTelephonyConnectionPage({
           <p className="mt-1 text-xs text-slate-500">
             {formatDate(connection.lastVerificationAt)}
           </p>
-        </article>
+        </a>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+      <section id="readiness" className="scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.025] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Internal acceptance validation</p>
@@ -213,7 +213,7 @@ export default async function PlatformTelephonyConnectionPage({
         />
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+      <section id="phone-numbers" className="scroll-mt-24 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
         <div className="border-b border-white/10 px-6 py-5">
           <h2 className="font-semibold text-white">Flowtix-managed phone numbers</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -260,7 +260,7 @@ export default async function PlatformTelephonyConnectionPage({
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+        <article id="provider-events" className="scroll-mt-24 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
           <div className="border-b border-white/10 px-6 py-5">
             <h2 className="font-semibold text-white">Recent provider events</h2>
           </div>
@@ -294,7 +294,7 @@ export default async function PlatformTelephonyConnectionPage({
           )}
         </article>
 
-        <article className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+        <article id="verification-history" className="scroll-mt-24 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
           <div className="border-b border-white/10 px-6 py-5">
             <h2 className="font-semibold text-white">Verification history</h2>
           </div>

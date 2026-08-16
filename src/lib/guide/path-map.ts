@@ -1,5 +1,4 @@
 export const guidePathMap: ReadonlyArray<{ prefix: string; slug: string; title: string }> = [
-  { prefix: '/dashboard/settings/phone-numbers', slug: 'phone-numbers', title: 'Phone Numbers' },
   { prefix: '/dashboard/settings/integrations', slug: 'integrations', title: 'Integrations' },
   { prefix: '/dashboard/campaign-analytics', slug: 'campaign-analytics', title: 'Campaign Analytics' },
   { prefix: '/dashboard/sales-analytics', slug: 'sales-analytics', title: 'Sales Analytics' },

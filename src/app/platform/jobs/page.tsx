@@ -125,30 +125,35 @@ export default async function PlatformJobsPage({
       value: metrics.queued + metrics.scheduled + metrics.retrying,
       detail: `${metrics.queues} active queues`,
       icon: ListChecks,
+      href: '/platform/jobs?status=queued',
     },
     {
       label: 'Processing',
       value: metrics.processing,
       detail: `${metrics.staleProcessing} stale leases`,
       icon: ServerCog,
+      href: '/platform/jobs?status=processing',
     },
     {
       label: 'Completed / 24h',
       value: metrics.completedLast24Hours,
       detail: 'Durable jobs completed',
       icon: CheckCircle2,
+      href: '/platform/jobs?status=completed',
     },
     {
       label: 'Failed / 24h',
       value: metrics.failedLast24Hours,
       detail: `${metrics.cancelledLast24Hours} cancelled`,
       icon: AlertTriangle,
+      href: '/platform/jobs?status=failed',
     },
     {
       label: 'Dead letter',
       value: metrics.deadLetter,
       detail: 'Requires operator review',
       icon: AlertTriangle,
+      href: '/platform/jobs?status=dead_letter',
     },
   ]
 
@@ -177,18 +182,19 @@ export default async function PlatformJobsPage({
       </section>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {metricCards.map(({ label, value, detail, icon: Icon }) => (
-          <article
+        {metricCards.map(({ label, value, detail, icon: Icon, href }) => (
+          <Link
             key={label}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"
+            href={href}
+            className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:-translate-y-0.5 hover:border-blue-400/30 hover:bg-blue-400/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
           >
-            <Icon className="h-5 w-5 text-blue-300" />
+            <Icon className="h-5 w-5 text-blue-300 transition group-hover:text-blue-200" />
             <p className="mt-4 text-sm text-slate-500">{label}</p>
             <p className="mt-1 text-2xl font-semibold text-white">
               {value.toLocaleString()}
             </p>
             <p className="mt-2 text-xs text-slate-500">{detail}</p>
-          </article>
+          </Link>
         ))}
       </section>
 

@@ -5,11 +5,9 @@ import { usePathname } from 'next/navigation'
 import {
   Building2,
   CreditCard,
-  ListChecks,
   Workflow,
   Plug,
   Shield,
-  Smartphone,
   UserRound,
   UsersRound,
 } from 'lucide-react'
@@ -55,12 +53,6 @@ const links: SettingsLink[] = [
     permission: 'settings.manage',
   },
   {
-    href: '/dashboard/settings/phone-numbers',
-    label: 'Phone Numbers',
-    icon: Smartphone,
-    permission: 'settings.manage',
-  },
-  {
     href: '/dashboard/settings/security',
     label: 'Security',
     icon: Shield,
@@ -70,12 +62,6 @@ const links: SettingsLink[] = [
     label: 'Automation',
     icon: Workflow,
     permission: 'automation.view',
-  },
-  {
-    href: '/dashboard/settings/jobs',
-    label: 'Background Jobs',
-    icon: ListChecks,
-    permission: 'jobs.view',
   },
 ]
 

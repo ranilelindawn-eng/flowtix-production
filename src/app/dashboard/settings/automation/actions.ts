@@ -224,7 +224,6 @@ export async function updateAutomationControls(
   })
 
   revalidatePath('/dashboard/settings/automation')
-  revalidatePath('/dashboard/settings/jobs')
 }
 
 export async function retryAllFailedAutomationJobs(): Promise<void> {
@@ -261,7 +260,6 @@ export async function retryAllFailedAutomationJobs(): Promise<void> {
   })
 
   revalidatePath('/dashboard/settings/automation')
-  revalidatePath('/dashboard/settings/jobs')
 }
 
 export async function releaseExpiredCampaignReservations(): Promise<void> {

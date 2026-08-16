@@ -170,7 +170,7 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Choose the caller ID', instructions: ['Select the intended outbound caller ID from the dropdown.', 'Confirm the number belongs to/configured for the selected provider.'] },
       { title: 'Place a controlled call', instructions: ['Enter the destination in E.164 format such as +12025550123.', 'Press the green call button once.', 'Watch the call state and use Live Calls for in-progress visibility.'] },
       { title: 'Finish the call cleanly', instructions: ['Hang up normally.', 'Complete the call outcome/notes if prompted.', 'Confirm the call appears in Calls and any expected recording/transcript workflows.'] },
-    ], successChecks: ['Softphone shows online.', 'The provider accepts the attempted outbound call.', 'Flowtix creates and updates the call lifecycle.', 'The completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider rejects the destination, check provider account permissions, caller ID approval, and destination restrictions before retrying.'], related: ['phone-numbers','live-calls','organization','calls']
+    ], successChecks: ['Softphone shows online.', 'The provider accepts the attempted outbound call.', 'Flowtix creates and updates the call lifecycle.', 'The completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider rejects the destination, check provider account permissions, caller ID approval, and destination restrictions before retrying.'], related: ['live-calls','organization','calls']
   },
   {
     slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active Flowtix calls in one operational view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
@@ -328,9 +328,9 @@ export const guideArticles: GuideArticle[] = [
   {
     slug: 'settings', title: 'Settings', category: 'Billing & Security', summary: 'Configure profile, organization, team, billing, integrations, phone numbers, security, and subscriber automation settings.', moduleHref: '/dashboard/settings', moduleLabel: 'Open Settings', pathnamePrefixes: ['/dashboard/settings'],
     steps: [
-      { title: 'Choose the correct settings area', instructions: ['Use Profile for your own user settings.', 'Use Organization/Team for workspace configuration.', 'Use Integrations/Phone Numbers for external providers.', 'Use Security for security controls.', 'Use Automation for subscriber-facing workflow settings.'] },
+      { title: 'Choose the correct settings area', instructions: ['Use Profile for your own user settings.', 'Use Organization/Team for workspace configuration.', 'Use Integrations to review subscriber-facing external connections. Outbound phone numbers are managed by Flowtix platform staff.', 'Use Security for security controls.', 'Use Automation for subscriber-facing workflow settings.'] },
       { title: 'Change one system at a time', instructions: ['Make a single controlled configuration change.', 'Save it and refresh.', 'Test the dependent feature before changing another integration.'], tip: 'This makes it much easier to identify the cause of a production issue.' },
-    ], successChecks: ['Saved settings persist after refresh.', 'Dependent modules use the updated configuration.'], related: ['integrations','phone-numbers','security-center']
+    ], successChecks: ['Saved settings persist after refresh.', 'Dependent modules use the updated configuration.'], related: ['integrations','security-center']
   },
   {
     slug: 'integrations', title: 'Integrations', category: 'Billing & Security', summary: 'Connect external services and confirm their status before relying on them in workflows.', moduleHref: '/dashboard/settings/integrations', moduleLabel: 'Open Integrations', pathnamePrefixes: ['/dashboard/settings/integrations'],
@@ -338,13 +338,6 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Connect a provider', instructions: ['Choose the provider you intend to use.', 'Enter only credentials issued by that provider.', 'Save/connect and use any built-in test/status action.'] },
       { title: 'Verify the dependent feature', instructions: ['For email/calendar, test the relevant communication/calendar flow.', 'For telephony, test token/softphone/provider readiness separately.', 'For AI, make one controlled AI Workspace request and verify AI Analytics.'] },
     ], successChecks: ['Integration reports connected/healthy.', 'A real dependent feature succeeds.'], troubleshooting: ['A connected credential test does not guarantee every provider feature/destination is permitted. Check provider account restrictions when necessary.'], related: ['settings','dialer','ai-workspace','email-sms']
-  },
-  {
-    slug: 'phone-numbers', title: 'Phone Numbers', category: 'Calling & Telephony', summary: 'Assign provider-owned phone numbers, capabilities, and the default outbound caller ID.', moduleHref: '/dashboard/settings/phone-numbers', moduleLabel: 'Open Phone Numbers', pathnamePrefixes: ['/dashboard/settings/phone-numbers'],
-    steps: [
-      { title: 'Add a number', instructions: ['Enter a friendly label and the provider phone number in E.164 format.', 'Select the provider that actually owns/hosts the number.', 'Enable only capabilities the provider/number supports, such as Voice or SMS.'] },
-      { title: 'Set the outbound default', instructions: ['Set the correct default caller ID for the workspace/provider.', 'Open Dialer and confirm the number appears in the outbound caller ID selector.'] },
-    ], successChecks: ['Number persists after refresh.', 'Correct provider/capabilities are shown.', 'Dialer displays the expected default caller ID.'], related: ['dialer','integrations','organization']
   },
   {
     slug: 'troubleshooting', title: 'Troubleshooting Flowtix', category: 'Troubleshooting', summary: 'Use a safe subscriber troubleshooting sequence before changing workspace settings or repeating an action.', pathnamePrefixes: [],
