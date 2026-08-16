@@ -1,8 +1,15 @@
+import Link from 'next/link'
+import {
+  ArrowRight,
+  Mail,
+  MessageSquareText,
+} from 'lucide-react'
+
 import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { getCurrentOrganizationTimezone } from '@/lib/team'
 import CommunicationComposer from './CommunicationComposer'
 
-import { getCurrentOrganizationTimezone } from '@/lib/team'
 type CommunicationMessage = {
   id: string
   channel: string
@@ -108,21 +115,18 @@ export default async function CommunicationsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 xl:-mx-6 2xl:-mx-16">
       <header>
-        <p className="text-sm text-cyan-300">
-          Omnichannel inbox
-        </p>
+        <p className="text-sm text-cyan-300">Omnichannel inbox</p>
 
         <h1 className="mt-2 text-3xl font-semibold text-white">
           Email &amp; SMS
         </h1>
 
-        <p className="mt-2 text-sm text-slate-400">
-          Send email through the organization&apos;s connected Gmail
-          account when available, with Resend as the platform fallback.
-          SMS uses the configured telephony provider. Every attempt is
-          logged.
+        <p className="mt-2 max-w-5xl text-sm leading-6 text-slate-400">
+          Send email through the organization&apos;s connected Gmail account
+          when available, with Resend as the platform fallback. SMS uses the
+          configured telephony provider. Every attempt is logged.
         </p>
       </header>
 
@@ -131,83 +135,119 @@ export default async function CommunicationsPage() {
         snippets={snippetResult.data ?? []}
       />
 
-      <section className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5">
-        <h2 className="font-semibold text-white">
-          Message history
-        </h2>
+      <section className="rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 sm:p-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-white">Message history</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Open any record to review the complete message and delivery
+              details.
+            </p>
+          </div>
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1000px] text-left text-sm">
-            <thead className="text-xs uppercase text-slate-500">
-              <tr>
-                <th className="pb-3">Channel</th>
-                <th className="pb-3">Recipient</th>
-                <th className="pb-3">Subject</th>
-                <th className="pb-3">Provider</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3">Delivery</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {messages.map((message) => (
-                <tr
-                  key={message.id}
-                  className="border-t border-white/10"
-                >
-                  <td className="py-3 uppercase text-cyan-300">
-                    {message.channel}
-                  </td>
-
-                  <td className="py-3 text-slate-200">
-                    {message.recipient}
-                  </td>
-
-                  <td className="py-3 text-slate-400">
-                    {message.subject ||
-                      message.body.slice(0, 50)}
-                  </td>
-
-                  <td className="py-3 text-slate-400">
-                    {message.provider ?? '—'}
-                  </td>
-
-                  <td className="py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs ${statusStyle(
-                        message.status,
-                      )}`}
-                    >
-                      {message.status}
-                    </span>
-
-                    {message.error_message ? (
-                      <p className="mt-2 max-w-xs text-xs text-red-300">
-                        {message.error_message}
-                      </p>
-                    ) : null}
-                  </td>
-
-                  <td className="py-3 text-slate-500">
-                    {deliveryTime(message)}
-                  </td>
-                </tr>
-              ))}
-
-              {messages.length === 0 ? (
-                <tr className="border-t border-white/10">
-                  <td
-                    colSpan={6}
-                    className="py-10 text-center text-sm text-slate-500"
-                  >
-                    No email or SMS messages have been sent from this
-                    workspace.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
+          <span className="text-sm text-slate-500">
+            {messages.length} recent {messages.length === 1 ? 'message' : 'messages'}
+          </span>
         </div>
+
+        {messages.length > 0 ? (
+          <div className="mt-5 space-y-3">
+            <div className="hidden grid-cols-[120px_minmax(190px,1fr)_minmax(260px,2fr)_140px_150px_190px_28px] gap-4 px-4 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 xl:grid">
+              <span>Channel</span>
+              <span>Recipient</span>
+              <span>Subject / message</span>
+              <span>Provider</span>
+              <span>Status</span>
+              <span>Delivery</span>
+              <span aria-hidden="true" />
+            </div>
+
+            {messages.map((message) => (
+              <Link
+                key={message.id}
+                href={`/dashboard/communications/${message.id}`}
+                className="group grid gap-3 rounded-2xl border border-white/10 bg-[#07111F]/80 p-4 transition hover:border-blue-400/30 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 xl:grid-cols-[120px_minmax(190px,1fr)_minmax(260px,2fr)_140px_150px_190px_28px] xl:items-center xl:gap-4"
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold uppercase text-cyan-300">
+                  {message.channel === 'email' ? (
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                  ) : (
+                    <MessageSquareText className="h-4 w-4" aria-hidden="true" />
+                  )}
+                  <span>{message.channel}</span>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
+                    Recipient
+                  </p>
+                  <p className="mt-1 truncate text-sm text-slate-200 xl:mt-0">
+                    {message.recipient}
+                  </p>
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
+                    Subject / message
+                  </p>
+                  <p className="mt-1 truncate text-sm text-slate-300 xl:mt-0">
+                    {message.subject || message.body.slice(0, 110)}
+                  </p>
+                  {message.subject ? (
+                    <p className="mt-1 truncate text-xs text-slate-600">
+                      {message.body}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
+                    Provider
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400 xl:mt-0">
+                    {message.provider ?? '—'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
+                    Status
+                  </p>
+                  <span
+                    className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium xl:mt-0 ${statusStyle(
+                      message.status,
+                    )}`}
+                  >
+                    {message.status}
+                  </span>
+                  {message.error_message ? (
+                    <p className="mt-2 line-clamp-2 text-xs text-red-300">
+                      {message.error_message}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
+                    Delivery
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500 xl:mt-0">
+                    {deliveryTime(message)}
+                  </p>
+                </div>
+
+                <ArrowRight
+                  className="hidden h-4 w-4 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-blue-300 xl:block"
+                  aria-hidden="true"
+                />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-2xl border border-dashed border-white/10 px-6 py-12 text-center text-sm text-slate-500">
+            No email or SMS messages have been sent from this workspace.
+          </div>
+        )}
       </section>
     </div>
   )
