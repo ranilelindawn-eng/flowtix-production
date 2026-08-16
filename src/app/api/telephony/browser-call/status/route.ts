@@ -7,6 +7,7 @@ import {
 import { hasPermission } from '@/lib/permissions'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { isTelephonyProvider, type TelephonyCallStatus } from '@/lib/telephony/provider'
+import { startSignalWireCallRecording } from '@/lib/telephony/recording-control'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
     const providerCallId = text(payload.providerCallId)
     const status = text(payload.status) as TelephonyCallStatus
     const rawStatus = text(payload.rawStatus) || status
+    const recordingEnabled = payload.recordingEnabled !== false
 
     if (
       !isTelephonyProvider(provider) ||
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
     const admin = createTelephonyAdminClient()
     const { data: matchingCalls, error: lookupError } = await admin
       .from('calls')
-      .select('id,status')
+      .select('id,status,metadata')
       .eq('organization_id', organization.organization_id)
       .eq('provider', provider)
       .or(`provider_call_sid.eq.${providerCallId},provider_child_call_sid.eq.${providerCallId}`)
@@ -94,6 +96,55 @@ export async function POST(request: Request) {
       .eq('organization_id', organization.organization_id)
 
     if (updateError) throw new Error(updateError.message)
+
+    if (
+      status === 'connected' &&
+      currentStatus !== 'connected' &&
+      recordingEnabled
+    ) {
+      const currentMetadata =
+        call.metadata && typeof call.metadata === 'object' && !Array.isArray(call.metadata)
+          ? (call.metadata as Record<string, unknown>)
+          : {}
+
+      try {
+        const recording = await startSignalWireCallRecording({
+          organizationId: organization.organization_id,
+          providerCallId,
+        })
+
+        await admin
+          .from('calls')
+          .update({
+            metadata: {
+              ...currentMetadata,
+              recording_requested_at: now,
+              recording_provider_sid: recording.recordingSid,
+              recording_error: null,
+            },
+            updated_at: now,
+          })
+          .eq('id', call.id)
+          .eq('organization_id', organization.organization_id)
+      } catch (recordingError) {
+        console.error('[Flowtix telephony] unable to start provider recording:', recordingError)
+        await admin
+          .from('calls')
+          .update({
+            metadata: {
+              ...currentMetadata,
+              recording_requested_at: now,
+              recording_error:
+                recordingError instanceof Error
+                  ? recordingError.message
+                  : 'Unable to start provider recording.',
+            },
+            updated_at: now,
+          })
+          .eq('id', call.id)
+          .eq('organization_id', organization.organization_id)
+      }
+    }
 
     if (TERMINAL.has(status)) {
       try {

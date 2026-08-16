@@ -223,6 +223,7 @@ export default function DialerClient({
   const [isMuted, setIsMuted] = useState(false)
   const [isOnHold, setIsOnHold] = useState(false)
   const [isRecording, setIsRecording] = useState(true)
+  const isRecordingRef = useRef(true)
   const [elapsed, setElapsed] = useState(0)
   const [transferTarget, setTransferTarget] = useState('')
   const [incomingFrom, setIncomingFrom] = useState('')
@@ -270,6 +271,10 @@ export default function DialerClient({
   useEffect(() => {
     selectedCallerIdRef.current = selectedCallerId
   }, [selectedCallerId])
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording
+  }, [isRecording])
 
   useEffect(() => {
     initialContactIdRef.current = activeContact?.id ?? null
@@ -386,6 +391,7 @@ export default function DialerClient({
               providerCallId,
               status: input.status,
               rawStatus: input.rawStatus ?? input.status,
+              recordingEnabled: isRecordingRef.current,
             }),
           })
           if (!response.ok) {
@@ -1246,6 +1252,7 @@ export default function DialerClient({
                 type="button"
                 onClick={() => setIsRecording((value) => !value)}
                 disabled={active}
+                title="Choose whether Flowtix should record the next connected call."
                 className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-semibold text-white disabled:opacity-40"
               >
                 {isRecording ? (

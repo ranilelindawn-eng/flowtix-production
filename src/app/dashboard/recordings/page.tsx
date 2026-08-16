@@ -145,8 +145,13 @@ function RecordingCard({
   recording: Recording
 }) {
   return (
-    <article className="group rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm transition hover:border-slate-700 hover:bg-slate-900">
-      <div className="flex items-start justify-between gap-4">
+    <article className="group relative rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm transition hover:border-blue-500/50 hover:bg-slate-900">
+      <Link
+        href={`/dashboard/recordings/${recording.id}`}
+        aria-label={`Open recording ${getFilename(recording.storage_path)}`}
+        className="absolute inset-0 rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      />
+      <div className="relative z-10 flex items-start justify-between gap-4 pointer-events-none">
         <div className="flex min-w-0 items-start gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
             <svg
@@ -190,15 +195,23 @@ function RecordingCard({
           </div>
         </div>
 
-        <Link
-          href={`/dashboard/recordings/${recording.id}`}
-          className="shrink-0 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-blue-500 hover:text-white"
-        >
-          View
-        </Link>
+        <div className="pointer-events-auto flex shrink-0 gap-2">
+          <Link
+            href={`/dashboard/recordings/${recording.id}`}
+            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-blue-500 hover:text-white"
+          >
+            View
+          </Link>
+          <a
+            href={`/api/recordings/media?id=${recording.id}&download=1`}
+            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-emerald-500 hover:text-white"
+          >
+            Download
+          </a>
+        </div>
       </div>
 
-      <dl className="mt-5 grid grid-cols-2 gap-3">
+      <dl className="pointer-events-none relative z-10 mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-3">
           <dt className="text-xs text-slate-500">Duration</dt>
           <dd className="mt-1 text-sm font-medium text-slate-200">
@@ -269,7 +282,7 @@ export default async function RecordingsPage({
   )
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6 xl:-mx-10 xl:w-[calc(100%+5rem)] 2xl:-mx-16 2xl:w-[calc(100%+8rem)]">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-medium text-blue-400">
@@ -341,14 +354,17 @@ export default async function RecordingsPage({
               return (
                 <article
                   key={recording.id}
-                  className="rounded-2xl border border-white/10 bg-slate-950/60 p-4"
+                  className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 transition hover:border-cyan-400/30"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-white">
+                        <Link
+                          href={`/dashboard/calls/${recording.call_id}`}
+                          className="font-semibold text-white transition hover:text-cyan-200"
+                        >
                           Call {shortenId(recording.call_id)}
-                        </p>
+                        </Link>
                         <span className="rounded-full border border-cyan-400/20 bg-cyan-400/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">
                           {providerLabel}
                         </span>
@@ -379,10 +395,16 @@ export default async function RecordingsPage({
                     callId={recording.call_id}
                   />
 
-                  <div className="mt-3 flex justify-end">
+                  <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <Link
+                      href={`/dashboard/calls/${recording.call_id}`}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"
+                    >
+                      View related call
+                    </Link>
                     <a
                       href={`/api/telephony/recordings/media?id=${recording.id}&download=1`}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white hover:bg-white/10"
+                      className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/15"
                     >
                       Download recording
                     </a>
