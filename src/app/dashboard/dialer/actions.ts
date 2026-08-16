@@ -139,6 +139,10 @@ export async function getAssignedDialerContacts(
     .select('id,first_name,last_name,email,phone,company,metadata')
     .eq('organization_id', organization.organization_id)
     .is('merged_into_contact_id', null)
+    // The Dialer assigned list is a pending-call worklist. Once an agent
+    // saves a call outcome, the contact remains in CRM but leaves this list
+    // so the same assignment is not called twice by mistake.
+    .is('last_call_outcome', null)
 
   if (organization.role === 'agent') {
     contactQuery = contactQuery.eq(

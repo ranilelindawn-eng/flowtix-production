@@ -918,8 +918,10 @@ export default function DialerClient({
           ? organizationLocalDateTimeToUtc(followUpAt, timeZone) ?? undefined
           : undefined
 
+      const savedContactId = activeContact.id
+
       await saveDialerContactUpdate({
-        contactId: activeContact.id,
+        contactId: savedContactId,
         outcome: callOutcome,
         leadStatus,
         notes: callNotes,
@@ -927,17 +929,30 @@ export default function DialerClient({
         createFollowUpTask,
       })
 
+      // A saved outcome means this assignment has been worked. Keep the CRM
+      // contact itself intact, but remove it from the Dialer's pending
+      // assigned-contact worklist immediately so the caller cannot
+      // accidentally select and call the same assignment twice.
+      setContactResults((contacts) =>
+        contacts.filter((contact) => contact.id !== savedContactId),
+      )
+
       setSaveState('success')
       setSaveMessage(
         createFollowUpTask
-          ? 'Contact, timeline, and follow-up task saved.'
-          : 'Contact and timeline saved.',
+          ? 'Contact, timeline, and follow-up task saved. Removed from assigned contacts.'
+          : 'Contact and timeline saved. Removed from assigned contacts.',
       )
       setCallNotes('')
 
       if (openContactAfterSave) {
-        window.location.assign(`/dashboard/contacts/${activeContact.id}`)
+        window.location.assign(`/dashboard/contacts/${savedContactId}`)
+        return
       }
+
+      setActiveContact(null)
+      setPhoneNumber('')
+      setContactSearch('')
     } catch (error) {
       setSaveState('error')
       setSaveMessage(
@@ -953,7 +968,7 @@ export default function DialerClient({
   )
 
   return (
-    <div className="space-y-6">
+    <div className="w-full space-y-6 lg:relative lg:left-1/2 lg:w-[min(1720px,calc(100vw-320px))] lg:-translate-x-1/2">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">
@@ -990,7 +1005,7 @@ export default function DialerClient({
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-6 xl:grid-cols-[1.22fr_0.78fr]">
         <section className="rounded-3xl border border-white/10 bg-slate-950/70 p-6 shadow-2xl">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -1045,7 +1060,7 @@ export default function DialerClient({
               </div>
             </div>
           ) : (
-            <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.72fr)]">
+            <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
                   <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1108,7 +1123,7 @@ export default function DialerClient({
                 </div>
               </div>
 
-              <aside className="min-h-[420px] rounded-3xl border border-white/10 bg-white/[0.025] p-4">
+              <aside className="min-h-[460px] rounded-3xl border border-white/10 bg-white/[0.025] p-5">
                 <div>
                   <p className="text-sm font-semibold text-white">
                     My assigned contacts
@@ -1131,7 +1146,7 @@ export default function DialerClient({
                   />
                 </label>
 
-                <div className="mt-3 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                <div className="mt-4 max-h-[500px] space-y-3 overflow-y-auto pr-1">
                   {contactSearchState === 'loading' ? (
                     <div className="flex items-center gap-2 px-2 py-3 text-xs text-slate-500">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1166,16 +1181,16 @@ export default function DialerClient({
                           setSaveState('idle')
                           setSaveMessage('')
                         }}
-                        className={`w-full rounded-2xl border px-3 py-3 text-left transition disabled:opacity-50 ${
+                        className={`w-full rounded-2xl border px-4 py-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/50 disabled:opacity-50 ${
                           selected
                             ? 'border-cyan-400/30 bg-cyan-400/10'
                             : 'border-white/10 bg-slate-950/40 hover:bg-white/[0.06]'
                         }`}
                       >
-                        <p className="truncate text-sm font-semibold text-white">
+                        <p className="truncate text-base font-semibold text-white">
                           {contact.name}
                         </p>
-                        <p className="mt-1 truncate text-xs text-slate-400">
+                        <p className="mt-1.5 truncate text-sm text-slate-400">
                           {contact.phoneNumber}
                         </p>
                       </button>
