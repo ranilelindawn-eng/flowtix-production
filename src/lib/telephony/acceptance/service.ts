@@ -28,8 +28,6 @@ type IntegrityReport = {
   staleOnlineDevices?: number
   staleAvailablePresence?: number
   expiredWrapUpPresence?: number
-  staleWaitingQueueEntries?: number
-  queueMemberReservationDrift?: number
 }
 
 function check(
@@ -219,8 +217,6 @@ export async function runTelephonyAcceptanceValidation(
     integrity.staleOnlineDevices,
     integrity.staleAvailablePresence,
     integrity.expiredWrapUpPresence,
-    integrity.staleWaitingQueueEntries,
-    integrity.queueMemberReservationDrift,
   ]
   const driftTotal = driftValues.reduce<number>(
     (total, value) => total + (Number(value) || 0),
@@ -229,7 +225,7 @@ export async function runTelephonyAcceptanceValidation(
 
   checks.push(
     driftTotal === 0
-      ? check('runtime-integrity', 'Runtime state integrity', 'pass', 'No stale reservations, devices, presence, queue entries, or reservation-counter drift detected.')
+      ? check('runtime-integrity', 'Runtime state integrity', 'pass', 'No stale call reservations, devices, presence, or wrap-up state detected.')
       : check('runtime-integrity', 'Runtime state integrity', 'warning', `${driftTotal} runtime integrity item${driftTotal === 1 ? '' : 's'} require maintenance recovery.`),
   )
 

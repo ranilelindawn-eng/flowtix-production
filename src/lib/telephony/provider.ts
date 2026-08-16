@@ -19,7 +19,7 @@ export type TelephonyCallControl =
   | 'mute' | 'unmute' | 'hold' | 'resume' | 'hangup' | 'send-dtmf'
   | 'blind-transfer' | 'warm-transfer' | 'conference' | 'monitor' | 'whisper' | 'barge'
 export type TelephonyProviderCapability =
-  | 'outbound-calling' | 'inbound-calling' | 'call-recording' | 'dtmf'
+  | 'outbound-calling' | 'call-recording' | 'dtmf'
   | 'mute' | 'hold' | 'conference' | 'blind-transfer' | 'warm-transfer'
   | 'supervisor-monitoring' | 'whisper' | 'barge' | 'webhooks' | 'number-management'
 

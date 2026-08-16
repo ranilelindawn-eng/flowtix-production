@@ -175,8 +175,8 @@ export const guideArticles: GuideArticle[] = [
   {
     slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active Flowtix calls in one operational view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
     steps: [
-      { title: 'Understand the counters', instructions: ['Ringing shows calls that are alerting.', 'Connected shows active conversations.', 'Queued shows callers waiting in a queue.'] },
-      { title: 'Use it during live operations', instructions: ['Keep this page open while agents are calling or receiving calls.', 'If it stays empty, confirm a real provider call has reached an active lifecycle state.'] },
+      { title: 'Understand the live states', instructions: ['Review which agents are actively placing outbound calls.', 'Connected indicates an active conversation.', 'Idle or available agents are not currently on an outbound call.'] },
+      { title: 'Use it during live operations', instructions: ['Keep this page open while agents are placing outbound calls.', 'If it stays empty, confirm a real provider call has reached an active lifecycle state.'] },
     ], successChecks: ['An active call appears while its lifecycle is active.', 'The call disappears/updates after a terminal provider event.'], related: ['dialer','calls','telephony-monitoring']
   },
   {
@@ -243,11 +243,11 @@ export const guideArticles: GuideArticle[] = [
     ], successChecks: ['Analytics changes after pipeline/opportunity activity exists.', 'Period changes alter the expected data set.'], related: ['pipelines','reports','campaign-analytics']
   },
   {
-    slug: 'call-analytics', title: 'Call Analytics', category: 'Analytics', summary: 'Analyze provider, direction, agent, queue, and routing performance for calls.', moduleHref: '/dashboard/call-analytics', moduleLabel: 'Open Call Analytics', pathnamePrefixes: ['/dashboard/call-analytics'],
+    slug: 'call-analytics', title: 'Call Analytics', category: 'Analytics', summary: 'Analyze outbound call volume, connectivity, recordings, provider performance, and agent execution.', moduleHref: '/dashboard/call-analytics', moduleLabel: 'Open Call Analytics', pathnamePrefixes: ['/dashboard/call-analytics'],
     steps: [
-      { title: 'Review call outcomes', instructions: ['Check total calls, answer rates, durations, and direction mix.', 'Compare provider performance when multiple providers are active.'] },
-      { title: 'Diagnose operations', instructions: ['Review agent performance, queue outcomes, and routing strategies.', 'Use Telephony Monitoring for live operational problems and Call Analytics for historical patterns.'] },
-    ], successChecks: ['Completed call records affect analytics.', 'Provider/queue breakdowns correspond to actual call data.'], related: ['calls','telephony-monitoring','agent-analytics']
+      { title: 'Review call outcomes', instructions: ['Check outbound call totals, connect rate, durations, missed/no-answer outcomes, and recordings.', 'Compare provider performance when multiple outbound providers are active.'] },
+      { title: 'Diagnose operations', instructions: ['Review agent and provider performance for outbound calling.', 'Use Telephony Monitoring for live operational problems and Call Analytics for historical patterns.'] },
+    ], successChecks: ['Completed outbound call records affect analytics.', 'Provider and agent breakdowns correspond to actual outbound call data.'], related: ['calls','telephony-monitoring','agent-analytics']
   },
   {
     slug: 'agent-analytics', title: 'Agent Analytics', category: 'Analytics', summary: 'Compare workforce performance using call and activity metrics.', moduleHref: '/dashboard/agent-analytics', moduleLabel: 'Open Agent Analytics', pathnamePrefixes: ['/dashboard/agent-analytics'],

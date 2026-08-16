@@ -118,36 +118,3 @@ export async function listOwnedProviderNumbers(
     },
   }))
 }
-
-export async function configureProviderInboundRouting(input: {
-  organizationId: string
-  provider: ConfiguredTelephonyProviderName
-  providerNumberId: string
-  phoneNumber: string
-}) {
-  requireSignalWire(input.provider)
-  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
-    input.organizationId,
-    'signalwire',
-  )
-  const siteUrl = required(process.env.NEXT_PUBLIC_SITE_URL, 'NEXT_PUBLIC_SITE_URL').replace(/\/$/, '')
-  const projectId = required(connection.credentials.projectId, 'SignalWire Project ID')
-  const apiToken = required(connection.credentials.apiToken, 'SignalWire API Token')
-  const spaceUrl = normalizeSpaceUrl(connection.config.space_url)
-  const body = new URLSearchParams({
-    VoiceUrl: `${siteUrl}/api/telephony/voice/inbound/signalwire`,
-    VoiceMethod: 'POST',
-  })
-
-  await jsonRequest(
-    `${spaceUrl}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/IncomingPhoneNumbers/${encodeURIComponent(input.providerNumberId)}.json`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    },
-  )
-}

@@ -62,7 +62,6 @@ export type PlatformTelephonyNumber = {
   friendlyName: string
   isDefault: boolean
   recordingEnabled: boolean
-  inboundRoute: string | null
   capabilities: Record<string, boolean>
   createdAt: string
 }
@@ -178,7 +177,6 @@ function parseNumber(value: unknown): PlatformTelephonyNumber | null {
     friendlyName,
     isDefault: asBoolean(value.isDefault),
     recordingEnabled: asBoolean(value.recordingEnabled),
-    inboundRoute: asString(value.inboundRoute),
     capabilities,
     createdAt,
   }

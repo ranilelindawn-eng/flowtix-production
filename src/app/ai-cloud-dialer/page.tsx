@@ -81,7 +81,7 @@ export default function Page() {
       </ContentSection>
       <ContentSection
         title="Built for provider-connected calling"
-        intro="Real inbound and outbound calling requires a supported telephony provider, phone-number configuration, credentials, callbacks, and successful production validation. Flowtix keeps that provider layer separate from the CRM so teams can manage communication workflows without tying the product to a single carrier."
+        intro="Real outbound calling requires a supported telephony provider, phone-number configuration, credentials, callbacks, and successful production validation. Flowtix keeps that provider layer separate from the CRM so teams can manage communication workflows without tying the product to a single carrier."
       >
         <div className="grid gap-6 md:grid-cols-3">
           {[

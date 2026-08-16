@@ -2,7 +2,6 @@ import type {
   Call,
   CallCampaignOption,
   CallContactOption,
-  CallDirection,
   CallStatus,
 } from '@/lib/calls'
 import type { AssignableMember } from '@/lib/ownership'
@@ -45,9 +44,6 @@ export default async function CallForm({
   submitLabel,
 }: CallFormProps) {
   const timeZone = await getCurrentOrganizationTimezone()
-  const direction: CallDirection =
-    initialValues?.direction ?? 'outbound'
-
   const status: CallStatus =
     initialValues?.status ?? 'scheduled'
 
@@ -153,24 +149,16 @@ export default async function CallForm({
         </select>
       </div>
 
+      <input type="hidden" name="direction" value="outbound" />
+
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <div>
-          <label
-            htmlFor="direction"
-            className="mb-2 block text-sm font-medium text-slate-200"
-          >
+          <label className="mb-2 block text-sm font-medium text-slate-200">
             Direction
           </label>
-
-          <select
-            id="direction"
-            name="direction"
-            defaultValue={direction}
-            className="min-h-11 w-full rounded-xl border border-white/10 bg-slate-950/40 px-4 text-sm text-white outline-none transition focus:border-blue-500/60 focus:ring-2 focus:ring-blue-500/20"
-          >
-            <option value="outbound">Outbound</option>
-            <option value="inbound">Inbound</option>
-          </select>
+          <div className="flex min-h-11 items-center rounded-xl border border-white/10 bg-slate-950/40 px-4 text-sm font-medium text-slate-200">
+            Outbound
+          </div>
         </div>
 
         <div>

@@ -4,12 +4,10 @@ import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
-  Clock3,
   CreditCard,
   LockKeyhole,
   PhoneCall,
   Radio,
-  Route,
   UsersRound,
 } from 'lucide-react'
 import { requirePermission } from '@/lib/auth'
@@ -51,8 +49,8 @@ function TelephonyMonitoringLocked({
           Telephony monitoring
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-          Review routing, queues, providers, agents, alerts, and operational
-          health after Cloud Dialer is enabled for this organization.
+          Review outbound calling, provider health, agents, alerts, and operational
+          readiness after Cloud Dialer is enabled for this organization.
         </p>
       </div>
 
@@ -89,12 +87,12 @@ function TelephonyMonitoringLocked({
             {
               title: 'Live operational health',
               description:
-                'Track active calls, queue pressure, provider errors, and routing failures.',
+                'Track active outbound calls, provider errors, and call-processing health.',
             },
             {
-              title: 'Agent and queue visibility',
+              title: 'Agent availability',
               description:
-                'Monitor available agents, waiting callers, reservations, and routing activity.',
+                'Monitor available agents and browser softphone readiness for outbound work.',
             },
             {
               title: 'Readiness validation',
@@ -153,10 +151,9 @@ export default async function TelephonyMonitoringPage() {
   ])
   const snapshot = overview.snapshot
   const providerEntries = Object.entries(snapshot?.providerBreakdown ?? {}) as Array<[string, number]>
-  const routingEntries = Object.entries(snapshot?.routingBreakdown ?? {}) as Array<[string, number]>
   const cards = [
     { label: 'Active calls', value: snapshot?.activeCalls ?? 0, icon: PhoneCall },
-    { label: 'Queue waiting', value: snapshot?.waitingQueueEntries ?? 0, icon: Clock3 },
+    { label: 'Connected calls', value: snapshot?.connectedCalls ?? 0, icon: Activity },
     { label: 'Available agents', value: snapshot?.availableAgents ?? 0, icon: UsersRound },
     {
       label: 'Open alerts',
@@ -169,9 +166,9 @@ export default async function TelephonyMonitoringPage() {
     ['Calls last hour', snapshot?.callsLastHour ?? 0],
     ['Answer rate', `${Math.round((snapshot?.answerRate ?? 0) * 100)}%`],
     ['Average answer', formatSeconds(snapshot?.averageAnswerSeconds ?? null)],
-    ['Oldest queue wait', formatSeconds(snapshot?.oldestQueueWaitSeconds ?? 0)],
-    ['Routing failures', snapshot?.routingFailuresLastHour ?? 0],
+    ['Failed calls', snapshot?.failedCallsLastHour ?? 0],
     ['Provider errors', snapshot?.providerErrorsLastHour ?? 0],
+    ['Busy agents', snapshot?.busyAgents ?? 0],
   ]
 
   return (
@@ -180,7 +177,7 @@ export default async function TelephonyMonitoringPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.28em] text-cyan-300">Operations</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Telephony monitoring</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Routing, queues, providers, agents, alerts, and operational health in one tenant-scoped view.
+          Outbound calling, providers, agents, alerts, and operational health in one tenant-scoped view.
         </p>
       </div>
 
@@ -274,7 +271,7 @@ export default async function TelephonyMonitoringPage() {
         </section>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div>
         <section className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
           <div className="flex items-center gap-2">
             <Radio className="h-5 w-5 text-cyan-300" />
@@ -297,27 +294,6 @@ export default async function TelephonyMonitoringPage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-slate-950/60 p-6">
-          <div className="flex items-center gap-2">
-            <Route className="h-5 w-5 text-cyan-300" />
-            <h2 className="font-semibold text-white">Routing diagnostics</h2>
-          </div>
-          <div className="mt-4 space-y-3">
-            {routingEntries.length === 0 ? (
-              <p className="text-sm text-slate-400">No routing attempts in the last hour.</p>
-            ) : (
-              routingEntries.map(([strategy, total]) => (
-                <div
-                  key={strategy}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3"
-                >
-                  <span className="capitalize text-slate-300">{strategy.replaceAll('_', ' ')}</span>
-                  <span className="font-semibold text-white">{total}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </section>
       </div>
 
       <p className="text-xs text-slate-500">

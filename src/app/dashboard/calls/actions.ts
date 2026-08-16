@@ -11,12 +11,9 @@ import {
   createCall as createCallRecord,
   deleteCall as deleteCallRecord,
   updateCall as updateCallRecord,
-  type CallDirection,
   type CallFormValues,
   type CallStatus,
 } from '@/lib/calls'
-
-const CALL_DIRECTIONS: CallDirection[] = ['outbound', 'inbound']
 
 const CALL_STATUSES: CallStatus[] = [
   'completed',
@@ -35,16 +32,6 @@ function getBoolean(formData: FormData, key: string): boolean {
   return value === 'on' || value === 'true' || value === '1'
 }
 
-function getDirection(formData: FormData): CallDirection {
-  const value = getString(formData, 'direction')
-
-  if (CALL_DIRECTIONS.includes(value as CallDirection)) {
-    return value as CallDirection
-  }
-
-  return 'outbound'
-}
-
 function getStatus(formData: FormData): CallStatus {
   const value = getString(formData, 'status')
 
@@ -59,7 +46,7 @@ function getCallValues(formData: FormData, timeZone: string): CallFormValues {
   return {
     campaign_id: getString(formData, 'campaign_id'),
     contact_id: getString(formData, 'contact_id'),
-    direction: getDirection(formData),
+    direction: 'outbound',
     status: getStatus(formData),
     started_at:
       organizationLocalDateTimeToUtc(

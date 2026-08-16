@@ -106,8 +106,6 @@ export async function updateSession(request: NextRequest) {
             ['/dashboard/dialer', 'dialer.cloud'],
             ['/dashboard/live-calls', 'dialer.cloud'],
             ['/dashboard/telephony-monitoring', 'dialer.cloud'],
-            ['/dashboard/ring-groups', 'dialer.cloud'],
-            ['/dashboard/queues', 'dialer.cloud'],
             ['/dashboard/recordings', 'dialer.cloud'],
             ['/dashboard/transcripts', 'ai.transcription'],
             ['/dashboard/ai', 'ai.chat'],

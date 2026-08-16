@@ -100,7 +100,7 @@ export async function POST(request: Request) {
         provider,
         providerIdentity:
           typeof body.providerIdentity === 'string' ? body.providerIdentity.slice(0, 255) : null,
-        supportsInbound: body.supportsInbound !== false,
+        supportsInbound: false,
         // Active call ownership is provider-controlled, not browser-controlled.
         callId: null,
         metadata:

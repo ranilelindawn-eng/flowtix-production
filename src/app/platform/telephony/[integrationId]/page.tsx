@@ -208,7 +208,6 @@ export default async function PlatformTelephonyConnectionPage({
                   <th className="px-6 py-4 font-medium">Capabilities</th>
                   <th className="px-6 py-4 font-medium">Default</th>
                   <th className="px-6 py-4 font-medium">Recording</th>
-                  <th className="px-6 py-4 font-medium">Inbound route</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
@@ -226,9 +225,6 @@ export default async function PlatformTelephonyConnectionPage({
                     </td>
                     <td className="px-6 py-4 text-slate-300">
                       {number.recordingEnabled ? 'Enabled' : 'Disabled'}
-                    </td>
-                    <td className="px-6 py-4 text-slate-400">
-                      {number.inboundRoute ?? '—'}
                     </td>
                   </tr>
                 ))}

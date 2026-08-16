@@ -16,7 +16,7 @@ export const metadata = createMarketingMetadata({
 
 const items = [
   { title: 'Sales teams', description: 'Keep prospects, tasks, campaigns, and call outcomes connected throughout the sales process.' },
-  { title: 'Call centers', description: 'Give agents and managers shared visibility into queues, calls, recordings, and follow-up work.' },
+  { title: 'Outbound call teams', description: 'Give agents and managers shared visibility into assigned contacts, outbound calls, recordings, and follow-up work.' },
   { title: 'Virtual assistants', description: 'Manage multiple client workflows while organization-level data isolation keeps workspaces separate.' },
   { title: 'Agencies', description: 'Coordinate teams, contacts, campaigns, and account activity from one operational workspace.' },
   { title: 'Customer support', description: 'Track customer context, conversation notes, tasks, and resolution-related activity.' },

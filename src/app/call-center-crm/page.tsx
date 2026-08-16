@@ -10,13 +10,13 @@ import { createMarketingMetadata } from '@/lib/seo'
 export const metadata = createMarketingMetadata({
   title: 'Call Center CRM for Teams & Customer Conversations',
   description:
-    'Flowtix is a call center CRM workspace for teams managing contacts, call activity, queues, campaigns, recordings, transcripts, tasks, analytics, and permissions.',
+    'Flowtix is an outbound call center CRM workspace for teams managing contacts, outbound call activity, campaigns, recordings, transcripts, tasks, analytics, and permissions.',
   path: '/call-center-crm',
 })
 
 const capabilities = [
   { title: 'Shared contact context', description: 'Give agents and managers a common view of contact history, notes, tasks, calls, and related customer activity.' },
-  { title: 'Queues and routing workflows', description: 'Organize communication operations with queue, presence, ownership, and routing-oriented application workflows.' },
+  { title: 'Outbound calling workflows', description: 'Organize calling operations with assigned contacts, agent presence, ownership, campaigns, and follow-up workflows.' },
   { title: 'Campaign operations', description: 'Manage campaign members, progress, assignments, and follow-up work from the same organization-scoped workspace.' },
   { title: 'Recordings and transcripts', description: 'Store supported conversation artifacts for review while keeping access aligned with organization permissions and policies.' },
   { title: 'Agent and call analytics', description: 'Bring call activity and agent-oriented reporting together with broader CRM and campaign context.' },
@@ -29,7 +29,7 @@ const pageSchema = {
   name: 'Call Center CRM for Teams & Customer Conversations | Flowtix',
   url: 'https://www.flowtix.work/call-center-crm',
   description:
-    'Flowtix combines CRM context with call-center workflows including queues, campaigns, recordings, transcripts, tasks, analytics, and team permissions.',
+    'Flowtix combines CRM context with outbound call-center workflows including campaigns, recordings, transcripts, tasks, analytics, and team permissions.',
   isPartOf: {
     '@type': 'WebSite',
     name: 'Flowtix',
@@ -47,7 +47,7 @@ export default function Page() {
       <MarketingHero
         eyebrow="Call center CRM"
         title="Give agents and managers one place for calls and customer context"
-        description="Flowtix connects CRM records with queue-oriented calling workflows, campaigns, recordings, transcripts, tasks, analytics, and team controls for conversation-driven operations."
+        description="Flowtix connects CRM records with outbound calling workflows, campaigns, recordings, transcripts, tasks, analytics, and team controls for conversation-driven operations."
       />
       <ContentSection
         title="CRM and call-center workflows in one workspace"
@@ -57,7 +57,7 @@ export default function Page() {
       </ContentSection>
       <ContentSection
         title="Built for structured team operations"
-        intro="Call-center workflows depend on more than placing calls. Teams also need ownership, permissions, queue visibility, follow-up, conversation history, and reporting that can be understood across roles."
+        intro="Outbound call-center workflows depend on more than placing calls. Teams also need ownership, permissions, assigned-contact visibility, follow-up, conversation history, and reporting that can be understood across roles."
       >
         <div className="grid gap-6 md:grid-cols-3">
           {[

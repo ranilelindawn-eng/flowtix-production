@@ -130,7 +130,6 @@ function removeUnmanagedAudioElement(id: string) {
 type DeviceState = 'offline' | 'connecting' | 'ready' | 'error'
 type CallState =
   | 'idle'
-  | 'incoming'
   | 'connecting'
   | 'ringing'
   | 'connected'
@@ -222,7 +221,6 @@ export default function DialerClient({
   const [isOnHold, setIsOnHold] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [callScript, setCallScript] = useState('')
-  const [incomingFrom, setIncomingFrom] = useState('')
   const [tokenPayload, setTokenPayload] = useState<TokenPayload | null>(null)
   const tokenPayloadRef = useRef<TokenPayload | null>(null)
   const [availability, setAvailability] = useState<AgentAvailability>('available')
@@ -428,12 +426,22 @@ export default function DialerClient({
     if (notification?.type !== 'callUpdate' || !notification.call) return
 
     const call = notification.call as SignalWireCallLike
+
+    // Flowtix is outbound-only. If a provider account still has an old inbound
+    // callback or browser route configured, reject it immediately instead of
+    // exposing an inbound-call workflow in the subscriber dialer.
+    if (call.direction === 'inbound') {
+      void call.hangup?.()
+      console.warn('[Flowtix telephony] rejected inbound browser call on outbound-only dialer')
+      return
+    }
+
     signalWireCallRef.current = call
     const state = String(call.state ?? '')
     const providerCallId = call.id?.trim() || null
     const isOutbound =
       call.direction === 'outbound' ||
-      (call.direction !== 'inbound' && outboundCallPendingRef.current) ||
+      outboundCallPendingRef.current ||
       (providerCallId ? outboundCallIdsRef.current.has(providerCallId) : false)
     if (isOutbound && providerCallId) outboundCallIdsRef.current.add(providerCallId)
     const lifecycleDirection = isOutbound ? 'outbound' : call.direction
@@ -449,10 +457,8 @@ export default function DialerClient({
         rawStatus: state,
       })
     } else if (state === 'ringing') {
-      const inbound = call.direction === 'inbound'
-      setCallState(inbound ? 'incoming' : 'ringing')
-      setIncomingFrom(call.remotePartyNumber ?? 'Unknown caller')
-      setMessage(inbound ? 'Incoming Flowtix call' : 'Ringing…')
+      setCallState('ringing')
+      setMessage('Ringing…')
       void syncBrowserCallStatus({
         provider: 'signalwire',
         providerCallId,
@@ -474,17 +480,6 @@ export default function DialerClient({
         status: 'connected',
         rawStatus: state,
       })
-      if (call.direction === 'inbound') {
-        void fetch('/api/telephony/inbound/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'signalwire',
-            providerCallId: call.id ?? null,
-            fromNumber: call.remotePartyNumber ?? null,
-          }),
-        })
-      }
     } else if (state === 'held') {
       setCallState('connected')
       setIsOnHold(true)
@@ -576,7 +571,7 @@ export default function DialerClient({
       status,
       provider: selectedProvider,
       providerIdentity: tokenPayloadRef.current?.identity ?? null,
-      supportsInbound: true,
+      supportsInbound: false,
       metadata: { userAgent: navigator.userAgent },
     })
   }, [selectedProvider, updatePresence])
@@ -854,15 +849,6 @@ export default function DialerClient({
     }
   }
 
-  function acceptIncoming() {
-    void signalWireCallRef.current?.answer?.()
-  }
-
-  function rejectIncoming() {
-    void signalWireCallRef.current?.hangup?.()
-    setCallState('idle')
-  }
-
   function hangUp() {
     void signalWireCallRef.current?.hangup?.()
   }
@@ -959,9 +945,7 @@ export default function DialerClient({
     }
   }
 
-  const active = ['connecting', 'ringing', 'connected', 'incoming'].includes(
-    callState,
-  )
+  const active = ['connecting', 'ringing', 'connected'].includes(callState)
 
   return (
     <div className="w-full space-y-6 lg:relative lg:left-1/2 lg:w-[min(1720px,calc(100vw-320px))] lg:-translate-x-1/2">
@@ -1032,31 +1016,7 @@ export default function DialerClient({
             </div>
           ) : null}
 
-          {callState === 'incoming' ? (
-            <div className="mt-8 rounded-3xl border border-cyan-400/30 bg-cyan-400/10 p-8 text-center">
-              <p className="text-sm uppercase tracking-[0.25em] text-cyan-200">
-                Incoming call
-              </p>
-              <p className="mt-3 text-2xl font-semibold text-white">
-                {incomingFrom}
-              </p>
-              <div className="mt-6 flex justify-center gap-3">
-                <button
-                  onClick={acceptIncoming}
-                  className="rounded-2xl bg-emerald-500 px-6 py-3 font-semibold text-white"
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={rejectIncoming}
-                  className="rounded-2xl bg-rose-500 px-6 py-3 font-semibold text-white"
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
                   <label className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
@@ -1195,7 +1155,6 @@ export default function DialerClient({
                 </div>
               </aside>
             </div>
-          )}
         </section>
 
 

@@ -161,41 +161,28 @@ export async function collectCallAnalyticsSnapshot(period: ReportRange): Promise
   const startIso = start.toISOString()
   const endIso = now.toISOString()
 
-  const [callsResult, attemptsResult, queueEntriesResult, queuesResult, membersResult, profilesResult] = await Promise.all([
+  const [callsResult, membersResult, profilesResult] = await Promise.all([
     supabase
       .from('calls')
       .select('id,direction,status,started_at,ended_at,duration_seconds,recording_available,provider,provider_status_raw,routing_status,owner_user_id,owner_membership_id,created_by')
       .eq('organization_id', organizationId)
+      .eq('direction', 'outbound')
       .gte('started_at', startIso)
       .lte('started_at', endIso),
     supabase
-      .from('call_routing_attempts')
-      .select('id,strategy,status,started_at,answered_at,completed_at,failure_reason')
-      .eq('organization_id', organizationId)
-      .gte('started_at', startIso)
-      .lte('started_at', endIso),
-    supabase
-      .from('call_queue_entries')
-      .select('id,queue_id,status,entered_at,answered_at,completed_at,abandoned_at,overflowed_at,estimated_wait_seconds')
-      .eq('organization_id', organizationId)
-      .gte('entered_at', startIso)
-      .lte('entered_at', endIso),
-    supabase.from('call_queues').select('id,name').eq('organization_id', organizationId),
-    supabase.from('organization_members').select('id,user_id').eq('organization_id', organizationId),
+      .from('organization_members')
+      .select('id,user_id')
+      .eq('organization_id', organizationId),
     supabase.from('profiles').select('id,full_name,email'),
   ])
 
-  const firstError = [callsResult, attemptsResult, queueEntriesResult, queuesResult, membersResult, profilesResult]
+  const firstError = [callsResult, membersResult, profilesResult]
     .find((result) => result.error)?.error
   if (firstError) throw new Error(`Unable to collect call analytics: ${firstError.message}`)
 
   const calls = (callsResult.data ?? []) as DbRow[]
-  const attempts = (attemptsResult.data ?? []) as DbRow[]
-  const queueEntries = (queueEntriesResult.data ?? []) as DbRow[]
-  const queues = (queuesResult.data ?? []) as DbRow[]
   const members = (membersResult.data ?? []) as DbRow[]
   const profiles = (profilesResult.data ?? []) as DbRow[]
-  const queueNames = new Map(queues.map((row) => [asString(row.id), asString(row.name) || 'Queue']))
   const memberById = new Map(members.map((row) => [asString(row.id), row]))
   const profileById = new Map(profiles.map((row) => [asString(row.id), row]))
 
@@ -315,94 +302,16 @@ export async function collectCallAnalyticsSnapshot(period: ReportRange): Promise
     averageDurationSeconds: metric.connectedCalls > 0 ? durationTotal / metric.connectedCalls : 0,
   })).sort((a, b) => b.connectedCalls - a.connectedCalls || b.totalCalls - a.totalCalls)
 
-  const routingMap = new Map<string, CallRoutingMetric & { answerSecondsTotal: number; answerSecondsCount: number }>()
-  let routingFailures = 0
-  let answerSecondsTotal = 0
-  let answerSecondsCount = 0
-  for (const attempt of attempts) {
-    const strategy = asString(attempt.strategy) || 'unknown'
-    const status = asString(attempt.status).toLowerCase()
-    const answered = status === 'answered' || status === 'completed'
-    const failed = status === 'failed' || status === 'cancelled'
-    const noAgents = status === 'no_agents'
-    const answerSeconds = dateSeconds(attempt.started_at, attempt.answered_at)
-    if (failed || noAgents) routingFailures += 1
-    if (answerSeconds > 0) {
-      answerSecondsTotal += answerSeconds
-      answerSecondsCount += 1
-    }
-    const metric = routingMap.get(strategy) ?? {
-      strategy,
-      attempts: 0,
-      answered: 0,
-      failed: 0,
-      noAgents: 0,
-      answerRate: 0,
-      averageAnswerSeconds: 0,
-      answerSecondsTotal: 0,
-      answerSecondsCount: 0,
-    }
-    metric.attempts += 1
-    if (answered) metric.answered += 1
-    if (failed) metric.failed += 1
-    if (noAgents) metric.noAgents += 1
-    if (answerSeconds > 0) {
-      metric.answerSecondsTotal += answerSeconds
-      metric.answerSecondsCount += 1
-    }
-    routingMap.set(strategy, metric)
-  }
-  const routing = [...routingMap.values()].map(({ answerSecondsTotal: total, answerSecondsCount: count, ...metric }) => ({
-    ...metric,
-    answerRate: percentage(metric.answered, metric.attempts),
-    averageAnswerSeconds: count > 0 ? total / count : 0,
-  })).sort((a, b) => b.attempts - a.attempts)
-
-  const queueMap = new Map<string, CallQueueMetric & { waitTotal: number; waitCount: number }>()
-  let queueAnswered = 0
-  let queueAbandoned = 0
-  for (const entry of queueEntries) {
-    const queueId = asString(entry.queue_id)
-    const status = asString(entry.status).toLowerCase()
-    const answered = ['answered', 'completed'].includes(status)
-    const abandoned = status === 'abandoned'
-    const overflowed = status === 'overflowed'
-    const wait = answered
-      ? dateSeconds(entry.entered_at, entry.answered_at)
-      : abandoned
-        ? dateSeconds(entry.entered_at, entry.abandoned_at)
-        : Math.max(0, asNumber(entry.estimated_wait_seconds))
-    if (answered) queueAnswered += 1
-    if (abandoned) queueAbandoned += 1
-    const metric = queueMap.get(queueId) ?? {
-      queueId,
-      queueName: queueNames.get(queueId) ?? 'Queue',
-      entered: 0,
-      answered: 0,
-      abandoned: 0,
-      overflowed: 0,
-      answerRate: 0,
-      averageWaitSeconds: 0,
-      longestWaitSeconds: 0,
-      waitTotal: 0,
-      waitCount: 0,
-    }
-    metric.entered += 1
-    if (answered) metric.answered += 1
-    if (abandoned) metric.abandoned += 1
-    if (overflowed) metric.overflowed += 1
-    if (wait > 0) {
-      metric.waitTotal += wait
-      metric.waitCount += 1
-      metric.longestWaitSeconds = Math.max(metric.longestWaitSeconds, wait)
-    }
-    queueMap.set(queueId, metric)
-  }
-  const queuesMetrics = [...queueMap.values()].map(({ waitTotal, waitCount, ...metric }) => ({
-    ...metric,
-    answerRate: percentage(metric.answered, metric.entered),
-    averageWaitSeconds: waitCount > 0 ? waitTotal / waitCount : 0,
-  })).sort((a, b) => b.entered - a.entered)
+  // Flowtix is outbound-only. Queue and inbound-routing analytics are retained
+  // as zero-valued snapshot fields for database compatibility with historical
+  // snapshots, but no queue/routing runtime data is collected.
+  const routing: CallAnalyticsSnapshot['routing'] = []
+  const queuesMetrics: CallAnalyticsSnapshot['queues'] = []
+  const queueAnswered = 0
+  const queueAbandoned = 0
+  const answerSecondsTotal = 0
+  const answerSecondsCount = 0
+  const routingFailures = 0
 
   const totalCalls = calls.length
   const snapshotInsert = {
@@ -422,11 +331,11 @@ export async function collectCallAnalyticsSnapshot(period: ReportRange): Promise
     average_answer_seconds: answerSecondsCount > 0 ? answerSecondsTotal / answerSecondsCount : 0,
     recorded_calls: recordedCalls,
     recording_rate: percentage(recordedCalls, totalCalls),
-    queue_entries: queueEntries.length,
+    queue_entries: 0,
     queue_answered: queueAnswered,
     queue_abandoned: queueAbandoned,
-    queue_abandon_rate: percentage(queueAbandoned, queueEntries.length),
-    routing_attempts: attempts.length,
+    queue_abandon_rate: 0,
+    routing_attempts: 0,
     routing_failures: routingFailures,
     provider_metrics: providers,
     direction_metrics: directions,

@@ -31,7 +31,6 @@ import {
   Target,
   TextQuote,
   Users,
-  UsersRound,
   UserRoundCheck,
   Zap,
 } from 'lucide-react'
@@ -182,22 +181,6 @@ const navItems: NavItem[] = [
     href: '/dashboard/telephony-monitoring',
     permission: 'calls.view_all',
     icon: BarChart3,
-  },
-  {
-    id: 'ring-groups',
-    feature: 'dialer.cloud',
-    label: 'Ring Groups',
-    href: '/dashboard/ring-groups',
-    permission: 'team.view',
-    icon: UsersRound,
-  },
-  {
-    id: 'queues',
-    feature: 'dialer.cloud',
-    label: 'Queues',
-    href: '/dashboard/queues',
-    permission: 'team.view',
-    icon: ListOrdered,
   },
   {
     id: 'recordings',
