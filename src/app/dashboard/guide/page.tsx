@@ -2,14 +2,14 @@ import Link from 'next/link'
 import { BookOpenText, CheckCircle2, Compass, LifeBuoy, Search } from 'lucide-react'
 
 import GuideSearch, { GuideCard } from '@/components/guide/GuideSearch'
-import { guideArticles, guideCategories } from '@/lib/guide/articles'
+import { guideCategories, subscriberGuideArticles } from '@/lib/guide/articles'
 
 export default function GuidePage() {
-  const gettingStarted = guideArticles.find((article) => article.slug === 'getting-started')
-  const troubleshooting = guideArticles.find((article) => article.slug === 'troubleshooting')
+  const gettingStarted = subscriberGuideArticles.find((article) => article.slug === 'getting-started')
+  const troubleshooting = subscriberGuideArticles.find((article) => article.slug === 'troubleshooting')
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="relative left-1/2 w-full -translate-x-1/2 space-y-8 pb-16 lg:w-[calc(100vw-344px)] lg:max-w-[1680px]">
       <header className="rounded-3xl border border-white/10 bg-gradient-to-br from-[#0B1726] to-[#0A1D32] p-7 sm:p-9">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -20,7 +20,7 @@ export default function GuidePage() {
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3 lg:w-[430px]">
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><BookOpenText className="h-5 w-5 text-cyan-300"/><p className="mt-2 font-semibold text-white">{guideArticles.length} guides</p><p className="mt-1 text-xs text-slate-400">Across the dashboard</p></div>
+            <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><BookOpenText className="h-5 w-5 text-cyan-300"/><p className="mt-2 font-semibold text-white">{subscriberGuideArticles.length} guides</p><p className="mt-1 text-xs text-slate-400">Across the dashboard</p></div>
             <div className="rounded-2xl border border-white/10 bg-black/10 p-4"><CheckCircle2 className="h-5 w-5 text-emerald-300"/><p className="mt-2 font-semibold text-white">Success checks</p><p className="mt-1 text-xs text-slate-400">Know when it worked</p></div>
             <div className="col-span-2 rounded-2xl border border-white/10 bg-black/10 p-4 sm:col-span-1"><LifeBuoy className="h-5 w-5 text-amber-300"/><p className="mt-2 font-semibold text-white">Troubleshooting</p><p className="mt-1 text-xs text-slate-400">Diagnose before changing</p></div>
           </div>
@@ -29,7 +29,7 @@ export default function GuidePage() {
 
       <section className="rounded-3xl border border-white/10 bg-[#07111F]/40 p-5 sm:p-6">
         <div className="mb-4 flex items-center gap-2 text-white"><Search className="h-5 w-5 text-cyan-300"/><h2 className="text-lg font-semibold">Find a guide</h2></div>
-        <GuideSearch articles={guideArticles} />
+        <GuideSearch articles={subscriberGuideArticles} />
       </section>
 
       <section>
@@ -43,7 +43,7 @@ export default function GuidePage() {
       </section>
 
       {guideCategories.map((category) => {
-        const articles = guideArticles.filter((article) => article.category === category && !['getting-started', 'troubleshooting'].includes(article.slug))
+        const articles = subscriberGuideArticles.filter((article) => article.category === category && !['getting-started', 'troubleshooting'].includes(article.slug))
         if (articles.length === 0) return null
         return (
           <section key={category} className="space-y-4">

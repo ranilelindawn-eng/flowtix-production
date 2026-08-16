@@ -1,7 +1,6 @@
 export const guidePathMap: ReadonlyArray<{ prefix: string; slug: string; title: string }> = [
   { prefix: '/dashboard/settings/phone-numbers', slug: 'phone-numbers', title: 'Phone Numbers' },
   { prefix: '/dashboard/settings/integrations', slug: 'integrations', title: 'Integrations' },
-  { prefix: '/dashboard/settings/jobs', slug: 'background-jobs', title: 'Background Jobs' },
   { prefix: '/dashboard/telephony-monitoring', slug: 'telephony-monitoring', title: 'Telephony Monitoring' },
   { prefix: '/dashboard/campaign-analytics', slug: 'campaign-analytics', title: 'Campaign Analytics' },
   { prefix: '/dashboard/sales-analytics', slug: 'sales-analytics', title: 'Sales Analytics' },
@@ -9,7 +8,6 @@ export const guidePathMap: ReadonlyArray<{ prefix: string; slug: string; title: 
   { prefix: '/dashboard/agent-analytics', slug: 'agent-analytics', title: 'Agent Analytics' },
   { prefix: '/dashboard/ai-analytics', slug: 'ai-analytics', title: 'AI Analytics' },
   { prefix: '/dashboard/live-calls', slug: 'live-calls', title: 'Live Calls' },
-  { prefix: '/dashboard/ring-groups', slug: 'ring-groups', title: 'Ring Groups' },
   { prefix: '/dashboard/recordings', slug: 'recordings', title: 'Recordings' },
   { prefix: '/dashboard/transcripts', slug: 'transcripts', title: 'Transcripts' },
   { prefix: '/dashboard/communications', slug: 'email-sms', title: 'Email & SMS' },
@@ -37,7 +35,6 @@ export const guidePathMap: ReadonlyArray<{ prefix: string; slug: string; title: 
   { prefix: '/dashboard/ai', slug: 'ai-workspace', title: 'AI Workspace' },
   { prefix: '/dashboard/dialer', slug: 'dialer', title: 'Dialer' },
   { prefix: '/dashboard/calls', slug: 'calls', title: 'Calls' },
-  { prefix: '/dashboard/queues', slug: 'queues', title: 'Queues' },
   { prefix: '/dashboard/files', slug: 'files', title: 'Files & attachments' },
   { prefix: '/dashboard/tags', slug: 'tags', title: 'Tags' },
   { prefix: '/dashboard/team', slug: 'team', title: 'Team' },

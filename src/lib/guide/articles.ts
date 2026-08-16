@@ -108,7 +108,7 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Confirm the recipient', instructions: ['Open the related contact and verify the email address or phone number.', 'For SMS, use a valid international-format number and confirm the recipient may legally receive messages.'] },
       { title: 'Prepare the message', instructions: ['Use a Template for repeatable messages or a Snippet for reusable text.', 'Review merge fields before sending.'] },
       { title: 'Send and verify', instructions: ['Send the message.', 'Return to Email & SMS or the related contact timeline to confirm the resulting activity/status.'] },
-    ], successChecks: ['The provider accepts the send request.', 'The communication is recorded in Flowtix.', 'Failures show a meaningful status rather than silently disappearing.'], troubleshooting: ['If sending fails, check Settings → Integrations and provider credentials first.', 'Check recipient format and provider restrictions before changing Flowtix code.'], related: ['templates','snippets','contacts','settings']
+    ], successChecks: ['The provider accepts the send request.', 'The communication is recorded in Flowtix.', 'Failures show a meaningful status rather than silently disappearing.'], troubleshooting: ['If sending fails, check Settings → Integrations and provider credentials first.', 'Check the recipient format, consent status, and provider restrictions before retrying.'], related: ['templates','snippets','contacts','settings']
   },
   {
     slug: 'templates', title: 'Templates', category: 'Sales & Automation', summary: 'Create reusable email/SMS content with merge fields.', moduleHref: '/dashboard/templates', moduleLabel: 'Open Templates', pathnamePrefixes: ['/dashboard/templates'],
@@ -153,7 +153,7 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Create the sequence', instructions: ['Open Sequences and create a new sequence.', 'Add steps in the exact order contacts should receive them.', 'Configure delays so messages are not sent too close together.'] },
       { title: 'Review before enrollment', instructions: ['Check every message/template and merge field.', 'Confirm provider integrations are ready.', 'Confirm the enrollment list is correct.'] },
       { title: 'Enroll and operate', instructions: ['Enroll a small controlled test group first.', 'Monitor step execution.', 'Use Pause when you need to stop future steps temporarily and Cancel when an enrollment should end.'] },
-    ], successChecks: ['Sequence steps persist.', 'Test enrollment advances according to configured timing.', 'Pause/cancel actions persist after refresh.'], troubleshooting: ['If a step does not send, inspect the related provider/integration and job status before recreating the sequence.'], related: ['campaigns','templates','background-jobs','email-sms']
+    ], successChecks: ['Sequence steps persist.', 'Test enrollment advances according to configured timing.', 'Pause/cancel actions persist after refresh.'], troubleshooting: ['If a step does not send, inspect the related provider/integration and job status before recreating the sequence.'], related: ['campaigns','templates','email-sms']
   },
   {
     slug: 'calls', title: 'Calls', category: 'Calling & Telephony', summary: 'Review call records and their lifecycle data.', moduleHref: '/dashboard/calls', moduleLabel: 'Open Calls', pathnamePrefixes: ['/dashboard/calls'],
@@ -166,11 +166,11 @@ export const guideArticles: GuideArticle[] = [
     slug: 'dialer', title: 'Dialer', category: 'Calling & Telephony', summary: 'Prepare the browser softphone, select an outbound caller ID, and make controlled calls.', moduleHref: '/dashboard/dialer', moduleLabel: 'Open Dialer', pathnamePrefixes: ['/dashboard/dialer'],
     prerequisites: ['A supported provider must be connected.', 'A voice-capable phone number/caller ID must be configured.', 'Your browser must allow microphone access.'],
     steps: [
-      { title: 'Bring the softphone online', instructions: ['Open Dialer and wait for Softphone online.', 'Set your agent availability to Available if you need to receive routed inbound calls.', 'If it does not come online, use Reconnect and inspect the provider integration before dialing.'] },
+      { title: 'Bring the softphone online', instructions: ['Open Dialer and wait for Softphone online.', 'Confirm the correct outbound caller ID and assigned contact before dialing.', 'If it does not come online, use Reconnect and check the provider integration before dialing.'] },
       { title: 'Choose the caller ID', instructions: ['Select the intended outbound caller ID from the dropdown.', 'Confirm the number belongs to/configured for the selected provider.'] },
       { title: 'Place a controlled call', instructions: ['Enter the destination in E.164 format such as +12025550123.', 'Press the green call button once.', 'Watch the call state and use Live Calls for in-progress visibility.'] },
       { title: 'Finish the call cleanly', instructions: ['Hang up normally.', 'Complete the call outcome/notes if prompted.', 'Confirm the call appears in Calls and any expected recording/transcript workflows.'] },
-    ], successChecks: ['Softphone shows online.', 'Provider logs show the attempted call.', 'Flowtix creates/updates the call lifecycle.', 'Completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider receives only a browser/WebRTC leg, inspect provider PSTN permissions/routing before changing unrelated CRM code.'], related: ['phone-numbers','live-calls','telephony-monitoring','calls']
+    ], successChecks: ['Softphone shows online.', 'The provider accepts the attempted outbound call.', 'Flowtix creates and updates the call lifecycle.', 'The completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider rejects the destination, check provider account permissions, caller ID approval, and destination restrictions before retrying.'], related: ['phone-numbers','live-calls','telephony-monitoring','calls']
   },
   {
     slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active Flowtix calls in one operational view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
@@ -180,28 +180,12 @@ export const guideArticles: GuideArticle[] = [
     ], successChecks: ['An active call appears while its lifecycle is active.', 'The call disappears/updates after a terminal provider event.'], related: ['dialer','calls','telephony-monitoring']
   },
   {
-    slug: 'telephony-monitoring', title: 'Telephony Monitoring', category: 'Calling & Telephony', summary: 'Validate provider readiness, agent presence, queues, alerts, callbacks, and runtime integrity.', moduleHref: '/dashboard/telephony-monitoring', moduleLabel: 'Open Telephony Monitoring', pathnamePrefixes: ['/dashboard/telephony-monitoring'],
+    slug: 'telephony-monitoring', title: 'Telephony Monitoring', category: 'Calling & Telephony', summary: 'Review outbound calling readiness, agent softphone presence, active calls, provider health, alerts, and call status integrity.', moduleHref: '/dashboard/telephony-monitoring', moduleLabel: 'Open Telephony Monitoring', pathnamePrefixes: ['/dashboard/telephony-monitoring'],
     steps: [
       { title: 'Start with acceptance validation', instructions: ['Review the readiness percentage.', 'Open each warning and distinguish configuration warnings from real runtime failures.', 'Do not treat a healthy provider connection as proof that every destination is callable.'] },
-      { title: 'Check live operating metrics', instructions: ['Review Active calls, Queue waiting, Available agents, and Open alerts.', 'An agent must normally be Available and have a healthy inbound-capable device heartbeat to count as available.'] },
-      { title: 'Investigate warnings safely', instructions: ['Check provider diagnostics first for provider-side errors.', 'Check routing diagnostics for queue/ring-group failures.', 'Use runtime integrity checks before manually deleting database state.'] },
-    ], successChecks: ['Provider, credentials, phone number, default caller ID, monitoring collection, and runtime integrity show healthy results.', 'Available agents matches the agents intentionally set to Available.'], related: ['dialer','ring-groups','queues','live-calls']
-  },
-  {
-    slug: 'ring-groups', title: 'Ring Groups', category: 'Calling & Telephony', summary: 'Route inbound calls to one or more agents using configurable ringing strategies.', moduleHref: '/dashboard/ring-groups', moduleLabel: 'Open Ring Groups', pathnamePrefixes: ['/dashboard/ring-groups'],
-    steps: [
-      { title: 'Create a ring group', instructions: ['Enter a clear group name such as Sales or Support.', 'Choose the ringing strategy.', 'Set ring timeout and maximum targets.', 'Select the agents who should receive calls.', 'Keep Active enabled when the group should accept traffic.'] },
-      { title: 'Configure fallback behavior', instructions: ['Choose an overflow group when another ring group should receive unanswered calls.', 'Choose a failover queue when unanswered calls should wait for an agent.', 'Use a failover number only when external routing is intentionally required.'] },
-      { title: 'Test persistence', instructions: ['Save the ring group.', 'Refresh and confirm strategy, timeouts, members, Active state, and fallback values remain unchanged.'] },
-    ], successChecks: ['Create/update/delete actions persist.', 'Agent membership persists after refresh.', 'Selected failover queue/overflow group remains selected.'], related: ['queues','telephony-monitoring','dialer']
-  },
-  {
-    slug: 'queues', title: 'Queues', category: 'Calling & Telephony', summary: 'Hold inbound callers and distribute them to available agents using queue rules.', moduleHref: '/dashboard/queues', moduleLabel: 'Open Queues', pathnamePrefixes: ['/dashboard/queues'],
-    steps: [
-      { title: 'Create a queue', instructions: ['Enter the queue name.', 'Choose FIFO or another available ordering strategy.', 'Set max wait, capacity, reservation timeout, target answer time, average handle time, and requeue attempts.', 'Select queue agents and enable Active.'] },
-      { title: 'Configure caller experience', instructions: ['Enable queue position announcements when appropriate.', 'Enable estimated wait announcements when useful.', 'Set an overflow queue/number only when you have a tested fallback path.'] },
-      { title: 'Validate changes', instructions: ['Save and refresh.', 'Confirm all numeric limits, agents, announcement toggles, ordering, Active state, and overflow settings persist.'] },
-    ], successChecks: ['Create/update/delete persist.', 'Queue can be selected as a ring-group failover.', 'Monitoring shows queue activity when callers actually enter it.'], related: ['ring-groups','telephony-monitoring','live-calls']
+      { title: 'Check live operating metrics', instructions: ['Review active calls, connected calls, agent softphone presence, provider status, and open alerts.', 'Use the agent and call status indicators to confirm who is actively calling and whether their browser softphone is online.'] },
+      { title: 'Investigate warnings safely', instructions: ['Check the visible provider and softphone diagnostics first for provider-side errors.', 'Confirm the caller ID, destination number, browser softphone, and provider connection are ready.', 'Do not repeatedly place test calls while the same warning remains unresolved.'] },
+    ], successChecks: ['Provider, credentials, phone number, default outbound caller ID, and monitoring status show healthy results.', 'Agent softphone and active-call indicators match the actual outbound calling activity.'], related: ['dialer','live-calls','calls','phone-numbers']
   },
   {
     slug: 'recordings', title: 'Recordings', category: 'Calling & Telephony', summary: 'Review recorded call media and verify automatic call-capture behavior.', moduleHref: '/dashboard/recordings', moduleLabel: 'Open Recordings', pathnamePrefixes: ['/dashboard/recordings'],
@@ -230,11 +214,11 @@ export const guideArticles: GuideArticle[] = [
     slug: 'exports', title: 'Data Exports', category: 'Analytics', summary: 'Create secure tenant-scoped data files, review export history, and automate recurring exports.', moduleHref: '/dashboard/exports', moduleLabel: 'Open Data Exports', pathnamePrefixes: ['/dashboard/exports'],
     prerequisites: ['You must be the workspace owner and the plan must allow reports.export.', 'Choose CSV or Excel when you need full data analysis; use PDF for compact review copies.'],
     steps: [
-      { title: 'Create a one-time export', instructions: ['Open Data Exports and choose the data source you need.', 'Choose CSV, Excel (.xls), or PDF.', 'Select Create export. Flowtix queues the work as a durable background job instead of blocking the page.', 'Watch Export history until the status changes to Completed, then select Download.'] },
+      { title: 'Create a one-time export', instructions: ['Open Data Exports and choose the data source you need.', 'Choose CSV, Excel (.xls), or PDF.', 'Select Create export. Flowtix prepares the export in the background so you can continue using the workspace.', 'Watch Export history until the status changes to Completed, then select Download.'] },
       { title: 'Verify the output', instructions: ['Confirm the row count is reasonable for the selected organization.', 'Open the downloaded file and check a few records against the source module.', 'If an export fails, read the error shown in Export history before retrying.'] },
       { title: 'Create a recurring schedule', instructions: ['Enter a clear schedule name such as Weekly sales export.', 'Select the data source, format, cadence, and first-run date/time.', 'Confirm the organization timezone shown beside First run.', 'Create the schedule, then use Pause or Resume when the recurring export should temporarily stop or restart.'] },
       { title: 'Keep exports controlled', instructions: ['Download links are short-lived and files are stored privately under the workspace owner account.', 'Delete completed or failed exports that are no longer needed.', 'Team members cannot open, download, schedule, or delete Data Exports; Flowtix enforces owner access at the UI, application, database, and storage layers.'] },
-    ], successChecks: ['The job reaches Completed and the signed download opens.', 'The exported row count and sample records match the selected workspace.', 'A scheduled export shows the intended cadence, timezone, next run, and Active status.'], troubleshooting: ['If Tasks or Activities fail, confirm the latest Data Exports migration is applied; Flowtix maps those logical names to contact_tasks and crm_activities.', 'If the job stays Queued, check Background Jobs and the reports queue worker.', 'If Download fails, confirm the export is still within its retention window and the private exports storage bucket is healthy.'], related: ['reports','background-jobs','sales-analytics','call-analytics']
+    ], successChecks: ['The job reaches Completed and the signed download opens.', 'The exported row count and sample records match the selected workspace.', 'A scheduled export shows the intended cadence, timezone, next run, and Active status.'], troubleshooting: ['If an export does not complete, confirm the selected data source contains records and try the export once more.', 'If an export remains Queued for an unusual amount of time, refresh Export history and contact Flowtix support rather than creating repeated duplicate exports.', 'If Download fails, confirm the export has not expired and create a fresh export when necessary.'], related: ['reports','sales-analytics','call-analytics']
   },
   {
     slug: 'reports', title: 'Reports', category: 'Analytics', summary: 'Use consolidated reporting views to understand CRM and operational performance.', moduleHref: '/dashboard/reports', moduleLabel: 'Open Reports', pathnamePrefixes: ['/dashboard/reports'],
@@ -350,11 +334,11 @@ export const guideArticles: GuideArticle[] = [
     ], successChecks: ['Unauthorized sessions can be revoked.', 'Security policy changes persist.', 'Secrets remain protected and are not exposed in the UI.'], related: ['roles-permissions','team','settings']
   },
   {
-    slug: 'settings', title: 'Settings', category: 'Billing & Security', summary: 'Configure profile, organization, team, billing, integrations, phone numbers, security, automation, and background jobs.', moduleHref: '/dashboard/settings', moduleLabel: 'Open Settings', pathnamePrefixes: ['/dashboard/settings'],
+    slug: 'settings', title: 'Settings', category: 'Billing & Security', summary: 'Configure profile, organization, team, billing, integrations, phone numbers, security, and subscriber automation settings.', moduleHref: '/dashboard/settings', moduleLabel: 'Open Settings', pathnamePrefixes: ['/dashboard/settings'],
     steps: [
-      { title: 'Choose the correct settings area', instructions: ['Use Profile for your own user settings.', 'Use Organization/Team for workspace configuration.', 'Use Integrations/Phone Numbers for external providers.', 'Use Security for security controls.', 'Use Automation/Background Jobs for workflow processing.'] },
+      { title: 'Choose the correct settings area', instructions: ['Use Profile for your own user settings.', 'Use Organization/Team for workspace configuration.', 'Use Integrations/Phone Numbers for external providers.', 'Use Security for security controls.', 'Use Automation for subscriber-facing workflow settings.'] },
       { title: 'Change one system at a time', instructions: ['Make a single controlled configuration change.', 'Save it and refresh.', 'Test the dependent feature before changing another integration.'], tip: 'This makes it much easier to identify the cause of a production issue.' },
-    ], successChecks: ['Saved settings persist after refresh.', 'Dependent modules use the updated configuration.'], related: ['integrations','phone-numbers','background-jobs','security-center']
+    ], successChecks: ['Saved settings persist after refresh.', 'Dependent modules use the updated configuration.'], related: ['integrations','phone-numbers','security-center']
   },
   {
     slug: 'integrations', title: 'Integrations', category: 'Billing & Security', summary: 'Connect external services and confirm their status before relying on them in workflows.', moduleHref: '/dashboard/settings/integrations', moduleLabel: 'Open Integrations', pathnamePrefixes: ['/dashboard/settings/integrations'],
@@ -371,29 +355,24 @@ export const guideArticles: GuideArticle[] = [
     ], successChecks: ['Number persists after refresh.', 'Correct provider/capabilities are shown.', 'Dialer displays the expected default caller ID.'], related: ['dialer','integrations','telephony-monitoring']
   },
   {
-    slug: 'background-jobs', title: 'Background Jobs', category: 'Sales & Automation', summary: 'Review asynchronous work that powers scheduled and durable Flowtix operations.', moduleHref: '/dashboard/settings/jobs', moduleLabel: 'Open Background Jobs', pathnamePrefixes: ['/dashboard/settings/jobs'],
+    slug: 'troubleshooting', title: 'Troubleshooting Flowtix', category: 'Troubleshooting', summary: 'Use a safe subscriber troubleshooting sequence before changing workspace settings or repeating an action.', pathnamePrefixes: [],
     steps: [
-      { title: 'Review job health', instructions: ['Look for failed, stuck, or repeatedly retried jobs.', 'Use timestamps and job names to identify the originating workflow.'] },
-      { title: 'Recover safely', instructions: ['Fix the root configuration/data issue before retrying a failed job.', 'Avoid repeatedly re-running a job that performs external side effects such as billing or messaging unless idempotency is confirmed.'] },
-    ], successChecks: ['Healthy jobs complete.', 'Retries do not create duplicate external side effects.'], related: ['sequences','exports','settings']
-  },
-  {
-    slug: 'troubleshooting', title: 'Troubleshooting Flowtix', category: 'Troubleshooting', summary: 'Use a safe diagnostic sequence before changing code or production data.', pathnamePrefixes: [],
-    steps: [
-      { title: 'Reproduce once', instructions: ['Record the page, exact action, time, user/organization, and visible error.', 'Avoid repeating destructive or billable actions multiple times.'] },
-      { title: 'Check the closest source of truth', instructions: ['UI error: inspect Vercel/server logs for the same timestamp.', 'Database issue: inspect the relevant Supabase row/function without editing it first.', 'Provider issue: inspect the provider’s logs/status and account restrictions.', 'Background workflow: inspect job state and idempotency records.'] },
-      { title: 'Separate configuration from code', instructions: ['Confirm credentials, permissions, entitlements, account limits, and destination restrictions.', 'Change code only after the failure is shown to be inside Flowtix rather than an external restriction.'] },
-      { title: 'Make the smallest safe fix', instructions: ['Change only the responsible layer.', 'Run lint and build.', 'Deploy and repeat the same controlled test.', 'Confirm persistence after refresh where applicable.'] },
-    ], successChecks: ['The original failure no longer reproduces.', 'Unrelated modules still load.', 'Logs no longer show the original error.'], related: ['settings','security-center','background-jobs','telephony-monitoring']
+      { title: 'Confirm the workspace and action', instructions: ['Confirm you are signed in to the correct organization and account.', 'Note the page, action, time, and visible message so you can compare the result after each check.', 'Avoid repeating billable actions such as calls, messages, or exports until you know the first attempt failed.'] },
+      { title: 'Check the module status', instructions: ['Refresh the page once and confirm the module still shows the same issue.', 'For email, calendar, telephony, or AI features, open the appropriate Settings or integration page and confirm the service is connected.', 'For calling or messaging, confirm the contact information, consent status, assigned number, and provider readiness are correct.'] },
+      { title: 'Check access and configuration', instructions: ['Confirm your role has access to the module or action you are trying to use.', 'Check the relevant Flowtix settings, plan entitlement, provider connection, and destination details.', 'If a feature is unavailable to your role, ask the workspace owner or an authorized manager to review access.'] },
+      { title: 'Retest once', instructions: ['After correcting the visible setting or connection, repeat the same action once.', 'Confirm the result persists after refresh.', 'If the same error remains, capture the message and time and contact Flowtix support or your workspace administrator instead of repeatedly retrying the action.'] },
+    ], successChecks: ['The original action completes successfully.', 'The result remains visible after refresh when persistence is expected.', 'No duplicate call, message, task, or other external action was created while troubleshooting.'], related: ['settings','security-center','integrations','telephony-monitoring']
   },
 ]
 
+export const subscriberGuideArticles: GuideArticle[] = guideArticles
+
 export function getGuideArticle(slug: string): GuideArticle | undefined {
-  return guideArticles.find((article) => article.slug === slug)
+  return subscriberGuideArticles.find((article) => article.slug === slug)
 }
 
 export function getGuideForPathname(pathname: string): GuideArticle | undefined {
-  const candidates = guideArticles
+  const candidates = subscriberGuideArticles
     .flatMap((article) => (article.pathnamePrefixes ?? []).map((prefix) => ({ article, prefix })))
     .filter(({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`))
     .sort((a, b) => b.prefix.length - a.prefix.length)

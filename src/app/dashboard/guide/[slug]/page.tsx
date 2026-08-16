@@ -2,12 +2,12 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, CheckCircle2, CircleAlert, ExternalLink, Lightbulb, ListChecks } from 'lucide-react'
 
-import { getGuideArticle, guideArticles } from '@/lib/guide/articles'
+import { getGuideArticle, subscriberGuideArticles } from '@/lib/guide/articles'
 
 type Props = { params: Promise<{ slug: string }> }
 
 export function generateStaticParams() {
-  return guideArticles.map((article) => ({ slug: article.slug }))
+  return subscriberGuideArticles.map((article) => ({ slug: article.slug }))
 }
 
 export default async function GuideArticlePage({ params }: Props) {
@@ -20,12 +20,12 @@ export default async function GuideArticlePage({ params }: Props) {
     .filter((item): item is NonNullable<typeof item> => Boolean(item))
 
   return (
-    <article className="mx-auto max-w-4xl space-y-8 pb-16">
+    <article className="relative left-1/2 w-full -translate-x-1/2 space-y-8 pb-16 lg:w-[calc(100vw-344px)] lg:max-w-[1680px]">
       <header>
         <Link href="/dashboard/guide" className="inline-flex items-center gap-2 text-sm font-medium text-cyan-300 hover:text-cyan-200"><ArrowLeft className="h-4 w-4"/>Back to Guide</Link>
         <p className="mt-7 text-sm uppercase tracking-[0.24em] text-cyan-300">{article.category}</p>
         <div className="mt-2 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div><h1 className="text-3xl font-semibold text-white sm:text-4xl">{article.title}</h1><p className="mt-3 max-w-3xl text-base leading-7 text-slate-300">{article.summary}</p></div>
+          <div className="min-w-0 flex-1"><h1 className="text-3xl font-semibold text-white sm:text-4xl">{article.title}</h1><p className="mt-3 max-w-5xl text-base leading-7 text-slate-300">{article.summary}</p></div>
           {article.moduleHref ? <Link href={article.moduleHref} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-500">{article.moduleLabel ?? 'Open module'}<ExternalLink className="h-4 w-4"/></Link> : null}
         </div>
       </header>

@@ -70,7 +70,7 @@ export function GuideCard({ article }: { article: GuideArticle }) {
   return (
     <Link
       href={`/dashboard/guide/${article.slug}`}
-      className="group rounded-2xl border border-white/10 bg-[#0B1726]/90 p-5 transition hover:border-cyan-400/30 hover:bg-white/[0.055]"
+      className="group flex h-full cursor-pointer flex-col rounded-2xl border border-white/10 bg-[#0B1726]/90 p-6 transition hover:-translate-y-0.5 hover:border-cyan-400/30 hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -83,7 +83,7 @@ export function GuideCard({ article }: { article: GuideArticle }) {
         </div>
         <span className="text-lg text-slate-500 transition group-hover:translate-x-1 group-hover:text-cyan-300">→</span>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-400">{article.summary}</p>
+      <p className="mt-4 flex-1 text-[15px] leading-7 text-slate-300">{article.summary}</p>
     </Link>
   )
 }
