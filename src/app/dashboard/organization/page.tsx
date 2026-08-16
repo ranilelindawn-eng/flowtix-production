@@ -9,7 +9,9 @@ import {
   UsersRound,
 } from 'lucide-react'
 
+import BusinessSmsNumberCard from '@/components/organization/BusinessSmsNumberCard'
 import { requirePermission } from '@/lib/auth'
+import { getActiveSmsSenderRequest, getOwnerSmsSenderRequests, smsSenderStatusLabel } from '@/lib/communications/sms-sender'
 import { getCurrentEntitlements, hasEntitlement } from '@/lib/entitlements'
 import { getOrganizationSettings } from '@/lib/organization-settings'
 import { hasPermission } from '@/lib/permissions'
@@ -35,6 +37,10 @@ export default async function OrganizationPage() {
   ])
 
   const canManageRoles = hasPermission(membership.role, 'team.update_roles')
+  const activeSmsSender = await getActiveSmsSenderRequest(membership.organization_id)
+  const smsRequests = membership.role === 'owner' ? await getOwnerSmsSenderRequests(membership.organization_id) : []
+  const currentSmsRequest = smsRequests.find((request) => ['provider_submission_required','provider_processing','action_required'].includes(request.status)) ?? activeSmsSender
+  const organizationTimeZone = settings?.timezone || 'UTC'
   const telephonyEnabled = Boolean(entitlements && hasEntitlement(entitlements, 'dialer.cloud'))
   const telephonyOverview = telephonyEnabled
     ? await getFreshTelephonyMonitoringOverview(membership.organization_id)
@@ -92,6 +98,20 @@ export default async function OrganizationPage() {
         <p className="mt-2 max-w-5xl text-sm leading-6 text-slate-400">Every team member is linked to this organization. Team, invitation, subscription, billing, and customer records remain scoped to the active workspace.</p>
         <p className="mt-4 break-all rounded-xl bg-slate-950 p-4 font-mono text-xs text-slate-400">Organization ID: {membership.organization_id}</p>
       </section>
+
+      <BusinessSmsNumberCard
+        isOwner={membership.role === 'owner'}
+        activePhoneNumber={activeSmsSender?.phone_number ?? null}
+        currentRequest={currentSmsRequest ? {
+          id: currentSmsRequest.id,
+          phoneNumber: currentSmsRequest.phone_number,
+          status: currentSmsRequest.status,
+          statusLabel: smsSenderStatusLabel(currentSmsRequest.status),
+          providerNote: currentSmsRequest.provider_note,
+          submittedAt: new Intl.DateTimeFormat('en-US', { timeZone: organizationTimeZone, dateStyle: 'medium', timeStyle: 'short' }).format(new Date(currentSmsRequest.submitted_at)),
+          providerSubmittedAt: currentSmsRequest.provider_submitted_at,
+        } : null}
+      />
 
       {telephonyEnabled ? (
         <section id="telephony-operations" className="space-y-5 scroll-mt-24">

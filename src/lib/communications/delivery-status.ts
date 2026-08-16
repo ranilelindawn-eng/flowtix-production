@@ -1,7 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { createClient } from '@supabase/supabase-js'
 
-import { getOrganizationProviderConnection } from '@/lib/telephony/provider-connections'
 import type { ConfiguredTelephonyProviderName } from '@/lib/telephony/provider'
 
 export type DeliveryProvider = ConfiguredTelephonyProviderName | 'resend'
@@ -106,20 +105,6 @@ export function normalizeResendDeliveryEvent(body: Record<string, unknown>, even
     errorMessage: stringValue(bounce?.message) || (status === 'failed' ? type : null),
     metadata: { type },
   }
-}
-
-function expectedFormSignature(authToken: string, requestUrl: string, form: URLSearchParams) {
-  const sorted = [...form.entries()].sort(([left], [right]) => left.localeCompare(right))
-  const payload = sorted.reduce((value, [key, fieldValue]) => `${value}${key}${fieldValue}`, requestUrl)
-  return createHmac('sha1', authToken).update(payload).digest('base64')
-}
-
-export async function validateSignalWireSignature(input: { requestUrl: string; signature: string; form: URLSearchParams; organizationId: string }) {
-  if (process.env.NODE_ENV !== 'production' && process.env.TELEPHONY_SKIP_SIGNATURE_VALIDATION === 'true') return true
-  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(input.organizationId, 'signalwire')
-  const token = stringValue(connection.credentials.apiToken)
-  if (!token || !input.signature) return false
-  return safeEqual(input.signature, expectedFormSignature(token, input.requestUrl, input.form))
 }
 
 export function validateResendSignature(input: { rawBody: string; eventId: string; timestamp: string; signatureHeader: string }) {

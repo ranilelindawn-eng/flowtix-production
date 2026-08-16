@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 
 import { assertAutomationEnabled } from '@/lib/automation/operations'
 import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
+import { getActiveSmsSenderRequest } from '@/lib/communications/sms-sender'
 import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
 import {
@@ -236,6 +237,11 @@ async function getSmsSender(
   organizationId: string,
   provider: ConfiguredTelephonyProviderName,
 ) {
+  const activeCompanySender = await getActiveSmsSenderRequest(organizationId)
+  if (activeCompanySender?.phone_number) {
+    return normalizeE164(activeCompanySender.phone_number, 'SMS sender')
+  }
+
   const client = createServiceClient()
   const { data, error } = await client
     .from('organization_phone_numbers')

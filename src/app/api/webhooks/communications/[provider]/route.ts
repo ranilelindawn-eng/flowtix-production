@@ -5,7 +5,6 @@ import {
   normalizeResendDeliveryEvent,
   validateCallbackToken,
   validateResendSignature,
-  validateSignalWireSignature,
   type DeliveryProvider,
 } from '@/lib/communications/delivery-status'
 
@@ -83,19 +82,6 @@ export async function POST(
     })
 
     if (!message) return json({ ok: true, ignored: true })
-
-    const signature =
-      request.headers.get('x-signalwire-signature') ||
-      ''
-
-    const valid = await validateSignalWireSignature({
-      requestUrl: request.url,
-      signature,
-      form,
-      organizationId: message.organization_id,
-    })
-
-    if (!valid) return json({ error: 'Invalid webhook signature.' }, 401)
 
     const event = normalizeFormDeliveryEvent('signalwire', form)
     await applyDeliveryEvent({ provider: 'signalwire', messageId, event })

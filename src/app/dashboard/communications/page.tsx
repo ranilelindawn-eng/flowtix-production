@@ -14,6 +14,8 @@ type CommunicationMessage = {
   id: string
   channel: string
   recipient: string
+  sender: string | null
+  direction: string
   subject: string | null
   body: string
   provider: string | null
@@ -75,6 +77,7 @@ export default async function CommunicationsPage() {
     switch (status) {
       case 'sent':
       case 'delivered':
+      case 'received':
         return 'bg-emerald-500/10 text-emerald-300'
 
       case 'processing':
@@ -95,6 +98,10 @@ export default async function CommunicationsPage() {
   }
 
   function deliveryTime(message: CommunicationMessage) {
+    if (message.direction === 'inbound') {
+      return new Date(message.sent_at || message.created_at).toLocaleString('en-US', { timeZone })
+    }
+
     if (message.sent_at) {
       return new Date(message.sent_at).toLocaleString('en-US', { timeZone })
     }
@@ -152,9 +159,10 @@ export default async function CommunicationsPage() {
 
         {messages.length > 0 ? (
           <div className="mt-5 space-y-3">
-            <div className="hidden grid-cols-[120px_minmax(190px,1fr)_minmax(260px,2fr)_140px_150px_190px_28px] gap-4 px-4 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 xl:grid">
+            <div className="hidden grid-cols-[110px_100px_minmax(190px,1fr)_minmax(240px,2fr)_130px_140px_180px_28px] gap-4 px-4 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 xl:grid">
               <span>Channel</span>
-              <span>Recipient</span>
+              <span>Direction</span>
+              <span>Contact / destination</span>
               <span>Subject / message</span>
               <span>Provider</span>
               <span>Status</span>
@@ -166,7 +174,7 @@ export default async function CommunicationsPage() {
               <Link
                 key={message.id}
                 href={`/dashboard/communications/${message.id}`}
-                className="group grid gap-3 rounded-2xl border border-white/10 bg-[#07111F]/80 p-4 transition hover:border-blue-400/30 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 xl:grid-cols-[120px_minmax(190px,1fr)_minmax(260px,2fr)_140px_150px_190px_28px] xl:items-center xl:gap-4"
+                className="group grid gap-3 rounded-2xl border border-white/10 bg-[#07111F]/80 p-4 transition hover:border-blue-400/30 hover:bg-white/[0.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 xl:grid-cols-[110px_100px_minmax(190px,1fr)_minmax(240px,2fr)_130px_140px_180px_28px] xl:items-center xl:gap-4"
               >
                 <div className="flex items-center gap-2 text-sm font-semibold uppercase text-cyan-300">
                   {message.channel === 'email' ? (
@@ -177,13 +185,19 @@ export default async function CommunicationsPage() {
                   <span>{message.channel}</span>
                 </div>
 
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">Direction</p>
+                  <span className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-medium xl:mt-0 ${message.direction === 'inbound' ? 'bg-cyan-500/10 text-cyan-300' : 'bg-violet-500/10 text-violet-300'}`}>
+                    {message.direction}
+                  </span>
+                </div>
+
                 <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">
-                    Recipient
-                  </p>
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-600 xl:hidden">Contact / destination</p>
                   <p className="mt-1 truncate text-sm text-slate-200 xl:mt-0">
-                    {message.recipient}
+                    {message.direction === 'inbound' ? (message.sender ?? 'Unknown sender') : message.recipient}
                   </p>
+                  {message.direction === 'inbound' ? <p className="mt-1 truncate text-xs text-slate-600">to {message.recipient}</p> : null}
                 </div>
 
                 <div className="min-w-0">
@@ -245,7 +259,7 @@ export default async function CommunicationsPage() {
           </div>
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-white/10 px-6 py-12 text-center text-sm text-slate-500">
-            No email or SMS messages have been sent from this workspace.
+            No email or SMS messages have been recorded in this workspace.
           </div>
         )}
       </section>

@@ -118,3 +118,22 @@ export async function listOwnedProviderNumbers(
     },
   }))
 }
+
+
+export async function configureSignalWireSmsWebhook(input: {
+  organizationId: string
+  providerNumberId: string
+  smsUrl: string
+}): Promise<void> {
+  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(input.organizationId, 'signalwire')
+  const projectId = required(connection.credentials.projectId, 'SignalWire Project ID')
+  const apiToken = required(connection.credentials.apiToken, 'SignalWire API Token')
+  const spaceUrl = normalizeSpaceUrl(connection.config.space_url)
+  const providerNumberId = required(input.providerNumberId, 'SignalWire phone-number ID')
+  const smsUrl = required(input.smsUrl, 'Inbound SMS webhook URL')
+  await jsonRequest(`${spaceUrl}/api/laml/2010-04-01/Accounts/${encodeURIComponent(projectId)}/IncomingPhoneNumbers/${encodeURIComponent(providerNumberId)}.json`, {
+    method: 'POST',
+    headers: { Authorization: `Basic ${Buffer.from(`${projectId}:${apiToken}`).toString('base64')}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ SmsUrl: smsUrl, SmsMethod: 'POST' }),
+  })
+}

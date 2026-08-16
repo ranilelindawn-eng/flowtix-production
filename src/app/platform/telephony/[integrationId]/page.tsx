@@ -10,8 +10,10 @@ import {
   XCircle,
 } from 'lucide-react'
 
+import PlatformSmsProvisioningControls from '@/components/platform/PlatformSmsProvisioningControls'
 import PlatformTelephonyControls from '@/components/platform/PlatformTelephonyControls'
 import { runTelephonyAcceptanceValidation } from '@/lib/telephony/acceptance'
+import { getPlatformSmsSenderRequests } from '@/lib/platform/sms-provisioning'
 import { getPlatformTelephonyConnection } from '@/lib/platform/telephony'
 
 function formatDate(value: string | null): string {
@@ -42,7 +44,10 @@ export default async function PlatformTelephonyConnectionPage({
 
   if (!connection) notFound()
 
-  const readiness = await runTelephonyAcceptanceValidation(connection.organizationId)
+  const [readiness, smsSenderRequests] = await Promise.all([
+    runTelephonyAcceptanceValidation(connection.organizationId),
+    getPlatformSmsSenderRequests(connection.organizationId),
+  ])
 
   return (
     <div className="space-y-8">
@@ -212,6 +217,8 @@ export default async function PlatformTelephonyConnectionPage({
           enabled={connection.enabled}
         />
       </section>
+
+      <PlatformSmsProvisioningControls requests={smsSenderRequests} integrationId={connection.id} />
 
       <section id="phone-numbers" className="scroll-mt-24 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
         <div className="border-b border-white/10 px-6 py-5">

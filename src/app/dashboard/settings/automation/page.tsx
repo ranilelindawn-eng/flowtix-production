@@ -19,6 +19,7 @@ import {
   getSchedulerRuns,
 } from '@/lib/automation/admin'
 import { getAutomationControl } from '@/lib/automation/operations'
+import { getActiveSmsSenderRequest } from '@/lib/communications/sms-sender'
 import { requireFeature } from '@/lib/auth'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
@@ -178,6 +179,7 @@ export default async function AutomationOperationsPage() {
     )
   }
 
+  const activeCompanySmsSender = await getActiveSmsSenderRequest(organization.organization_id)
   const postCallConfig =
     (configResult.data as PostCallConfig | null) ??
     DEFAULT_POST_CALL_CONFIG
@@ -188,12 +190,19 @@ export default async function AutomationOperationsPage() {
 
   const emailIdentity = connectedEmailIdentity(integrations)
   const smsInfrastructureConnected = signalWireConnected(integrations)
-  const defaultSmsNumber =
-    phoneNumbers.find(
-      (number) => number.is_default && smsCapable(number),
-    ) ??
-    phoneNumbers.find((number) => smsCapable(number)) ??
-    null
+  const defaultSmsNumber = activeCompanySmsSender
+    ? {
+        provider: 'signalwire',
+        phone_number: activeCompanySmsSender.phone_number,
+        friendly_name: 'Company SMS number',
+        capabilities: { sms: true },
+        is_default: false,
+      }
+    : phoneNumbers.find(
+        (number) => number.is_default && smsCapable(number),
+      ) ??
+      phoneNumbers.find((number) => smsCapable(number)) ??
+      null
 
   const canManage = hasPermission(
     organization.role,
@@ -370,7 +379,7 @@ export default async function AutomationOperationsPage() {
           </Link>
 
           <Link
-            href="/dashboard/settings/integrations"
+            href="/dashboard/organization#business-sms"
             className={`group rounded-lg border p-4 transition hover:-translate-y-0.5 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               smsInfrastructureConnected && defaultSmsNumber
                 ? 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-400/60'
