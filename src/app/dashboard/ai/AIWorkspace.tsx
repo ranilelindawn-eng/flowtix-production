@@ -14,7 +14,7 @@ import {
   Trash2,
   UserRound,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
@@ -79,6 +79,8 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
   const [loadingConversation, setLoadingConversation] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const messageViewportRef = useRef<HTMLDivElement | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
 
   const filteredConversations = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -88,6 +90,22 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
 
   const activeConversation = conversations.find((conversation) => conversation.id === activeId) ?? null
   const selectedAgent = agents.find((agent) => agent.key === agentKey) ?? agents[0]
+
+  useEffect(() => {
+    const viewport = messageViewportRef.current
+    if (!viewport) return
+
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollTop = viewport.scrollHeight
+    })
+
+    return () => window.cancelAnimationFrame(frame)
+  }, [activeId, loadingConversation, messages, sending])
+
+  function chooseStarter(starter: string) {
+    setDraft(starter)
+    window.requestAnimationFrame(() => composerRef.current?.focus())
+  }
 
   function startNewChat() {
     setActiveId(null)
@@ -185,8 +203,8 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
   }
 
   return (
-    <div className="-m-6 flex min-h-[calc(100vh-7rem)] overflow-hidden rounded-3xl border border-white/10 bg-slate-950 lg:m-0 lg:min-h-[760px]">
-      <aside className="hidden w-80 shrink-0 flex-col border-r border-white/10 bg-slate-950/80 lg:flex">
+    <div className="-m-6 flex h-[calc(100dvh-7rem)] min-h-0 overflow-hidden border border-white/10 bg-slate-950 sm:rounded-3xl lg:-mx-4 lg:my-0 xl:-mx-8 2xl:-mx-12">
+      <aside className="hidden w-80 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/80 xl:w-96 lg:flex">
         <div className="border-b border-white/10 p-4">
           <button
             type="button"
@@ -206,7 +224,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
           <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent chats</p>
           <div className="space-y-1">
             {filteredConversations.map((conversation) => (
@@ -234,8 +252,8 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
         </div>
       </aside>
 
-      <section className="flex min-w-0 flex-1 flex-col bg-[#071321]">
-        <header className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#071321]">
+        <header className="shrink-0 flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7 xl:px-10">
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-cyan-300" />
@@ -265,15 +283,15 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-8">
+        <div ref={messageViewportRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-7 xl:px-10">
           {error ? (
-            <div className="mx-auto mb-5 max-w-3xl rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
+            <div className="mx-auto mb-5 max-w-5xl rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
           ) : null}
 
           {loadingConversation ? (
             <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-blue-400" /></div>
           ) : messages.length ? (
-            <div className="mx-auto max-w-3xl space-y-6">
+            <div className="mx-auto w-full max-w-5xl space-y-6">
               {messages.map((message) => (
                 <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' ? (
@@ -300,7 +318,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
               ) : null}
             </div>
           ) : (
-            <div className="mx-auto flex h-full max-w-3xl flex-col items-center justify-center py-12 text-center">
+            <div className="mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center py-12 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-400 text-white shadow-xl shadow-blue-950/50">
                 <Sparkles className="h-8 w-8" />
               </div>
@@ -309,7 +327,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
               <p className="mt-1 text-sm text-slate-500">{selectedAgent.description}</p>
               <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
                 {starters.map((starter) => (
-                  <button key={starter} type="button" onClick={() => setDraft(starter)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left text-sm leading-6 text-slate-300 transition hover:border-blue-400/40 hover:bg-blue-500/5">
+                  <button key={starter} type="button" onClick={() => chooseStarter(starter)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left text-sm leading-6 text-slate-300 transition hover:border-blue-400/40 hover:bg-blue-500/5">
                     {starter}
                   </button>
                 ))}
@@ -318,10 +336,11 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
           )}
         </div>
 
-        <div className="border-t border-white/10 p-4 sm:px-8">
-          <form onSubmit={(event) => void sendMessage(event)} className="mx-auto max-w-3xl">
+        <div className="shrink-0 border-t border-white/10 bg-[#071321]/95 p-4 backdrop-blur sm:px-7 xl:px-10">
+          <form onSubmit={(event) => void sendMessage(event)} className="mx-auto w-full max-w-5xl">
             <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-slate-950 p-3 focus-within:border-blue-500">
               <textarea
+                ref={composerRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 onKeyDown={(event) => {
