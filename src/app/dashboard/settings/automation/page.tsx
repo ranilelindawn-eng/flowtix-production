@@ -209,7 +209,7 @@ export default async function AutomationOperationsPage() {
   )
 
   return (
-    <div className="space-y-8">
+    <div className="min-w-0 space-y-8">
       <header>
         <p className="text-sm font-medium text-cyan-400">
           Automation operations
@@ -224,7 +224,11 @@ export default async function AutomationOperationsPage() {
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-xl border border-border bg-card p-5">
+        <Link
+          href="/dashboard/sequences"
+          className="group rounded-xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-cyan-400/50 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Open sequences"
+        >
           <div className="flex items-center gap-3 text-cyan-300">
             <Workflow className="h-5 w-5" />
             <span className="font-medium">Sequences</span>
@@ -236,9 +240,16 @@ export default async function AutomationOperationsPage() {
             Active enrollments across {summary.activeSequences} active
             sequences
           </p>
-        </article>
+          <p className="mt-3 text-xs font-medium text-cyan-300 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            Open sequences →
+          </p>
+        </Link>
 
-        <article className="rounded-xl border border-border bg-card p-5">
+        <Link
+          href="/dashboard/campaigns"
+          className="group rounded-xl border border-border bg-card p-5 transition hover:-translate-y-0.5 hover:border-violet-400/50 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="Open campaigns"
+        >
           <div className="flex items-center gap-3 text-violet-300">
             <Megaphone className="h-5 w-5" />
             <span className="font-medium">Campaigns</span>
@@ -250,14 +261,19 @@ export default async function AutomationOperationsPage() {
             Reserved members across {summary.activeCampaigns} active
             campaigns
           </p>
-        </article>
+          <p className="mt-3 text-xs font-medium text-violet-300 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            Open campaigns →
+          </p>
+        </Link>
 
-        <article
-          className={`rounded-xl border bg-card p-5 ${
+        <Link
+          href="/dashboard/communications"
+          className={`group rounded-xl border bg-card p-5 transition hover:-translate-y-0.5 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             hasAttention
-              ? 'border-rose-500/30'
-              : 'border-border'
+              ? 'border-rose-500/30 hover:border-rose-400/60'
+              : 'border-border hover:border-amber-400/50'
           }`}
+          aria-label="Open email and SMS communications"
         >
           <div className="flex items-center gap-3 text-amber-300">
             <MessageSquareText className="h-5 w-5" />
@@ -269,14 +285,19 @@ export default async function AutomationOperationsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             Queued messages; {summary.failedCommunications} failed
           </p>
-        </article>
+          <p className="mt-3 text-xs font-medium text-amber-300 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            Open Email &amp; SMS →
+          </p>
+        </Link>
 
-        <article
-          className={`rounded-xl border bg-card p-5 ${
+        <Link
+          href="#post-call-follow-up"
+          className={`group rounded-xl border bg-card p-5 transition hover:-translate-y-0.5 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
             summary.failedPostCallDispatches > 0
-              ? 'border-rose-500/30'
-              : 'border-border'
+              ? 'border-rose-500/30 hover:border-rose-400/60'
+              : 'border-border hover:border-emerald-400/50'
           }`}
+          aria-label="Open post-call follow-up settings"
         >
           <div className="flex items-center gap-3 text-emerald-300">
             <Phone className="h-5 w-5" />
@@ -291,10 +312,16 @@ export default async function AutomationOperationsPage() {
           <p className="mt-2 text-xs text-muted-foreground">
             {summary.postCallEmails} email · {summary.postCallSms} SMS created
           </p>
-        </article>
+          <p className="mt-3 text-xs font-medium text-emerald-300 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+            Configure follow-up →
+          </p>
+        </Link>
       </section>
 
-      <section className="rounded-xl border border-border bg-card p-6">
+      <section
+        id="post-call-follow-up"
+        className="scroll-mt-24 rounded-xl border border-border bg-card p-6 lg:p-7"
+      >
         <div>
           <p className="text-sm font-medium text-primary">
             Post-call follow-up
@@ -310,13 +337,15 @@ export default async function AutomationOperationsPage() {
           </p>
         </div>
 
-        <div className="mt-5 grid gap-3 lg:grid-cols-2">
-          <div
-            className={`rounded-lg border p-4 ${
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <Link
+            href="/dashboard/settings/integrations"
+            className={`group rounded-lg border p-4 transition hover:-translate-y-0.5 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               emailIdentity
-                ? 'border-emerald-500/30 bg-emerald-500/5'
-                : 'border-amber-500/30 bg-amber-500/5'
+                ? 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-400/60'
+                : 'border-amber-500/30 bg-amber-500/5 hover:border-amber-400/60'
             }`}
+            aria-label="Open email integrations"
           >
             <div className="flex items-start gap-3">
               <Mail className="mt-0.5 h-5 w-5" />
@@ -329,28 +358,25 @@ export default async function AutomationOperationsPage() {
                     <CircleOff className="h-4 w-4 text-amber-300" />
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 break-words text-sm text-muted-foreground">
                   {emailIdentity ??
                     'No subscriber Gmail account is connected.'}
                 </p>
-                {!emailIdentity ? (
-                  <Link
-                    href="/dashboard/settings/integrations"
-                    className="mt-2 inline-block text-sm font-medium text-primary hover:underline"
-                  >
-                    Connect email integration
-                  </Link>
-                ) : null}
+                <p className="mt-2 text-xs font-medium text-primary opacity-70 transition group-hover:opacity-100">
+                  Manage email connection →
+                </p>
               </div>
             </div>
-          </div>
+          </Link>
 
-          <div
-            className={`rounded-lg border p-4 ${
+          <Link
+            href="/dashboard/settings/integrations"
+            className={`group rounded-lg border p-4 transition hover:-translate-y-0.5 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               smsInfrastructureConnected && defaultSmsNumber
-                ? 'border-emerald-500/30 bg-emerald-500/5'
-                : 'border-amber-500/30 bg-amber-500/5'
+                ? 'border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-400/60'
+                : 'border-amber-500/30 bg-amber-500/5 hover:border-amber-400/60'
             }`}
+            aria-label="Open SMS integration settings"
           >
             <div className="flex items-start gap-3">
               <Phone className="mt-0.5 h-5 w-5" />
@@ -363,21 +389,19 @@ export default async function AutomationOperationsPage() {
                     <CircleOff className="h-4 w-4 text-amber-300" />
                   )}
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 break-words text-sm text-muted-foreground">
                   {smsInfrastructureConnected && defaultSmsNumber
                     ? `${defaultSmsNumber.friendly_name} · ${defaultSmsNumber.phone_number}`
                     : !smsInfrastructureConnected
                       ? 'Flowtix SMS infrastructure is not currently connected for this workspace.'
                       : 'No SMS-capable Flowtix phone number is assigned to this workspace.'}
                 </p>
-                {smsInfrastructureConnected && !defaultSmsNumber ? (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Outbound phone numbers are assigned by the Flowtix Platform team.
-                  </p>
-                ) : null}
+                <p className="mt-2 text-xs font-medium text-primary opacity-70 transition group-hover:opacity-100">
+                  Review SMS connection →
+                </p>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
 
         <form
@@ -551,11 +575,10 @@ export default async function AutomationOperationsPage() {
                     Personalize with Flowtix AI
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Optional. AI uses the approved templates below as
-                    guardrails and may use the call summary/transcript
-                    when available. If AI entitlement, quota, or provider
-                    execution is unavailable, Flowtix safely falls back
-                    to the saved template instead of blocking follow-up.
+                    Optional. Flowtix AI can use your saved template,
+                    contact details, and an available call summary or
+                    transcript to personalize the follow-up. If AI is
+                    unavailable, Flowtix sends the saved template instead.
                   </p>
                 </div>
               </div>
@@ -593,10 +616,8 @@ export default async function AutomationOperationsPage() {
               </div>
 
               <p className="mt-3 text-xs text-muted-foreground">
-                AI personalization uses Flowtix&apos;s existing AI provider,
-                entitlement, reservation, usage-accounting, and organization
-                isolation systems. Normal saved-template automation does not
-                consume AI.
+                AI personalization is optional. Normal saved-template
+                automation works without AI and does not use AI quota.
               </p>
             </div>
 
@@ -605,8 +626,9 @@ export default async function AutomationOperationsPage() {
                 Template variables
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                These variables are rendered from the verified Flowtix
-                contact, caller, organization, and call records.
+                Add these variables to your template and Flowtix will
+                replace them with information from the contact, call,
+                agent, and organization.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {[
