@@ -175,14 +175,6 @@ const navItems: NavItem[] = [
     icon: Activity,
   },
   {
-    id: 'telephony-monitoring',
-    feature: 'dialer.cloud',
-    label: 'Telephony Monitoring',
-    href: '/dashboard/telephony-monitoring',
-    permission: 'calls.view_all',
-    icon: BarChart3,
-  },
-  {
     id: 'recordings',
     feature: 'dialer.cloud',
     label: 'Recordings',

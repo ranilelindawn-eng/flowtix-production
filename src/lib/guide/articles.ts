@@ -170,22 +170,14 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Choose the caller ID', instructions: ['Select the intended outbound caller ID from the dropdown.', 'Confirm the number belongs to/configured for the selected provider.'] },
       { title: 'Place a controlled call', instructions: ['Enter the destination in E.164 format such as +12025550123.', 'Press the green call button once.', 'Watch the call state and use Live Calls for in-progress visibility.'] },
       { title: 'Finish the call cleanly', instructions: ['Hang up normally.', 'Complete the call outcome/notes if prompted.', 'Confirm the call appears in Calls and any expected recording/transcript workflows.'] },
-    ], successChecks: ['Softphone shows online.', 'The provider accepts the attempted outbound call.', 'Flowtix creates and updates the call lifecycle.', 'The completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider rejects the destination, check provider account permissions, caller ID approval, and destination restrictions before retrying.'], related: ['phone-numbers','live-calls','telephony-monitoring','calls']
+    ], successChecks: ['Softphone shows online.', 'The provider accepts the attempted outbound call.', 'Flowtix creates and updates the call lifecycle.', 'The completed call is visible in Calls.'], troubleshooting: ['Trial provider accounts may restrict destinations even when Flowtix is connected correctly.', 'If the provider rejects the destination, check provider account permissions, caller ID approval, and destination restrictions before retrying.'], related: ['phone-numbers','live-calls','organization','calls']
   },
   {
     slug: 'live-calls', title: 'Live Calls', category: 'Calling & Telephony', summary: 'Monitor active Flowtix calls in one operational view.', moduleHref: '/dashboard/live-calls', moduleLabel: 'Open Live Calls', pathnamePrefixes: ['/dashboard/live-calls'],
     steps: [
       { title: 'Understand the live states', instructions: ['Review which agents are actively placing outbound calls.', 'Connected indicates an active conversation.', 'Idle or available agents are not currently on an outbound call.'] },
       { title: 'Use it during live operations', instructions: ['Keep this page open while agents are placing outbound calls.', 'If it stays empty, confirm a real provider call has reached an active lifecycle state.'] },
-    ], successChecks: ['An active call appears while its lifecycle is active.', 'The call disappears/updates after a terminal provider event.'], related: ['dialer','calls','telephony-monitoring']
-  },
-  {
-    slug: 'telephony-monitoring', title: 'Telephony Monitoring', category: 'Calling & Telephony', summary: 'Review outbound calling readiness, agent softphone presence, active calls, provider health, alerts, and call status integrity.', moduleHref: '/dashboard/telephony-monitoring', moduleLabel: 'Open Telephony Monitoring', pathnamePrefixes: ['/dashboard/telephony-monitoring'],
-    steps: [
-      { title: 'Start with acceptance validation', instructions: ['Review the readiness percentage.', 'Open each warning and distinguish configuration warnings from real runtime failures.', 'Do not treat a healthy provider connection as proof that every destination is callable.'] },
-      { title: 'Check live operating metrics', instructions: ['Review active calls, connected calls, agent softphone presence, provider status, and open alerts.', 'Use the agent and call status indicators to confirm who is actively calling and whether their browser softphone is online.'] },
-      { title: 'Investigate warnings safely', instructions: ['Check the visible provider and softphone diagnostics first for provider-side errors.', 'Confirm the caller ID, destination number, browser softphone, and provider connection are ready.', 'Do not repeatedly place test calls while the same warning remains unresolved.'] },
-    ], successChecks: ['Provider, credentials, phone number, default outbound caller ID, and monitoring status show healthy results.', 'Agent softphone and active-call indicators match the actual outbound calling activity.'], related: ['dialer','live-calls','calls','phone-numbers']
+    ], successChecks: ['An active call appears while its lifecycle is active.', 'The call disappears/updates after a terminal provider event.'], related: ['dialer','calls','organization']
   },
   {
     slug: 'recordings', title: 'Recordings', category: 'Calling & Telephony', summary: 'Review recorded call media and verify automatic call-capture behavior.', moduleHref: '/dashboard/recordings', moduleLabel: 'Open Recordings', pathnamePrefixes: ['/dashboard/recordings'],
@@ -246,8 +238,8 @@ export const guideArticles: GuideArticle[] = [
     slug: 'call-analytics', title: 'Call Analytics', category: 'Analytics', summary: 'Analyze outbound call volume, connectivity, recordings, provider performance, and agent execution.', moduleHref: '/dashboard/call-analytics', moduleLabel: 'Open Call Analytics', pathnamePrefixes: ['/dashboard/call-analytics'],
     steps: [
       { title: 'Review call outcomes', instructions: ['Check outbound call totals, connect rate, durations, missed/no-answer outcomes, and recordings.', 'Compare provider performance when multiple outbound providers are active.'] },
-      { title: 'Diagnose operations', instructions: ['Review agent and provider performance for outbound calling.', 'Use Telephony Monitoring for live operational problems and Call Analytics for historical patterns.'] },
-    ], successChecks: ['Completed outbound call records affect analytics.', 'Provider and agent breakdowns correspond to actual outbound call data.'], related: ['calls','telephony-monitoring','agent-analytics']
+      { title: 'Diagnose operations', instructions: ['Review agent and provider performance for outbound calling.', 'Use Organization calling operations for current operational problems and Call Analytics for historical patterns.'] },
+    ], successChecks: ['Completed outbound call records affect analytics.', 'Provider and agent breakdowns correspond to actual outbound call data.'], related: ['calls','organization','agent-analytics']
   },
   {
     slug: 'agent-analytics', title: 'Agent Analytics', category: 'Analytics', summary: 'Compare workforce performance using call and activity metrics.', moduleHref: '/dashboard/agent-analytics', moduleLabel: 'Open Agent Analytics', pathnamePrefixes: ['/dashboard/agent-analytics'],
@@ -352,7 +344,7 @@ export const guideArticles: GuideArticle[] = [
     steps: [
       { title: 'Add a number', instructions: ['Enter a friendly label and the provider phone number in E.164 format.', 'Select the provider that actually owns/hosts the number.', 'Enable only capabilities the provider/number supports, such as Voice or SMS.'] },
       { title: 'Set the outbound default', instructions: ['Set the correct default caller ID for the workspace/provider.', 'Open Dialer and confirm the number appears in the outbound caller ID selector.'] },
-    ], successChecks: ['Number persists after refresh.', 'Correct provider/capabilities are shown.', 'Dialer displays the expected default caller ID.'], related: ['dialer','integrations','telephony-monitoring']
+    ], successChecks: ['Number persists after refresh.', 'Correct provider/capabilities are shown.', 'Dialer displays the expected default caller ID.'], related: ['dialer','integrations','organization']
   },
   {
     slug: 'troubleshooting', title: 'Troubleshooting Flowtix', category: 'Troubleshooting', summary: 'Use a safe subscriber troubleshooting sequence before changing workspace settings or repeating an action.', pathnamePrefixes: [],
@@ -361,7 +353,7 @@ export const guideArticles: GuideArticle[] = [
       { title: 'Check the module status', instructions: ['Refresh the page once and confirm the module still shows the same issue.', 'For email, calendar, telephony, or AI features, open the appropriate Settings or integration page and confirm the service is connected.', 'For calling or messaging, confirm the contact information, consent status, assigned number, and provider readiness are correct.'] },
       { title: 'Check access and configuration', instructions: ['Confirm your role has access to the module or action you are trying to use.', 'Check the relevant Flowtix settings, plan entitlement, provider connection, and destination details.', 'If a feature is unavailable to your role, ask the workspace owner or an authorized manager to review access.'] },
       { title: 'Retest once', instructions: ['After correcting the visible setting or connection, repeat the same action once.', 'Confirm the result persists after refresh.', 'If the same error remains, capture the message and time and contact Flowtix support or your workspace administrator instead of repeatedly retrying the action.'] },
-    ], successChecks: ['The original action completes successfully.', 'The result remains visible after refresh when persistence is expected.', 'No duplicate call, message, task, or other external action was created while troubleshooting.'], related: ['settings','security-center','integrations','telephony-monitoring']
+    ], successChecks: ['The original action completes successfully.', 'The result remains visible after refresh when persistence is expected.', 'No duplicate call, message, task, or other external action was created while troubleshooting.'], related: ['settings','security-center','integrations','organization']
   },
 ]
 

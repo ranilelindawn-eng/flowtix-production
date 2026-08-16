@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 
 import PlatformTelephonyControls from '@/components/platform/PlatformTelephonyControls'
+import { runTelephonyAcceptanceValidation } from '@/lib/telephony/acceptance'
 import { getPlatformTelephonyConnection } from '@/lib/platform/telephony'
 
 function formatDate(value: string | null): string {
@@ -40,6 +41,8 @@ export default async function PlatformTelephonyConnectionPage({
   const connection = await getPlatformTelephonyConnection(integrationId)
 
   if (!connection) notFound()
+
+  const readiness = await runTelephonyAcceptanceValidation(connection.organizationId)
 
   return (
     <div className="space-y-8">
@@ -122,6 +125,28 @@ export default async function PlatformTelephonyConnectionPage({
             {formatDate(connection.lastVerificationAt)}
           </p>
         </article>
+      </section>
+
+      <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Internal acceptance validation</p>
+            <h2 className="mt-2 text-lg font-semibold text-white">Telephony readiness: {readiness.score}%</h2>
+            <p className="mt-1 text-sm text-slate-500">Developer-only provider, callback, database, phone-number, webhook, monitoring, and runtime validation for this workspace.</p>
+          </div>
+          <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase ${readiness.status === 'pass' ? 'border-emerald-400/20 bg-emerald-400/10 text-emerald-300' : readiness.status === 'warning' ? 'border-amber-400/20 bg-amber-400/10 text-amber-300' : 'border-rose-400/20 bg-rose-400/10 text-rose-300'}`}>{readiness.status}</span>
+        </div>
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {readiness.checks.map((item) => (
+            <article key={item.key} className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-sm font-semibold text-white">{item.label}</p>
+                <span className={`text-[10px] font-semibold uppercase ${item.status === 'pass' ? 'text-emerald-300' : item.status === 'warning' ? 'text-amber-300' : 'text-rose-300'}`}>{item.status}</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
