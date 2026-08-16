@@ -98,6 +98,41 @@ function calendarDayKey(value: Date) {
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
 }
 
+function organizationDateParts(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(value)
+
+  const map = Object.fromEntries(
+    parts
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value]),
+  )
+
+  return {
+    year: Number(map.year),
+    month: Number(map.month),
+    day: Number(map.day),
+  }
+}
+
+function organizationCalendarDate(value: Date, timeZone: string) {
+  const parts = organizationDateParts(value, timeZone)
+  return new Date(parts.year, parts.month - 1, parts.day)
+}
+
+function organizationEventDay(value: Date, timeZone: string) {
+  return Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      day: 'numeric',
+    }).format(value),
+  )
+}
+
 function eventTone(type: string) {
   if (type === 'call') {
     return 'border-amber-400/30 bg-amber-400/10 text-amber-100'
@@ -132,7 +167,7 @@ export default function CalendarBoard({
     () => false,
   )
 
-  const [cursor, setCursor] = useState(() => new Date())
+  const [cursor, setCursor] = useState(() => organizationCalendarDate(new Date(), timezone))
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window === 'undefined') return 'month'
 
@@ -308,7 +343,7 @@ export default function CalendarBoard({
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => setCursor(new Date())}
+            onClick={() => setCursor(organizationCalendarDate(new Date(), timezone))}
             className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5"
           >
             Today
@@ -348,12 +383,17 @@ export default function CalendarBoard({
             <ChevronRight className="h-5 w-5" />
           </button>
 
-          <h2 className="text-xl font-semibold text-white">
-            {cursor.toLocaleDateString(undefined, {
-              month: 'long',
-              year: 'numeric',
-            })}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold text-white">
+              {cursor.toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Organization time zone: {timezone}
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -398,7 +438,7 @@ export default function CalendarBoard({
             ))}
           </div>
 
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 gap-px bg-white/10">
             {monthCells.map((day) => {
               const dayEvents = sortedEvents.filter((event) =>
                 organizationDateKey(new Date(event.starts_at), timezone) === calendarDayKey(day),
@@ -416,7 +456,7 @@ export default function CalendarBoard({
               return (
                 <div
                   key={day.toISOString()}
-                  className="min-h-32 border-b border-r border-white/10 p-2 last:border-r-0 sm:min-h-36"
+                  className="min-h-32 min-w-0 overflow-hidden bg-[#0A1524] p-2 sm:min-h-36"
                 >
                   <div className={dayNumberClassName}>
                     {day.getDate()}
@@ -428,13 +468,14 @@ export default function CalendarBoard({
                         key={event.id}
                         type="button"
                         onClick={() => openEventDialog(event)}
-                        className={`block w-full truncate rounded-lg border px-2 py-1.5 text-left text-xs ${eventTone(
+                        className={`block w-full min-w-0 truncate rounded-lg border px-2 py-1.5 text-left text-xs ${eventTone(
                           event.event_type,
                         )}`}
                       >
                         {new Date(
                           event.starts_at,
-                        ).toLocaleTimeString([], {
+                        ).toLocaleTimeString('en-US', {
+                          timeZone: timezone,
                           hour: 'numeric',
                           minute: '2-digit',
                         })}{' '}
@@ -485,7 +526,7 @@ export default function CalendarBoard({
                     </div>
 
                     <div className="text-2xl font-semibold text-white">
-                      {eventStart.getDate()}
+                      {organizationEventDay(eventStart, timezone)}
                     </div>
                   </div>
 

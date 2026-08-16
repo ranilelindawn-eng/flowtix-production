@@ -40,7 +40,7 @@ export default async function CalendarPage() {
   const integrations = integrationsResult.data ?? []
 
   return (
-    <div className="space-y-8">
+    <div className="w-full space-y-8 xl:-mx-10 xl:w-[calc(100%+5rem)] 2xl:-mx-16 2xl:w-[calc(100%+8rem)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">Organization scheduling</p>
