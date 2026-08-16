@@ -154,21 +154,26 @@ function FollowUpSection({
             <SectionIcon className="h-4 w-4" />
           </div>
 
-          <div className="min-w-0">
-            <h3 className="font-semibold text-white">
+          <Link
+            href="/dashboard/tasks"
+            className="group min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+          >
+            <h3 className="font-semibold text-white transition group-hover:text-cyan-200">
               {title}
             </h3>
             <p className="mt-1 text-xs leading-5 text-slate-500">
               {description}
             </p>
-          </div>
+          </Link>
         </div>
 
-        <span
-          className={`inline-flex min-w-8 items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold ${sectionTone.count}`}
+        <Link
+          href="/dashboard/tasks"
+          aria-label={`Open ${title} tasks`}
+          className={`inline-flex min-w-8 items-center justify-center rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${sectionTone.count}`}
         >
           {items.length}
-        </span>
+        </Link>
       </div>
 
       <div className="divide-y divide-white/10">
@@ -241,11 +246,14 @@ function FollowUpSection({
             )
           })
         ) : (
-          <div className="px-5 py-8 text-center">
+          <Link
+            href="/dashboard/tasks"
+            className="block px-5 py-8 text-center transition hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400"
+          >
             <p className="text-sm font-medium text-slate-300">
               {emptyMessage}
             </p>
-          </div>
+          </Link>
         )}
       </div>
 
@@ -280,11 +288,14 @@ export default function FollowUpWidget({
           </p>
         </div>
 
-        <div className="inline-flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300">
+        <Link
+          href="/dashboard/tasks"
+          className="inline-flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-400/20 hover:bg-cyan-400/10 hover:text-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+        >
           <CalendarClock className="h-4 w-4 text-cyan-300" />
           {totalFollowUps}{' '}
           {totalFollowUps === 1 ? 'open task' : 'open tasks'}
-        </div>
+        </Link>
       </div>
 
       <div className="grid gap-5 p-6 xl:grid-cols-3">

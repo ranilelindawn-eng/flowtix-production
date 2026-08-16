@@ -10,6 +10,7 @@ type DataTableProps = {
   emptyDescription?: string
   actionHref?: string
   actionLabel?: string
+  rowHrefs?: Array<string | undefined>
 }
 
 function normalizeBadgeValue(value: string): string {
@@ -105,6 +106,7 @@ export default function DataTable({
   emptyDescription = 'Records will appear here once they become available.',
   actionHref,
   actionLabel,
+  rowHrefs,
 }: DataTableProps) {
   return (
     <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
@@ -184,14 +186,29 @@ export default function DataTable({
                   key={`row-${rowIndex}`}
                   className="group transition duration-200 hover:bg-white/[0.035]"
                 >
-                  {columns.map((_, cellIndex) => (
-                    <td
-                      key={`cell-${rowIndex}-${cellIndex}`}
-                      className="whitespace-nowrap px-6 py-4 align-middle"
-                    >
-                      {renderCell(row[cellIndex] ?? '—')}
-                    </td>
-                  ))}
+                  {columns.map((_, cellIndex) => {
+                    const cell = renderCell(row[cellIndex] ?? '—')
+                    const rowHref = rowHrefs?.[rowIndex]
+
+                    return (
+                      <td
+                        key={`cell-${rowIndex}-${cellIndex}`}
+                        className="whitespace-nowrap p-0 align-middle"
+                      >
+                        {rowHref ? (
+                          <Link
+                            href={rowHref}
+                            aria-label={`Open ${title} record ${rowIndex + 1}`}
+                            className="block px-6 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400"
+                          >
+                            {cell}
+                          </Link>
+                        ) : (
+                          <div className="px-6 py-4">{cell}</div>
+                        )}
+                      </td>
+                    )
+                  })}
                 </tr>
               ))
             )}

@@ -29,6 +29,7 @@ export type Contact = {
   do_not_call: boolean
   last_contacted_at: string | null
   next_follow_up_at: string | null
+  last_call_outcome: string | null
   custom_fields: Record<string, unknown>
   merged_into_contact_id: string | null
   owner_membership_id: string | null

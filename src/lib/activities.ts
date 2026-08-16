@@ -28,6 +28,19 @@ export type CrmActivity = {
   updated_at: string
 }
 
+export async function getActivityById(input: { organizationId: string; activityId: string }): Promise<CrmActivity | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('crm_activities')
+    .select('*')
+    .eq('organization_id', input.organizationId)
+    .eq('id', input.activityId)
+    .maybeSingle()
+
+  if (error) throw new Error(error.message)
+  return (data as CrmActivity | null) ?? null
+}
+
 export async function getActivities(input: { organizationId: string; contactId?: string; type?: string; status?: string; search?: string; limit?: number }): Promise<CrmActivity[]> {
   const supabase = await createClient()
   let query = supabase.from('crm_activities').select('*').eq('organization_id', input.organizationId).order('occurred_at', { ascending: false }).limit(Math.min(input.limit ?? 100, 250))

@@ -79,6 +79,42 @@ function getStatusClasses(
   }
 }
 
+
+function getCallOutcomePresentation(outcome: string | null): {
+  label: string
+  classes: string
+} {
+  if (!outcome) {
+    return {
+      label: '—',
+      classes: 'border-white/5 bg-white/[0.02] text-slate-600',
+    }
+  }
+
+  const label = outcome
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase())
+
+  switch (outcome) {
+    case 'connected':
+      return { label, classes: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-300' }
+    case 'sale_closed':
+      return { label, classes: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-300' }
+    case 'callback':
+      return { label, classes: 'border-blue-400/20 bg-blue-500/10 text-blue-300' }
+    case 'voicemail':
+      return { label, classes: 'border-violet-400/20 bg-violet-500/10 text-violet-300' }
+    case 'busy':
+    case 'no_answer':
+      return { label, classes: 'border-amber-400/20 bg-amber-500/10 text-amber-300' }
+    case 'wrong_number':
+    case 'not_interested':
+      return { label, classes: 'border-rose-400/20 bg-rose-500/10 text-rose-300' }
+    default:
+      return { label, classes: 'border-white/10 bg-white/[0.04] text-slate-300' }
+  }
+}
+
 function buildContactsUrl(input: {
   search: string
   sort: string
@@ -206,7 +242,8 @@ export default async function ContactsPage({
   })
 
   return (
-    <div className="space-y-6">
+    <div className="w-full lg:relative lg:left-1/2 lg:w-[min(1680px,calc(100vw-320px))] lg:-translate-x-1/2">
+      <div className="space-y-6">
       <header className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-cyan-400">
@@ -340,7 +377,7 @@ export default async function ContactsPage({
         {contacts.length > 0 ? (
           <>
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[1050px] border-collapse text-left">
+              <table className="w-full min-w-[1280px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <th className="px-5 py-4">
@@ -357,6 +394,9 @@ export default async function ContactsPage({
                     </th>
                     <th className="px-5 py-4">
                       Tags
+                    </th>
+                    <th className="px-5 py-4">
+                      Call outcome
                     </th>
                     <th className="px-5 py-4 text-right">
                       Actions
@@ -377,6 +417,9 @@ export default async function ContactsPage({
                     const hiddenTagCount = Math.max(
                       0,
                       contactTags.length - visibleTags.length,
+                    )
+                    const callOutcome = getCallOutcomePresentation(
+                      contact.last_call_outcome,
                     )
 
                     return (
@@ -406,36 +449,46 @@ export default async function ContactsPage({
                         </td>
 
                         <td className="px-5 py-4">
-                          <div className="flex items-center gap-2 text-sm text-slate-300">
+                          <Link
+                            href={`/dashboard/contacts/${contact.id}`}
+                            className="flex items-center gap-2 text-sm text-slate-300 transition hover:text-white"
+                          >
                             <Building2
                               aria-hidden="true"
                               className="size-4 shrink-0 text-slate-600"
                             />
-                            <span className="max-w-48 truncate">
+                            <span className="max-w-56 truncate">
                               {contact.company || '—'}
                             </span>
-                          </div>
+                          </Link>
                         </td>
 
                         <td className="px-5 py-4">
-                          <span className="text-sm text-slate-300">
+                          <Link
+                            href={`/dashboard/contacts/${contact.id}`}
+                            className="text-sm text-slate-300 transition hover:text-white"
+                          >
                             {phoneNumber || '—'}
-                          </span>
+                          </Link>
                         </td>
 
                         <td className="px-5 py-4">
-                          <span
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${getStatusClasses(
+                          <Link
+                            href={`/dashboard/contacts/${contact.id}`}
+                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold capitalize transition hover:brightness-125 ${getStatusClasses(
                               contact.status,
                             )}`}
                           >
                             {contact.status}
-                          </span>
+                          </Link>
                         </td>
 
                         <td className="px-5 py-4">
                           {contactTags.length > 0 ? (
-                            <div className="flex max-w-64 flex-wrap items-center gap-1.5">
+                            <Link
+                              href={`/dashboard/contacts/${contact.id}`}
+                              className="flex max-w-72 flex-wrap items-center gap-1.5 rounded-lg transition hover:bg-white/[0.03]"
+                            >
                               {visibleTags.map((tag) => (
                                 <span
                                   key={tag.id}
@@ -458,10 +511,24 @@ export default async function ContactsPage({
                                   +{hiddenTagCount}
                                 </span>
                               ) : null}
-                            </div>
+                            </Link>
                           ) : (
-                            <span className="text-sm text-slate-600">—</span>
+                            <Link
+                              href={`/dashboard/contacts/${contact.id}`}
+                              className="text-sm text-slate-600 transition hover:text-slate-400"
+                            >
+                              —
+                            </Link>
                           )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <Link
+                            href={`/dashboard/contacts/${contact.id}`}
+                            className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:brightness-125 ${callOutcome.classes}`}
+                          >
+                            {callOutcome.label}
+                          </Link>
                         </td>
 
                         <td className="px-5 py-4">
@@ -517,6 +584,9 @@ export default async function ContactsPage({
                 const hiddenTagCount = Math.max(
                   0,
                   contactTags.length - visibleTags.length,
+                )
+                const callOutcome = getCallOutcomePresentation(
+                  contact.last_call_outcome,
                 )
 
                 return (
@@ -607,6 +677,18 @@ export default async function ContactsPage({
                         ) : (
                           <p className="mt-1 text-sm text-slate-600">—</p>
                         )}
+                      </div>
+
+                      <div className="pt-1">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                          Call outcome
+                        </p>
+                        <Link
+                          href={`/dashboard/contacts/${contact.id}`}
+                          className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold transition hover:brightness-125 ${callOutcome.classes}`}
+                        >
+                          {callOutcome.label}
+                        </Link>
                       </div>
                     </div>
 
@@ -744,6 +826,7 @@ export default async function ContactsPage({
           </div>
         )}
       </section>
+      </div>
     </div>
   )
 }

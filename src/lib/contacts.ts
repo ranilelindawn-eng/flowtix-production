@@ -55,6 +55,7 @@ type ContactRow = {
   do_not_call: boolean
   last_contacted_at: string | null
   next_follow_up_at: string | null
+  last_call_outcome: string | null
   custom_fields: unknown
   merged_into_contact_id: string | null
   metadata: unknown
@@ -198,6 +199,7 @@ function mapContact(row: ContactRow): Contact {
     do_not_call: row.do_not_call,
     last_contacted_at: row.last_contacted_at,
     next_follow_up_at: row.next_follow_up_at,
+    last_call_outcome: row.last_call_outcome,
     custom_fields:
       row.custom_fields &&
       typeof row.custom_fields === 'object' &&
@@ -355,6 +357,7 @@ export async function getContacts(
         do_not_call,
         last_contacted_at,
         next_follow_up_at,
+        last_call_outcome,
         custom_fields,
         merged_into_contact_id,
         metadata,
@@ -466,6 +469,7 @@ export async function getContactById(
       do_not_call,
       last_contacted_at,
       next_follow_up_at,
+      last_call_outcome,
       custom_fields,
       merged_into_contact_id,
       metadata,

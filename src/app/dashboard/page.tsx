@@ -383,13 +383,15 @@ function AnalyticsCard({
   title,
   description,
   children,
+  href,
 }: {
   title: string
   description: string
   children: ReactNode
+  href?: string
 }) {
-  return (
-    <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
+  const content = (
+    <section className="h-full overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)] transition duration-300 group-hover:-translate-y-1 group-hover:border-cyan-400/20 group-hover:bg-[#0E1C2E]">
       <div className="border-b border-white/10 px-6 py-5">
         <h2 className="text-lg font-semibold text-white">
           {title}
@@ -403,6 +405,20 @@ function AnalyticsCard({
         {children}
       </div>
     </section>
+  )
+
+  if (!href) {
+    return content
+  }
+
+  return (
+    <Link
+      href={href}
+      aria-label={`Open ${title}`}
+      className="group block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+    >
+      {content}
+    </Link>
   )
 }
 
@@ -450,7 +466,7 @@ export default async function DashboardPage() {
       delta: 'Today',
       icon: <CalendarIcon />,
       tone: 'violet' as const,
-      href: '/dashboard/calls?range=today',
+      href: '/dashboard/calls',
     },
     {
       label: 'Connected Rate',
@@ -459,7 +475,7 @@ export default async function DashboardPage() {
       icon: <ActivityIcon />,
       progress: callsProgress,
       tone: 'emerald' as const,
-      href: '/dashboard/reports',
+      href: '/dashboard/call-analytics',
     },
     {
       label: 'Average Duration',
@@ -467,7 +483,7 @@ export default async function DashboardPage() {
       delta: 'Per connected call',
       icon: <ClockIcon />,
       tone: 'amber' as const,
-      href: '/dashboard/reports',
+      href: '/dashboard/call-analytics',
     },
     {
       label: 'Total Minutes',
@@ -475,7 +491,7 @@ export default async function DashboardPage() {
       delta: 'Conversation time',
       icon: <ChartIcon />,
       tone: 'cyan' as const,
-      href: '/dashboard/reports',
+      href: '/dashboard/call-analytics',
     },
     {
       label: 'Active Campaigns',
@@ -486,6 +502,10 @@ export default async function DashboardPage() {
       href: '/dashboard/campaigns',
     },
   ]
+
+  const recentContactRowHrefs = dashboard.recentContacts.map(
+    (contact) => `/dashboard/contacts/${contact.id}`,
+  )
 
   const recentContactsRows = dashboard.recentContacts.map(
     (contact) => {
@@ -513,6 +533,10 @@ export default async function DashboardPage() {
         formatDate(contact.created_at, timeZone),
       ]
     },
+  )
+
+  const recentCallRowHrefs = dashboard.recentCalls.map(
+    (call) => `/dashboard/calls/${call.id}`,
   )
 
   const recentCallsRows = dashboard.recentCalls.map((call) => [
@@ -640,6 +664,10 @@ export default async function DashboardPage() {
           ['description', 'message', 'detail'],
           'A new activity was recorded in your workspace.',
         ),
+        href:
+          activity.type === 'call'
+            ? `/dashboard/calls/${activity.id.replace(/^call-/, '')}`
+            : `/dashboard/contacts/${activity.id.replace(/^contact-/, '')}`,
         time: getStringValue(
           record,
           [
@@ -742,6 +770,7 @@ export default async function DashboardPage() {
         <AnalyticsCard
           title="Calls over time"
           description="Call volume recorded during the last seven days."
+          href="/dashboard/call-analytics"
         >
           {callsOverTime.length > 0 ? (
             <div>
@@ -802,6 +831,7 @@ export default async function DashboardPage() {
         <AnalyticsCard
           title="Call outcomes"
           description="Distribution of recent call results."
+          href="/dashboard/call-analytics"
         >
           {callOutcomes.length > 0 ? (
             <div className="space-y-5">
@@ -885,6 +915,7 @@ export default async function DashboardPage() {
             description="The latest calls recorded in your organization."
             columns={['Contact', 'Duration', 'Status', 'Date']}
             rows={recentCallsRows}
+            rowHrefs={recentCallRowHrefs}
             emptyTitle="No calls recorded"
             emptyDescription="Start using the dialer to make your first call."
             actionHref="/dashboard/calls"
@@ -896,6 +927,7 @@ export default async function DashboardPage() {
             description="The newest contacts added to your workspace."
             columns={['Name', 'Company', 'Status', 'Created']}
             rows={recentContactsRows}
+            rowHrefs={recentContactRowHrefs}
             emptyTitle="No contacts available"
             emptyDescription="Create your first contact to begin organizing your leads."
             actionHref="/dashboard/contacts"
@@ -905,9 +937,12 @@ export default async function DashboardPage() {
 
         <div className="space-y-6">
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)]">
-            <div className="flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5">
+            <Link
+              href="/dashboard/timeline"
+              className="group flex items-center justify-between gap-4 border-b border-white/10 px-6 py-5 transition hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-400"
+            >
               <div>
-                <h2 className="text-lg font-semibold text-white">
+                <h2 className="text-lg font-semibold text-white transition group-hover:text-cyan-200">
                   Activity feed
                 </h2>
                 <p className="mt-1 text-sm leading-6 text-slate-400">
@@ -918,15 +953,16 @@ export default async function DashboardPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-cyan-400/20 bg-cyan-400/10 text-cyan-300">
                 <ActivityIcon className="h-4 w-4" />
               </div>
-            </div>
+            </Link>
 
             <div className="p-6">
               {activityItems.length > 0 ? (
                 <div className="space-y-1">
                   {activityItems.map((item, index) => (
-                    <div
+                    <Link
                       key={item.key}
-                      className="relative flex gap-4 pb-6 last:pb-0"
+                      href={item.href}
+                      className="group relative flex gap-4 rounded-2xl px-2 py-2 pb-6 transition hover:bg-white/[0.035] last:pb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
                     >
                       {index < activityItems.length - 1 ? (
                         <div
@@ -952,7 +988,7 @@ export default async function DashboardPage() {
                           {formatActivityTime(item.time, timeZone)}
                         </p>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
