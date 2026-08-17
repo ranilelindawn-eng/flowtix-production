@@ -83,6 +83,29 @@ function accountType(value: string): 'business' | 'residential' {
   throw new Error('Select a valid current-provider account type.')
 }
 
+
+function validateNumberEligibility(phoneNumber: string, numberType: string) {
+  if (numberType === '10dlc') {
+    if (
+      !/^\+1\d{10}$/.test(phoneNumber) ||
+      /^\+1(?:800|833|844|855|866|877|888)\d{7}$/.test(phoneNumber)
+    ) {
+      throw new Error(
+        'Existing company number must be an eligible +1 US local VoIP / 10DLC number. Mobile/wireless, Toll-Free, and non-US numbers cannot use the Local VoIP / 10DLC option.',
+      )
+    }
+    return
+  }
+
+  if (numberType === 'toll_free') {
+    if (!/^\+1(?:800|833|844|855|866|877|888)\d{7}$/.test(phoneNumber)) {
+      throw new Error(
+        'Existing company number must be a valid +1 Toll-Free number using 800, 833, 844, 855, 866, 877, or 888.',
+      )
+    }
+  }
+}
+
 function campaignId(value: string, numberType: string) {
   if (numberType === 'toll_free') return 'N/A'
   const normalized = value.trim().toUpperCase()
@@ -119,6 +142,7 @@ export async function submitExistingCompanySmsNumber(
     if (!['10dlc', 'toll_free'].includes(numberType)) {
       throw new Error('Select either Local VoIP / 10DLC or Toll-Free for the company number.')
     }
+    validateNumberEligibility(phoneNumber, numberType)
 
     const voiceProviderName = bounded(
       stringValue(formData, 'voice_provider_name'),
