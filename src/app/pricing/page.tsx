@@ -116,7 +116,7 @@ export default function Page() {
                 </ul>
 
                 <Link
-                  href={plan.selfService ? `/signup?plan=${plan.publicSlug}` : '/contact'}
+                  href={plan.selfService ? `/signup?plan=${plan.publicSlug}` : '/contact?topic=enterprise'}
                   className={`mt-8 inline-flex items-center justify-center rounded-full px-6 py-3 font-semibold transition hover:-translate-y-0.5 ${
                     featured
                       ? 'bg-gradient-to-r from-blue-600 to-cyan-400 text-white shadow-lg shadow-blue-950/40'

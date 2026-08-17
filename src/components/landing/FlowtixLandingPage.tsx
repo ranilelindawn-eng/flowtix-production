@@ -43,7 +43,7 @@ const plans = FLOWTIX_PLAN_ORDER.map((code) => {
     price: plan.priceStartsAt ? `From ${formattedPrice}` : formattedPrice,
     description: plan.description,
     features: plan.marketingFeatures.slice(0, 7),
-    href: plan.selfService ? `/signup?plan=${plan.publicSlug}` : '/contact',
+    href: plan.selfService ? `/signup?plan=${plan.publicSlug}` : '/contact?topic=enterprise',
     cta: plan.selfService ? 'Start Free Trial' : 'Contact Flowtix',
     featured: plan.code === 'pro',
   }

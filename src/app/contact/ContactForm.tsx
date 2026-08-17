@@ -5,8 +5,13 @@ import { FormEvent, useState } from 'react'
 import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 
 type SubmissionState = 'idle' | 'sending' | 'sent' | 'error'
+type ContactTopic = 'General inquiry' | 'Account support' | 'Security' | 'Enterprise plan'
 
-export default function ContactForm() {
+type ContactFormProps = {
+  initialTopic?: ContactTopic
+}
+
+export default function ContactForm({ initialTopic = 'General inquiry' }: ContactFormProps) {
   const [state, setState] = useState<SubmissionState>('idle')
   const [feedback, setFeedback] = useState('')
 
@@ -91,12 +96,13 @@ export default function ContactForm() {
         <span>Topic</span>
         <select
           name="topic"
+          defaultValue={initialTopic}
           className="rounded-xl border border-white/10 bg-slate-950 px-4 py-3"
         >
-          <option>General inquiry</option>
-          <option>Account support</option>
-          <option>Security</option>
-          <option>Business plan</option>
+          <option value="General inquiry">General inquiry</option>
+          <option value="Account support">Account support</option>
+          <option value="Security">Security</option>
+          <option value="Enterprise plan">Enterprise plan</option>
         </select>
       </label>
 

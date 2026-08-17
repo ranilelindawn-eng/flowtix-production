@@ -696,7 +696,7 @@ export default async function BillingPage({
                     </button>
                   ) : requiresAssistedEnterpriseOnboarding ? (
                     <Link
-                      href="/contact"
+                      href="/contact?topic=enterprise"
                       className="block w-full rounded-xl border border-blue-400/30 bg-blue-500/10 px-4 py-3 text-center font-semibold text-blue-200 transition hover:bg-blue-500/15"
                     >
                       Contact Flowtix

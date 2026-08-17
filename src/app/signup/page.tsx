@@ -51,7 +51,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             </p>
             <div className="mt-8 grid gap-3">
               <Link
-                href="/contact"
+                href="/contact?topic=enterprise"
                 className="rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 font-semibold text-white"
               >
                 Contact Flowtix

@@ -8,7 +8,7 @@ const ALLOWED_TOPICS = new Set([
   'General inquiry',
   'Account support',
   'Security',
-  'Business plan',
+  'Enterprise plan',
 ])
 
 function cleanText(value: unknown, maxLength: number) {
