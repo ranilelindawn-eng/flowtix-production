@@ -175,7 +175,7 @@ export async function updatePlatformSmsSenderProvisioning(_previousState: Platfo
   if(reason.length<5)return{status:'error',message:'Enter a provider note or reason of at least 5 characters.'}
   const supabase=await createClient();const{data,error}=await supabase.rpc('platform_mark_sms_sender_request',{p_request_id:requestId,p_status:status,p_reason:reason,p_provider_reference:providerReference||null})
   if(error||data!==true)return{status:'error',message:`Unable to update SMS provisioning: ${error?.message??'The request was not updated.'}`}
-  revalidatePath(`/platform/telephony/${integrationId}`);revalidatePath('/dashboard/organization')
+  revalidatePath('/platform/telephony');revalidatePath(`/platform/telephony/${integrationId}`);revalidatePath('/dashboard/organization')
   return{status:'success',message:status==='provider_processing'?'Request marked as submitted to SignalWire. Use Sync & activate after the number appears as SMS-capable.':status==='action_required'?'Request marked as requiring subscriber action.':'Request marked as rejected.'}
 }
 
@@ -190,7 +190,7 @@ export async function syncAndActivatePlatformSmsSender(_previousState: PlatformT
     if(providerNumber.capabilities.sms!==true)return{status:'error',message:`${requestedNumber} exists in SignalWire but is not SMS-capable yet. Do not activate it until hosted messaging is ready.`}
     await configureSignalWireSmsWebhook({organizationId,providerNumberId:providerNumber.providerNumberId,smsUrl:inboundSmsWebhookUrl(organizationId,requestedNumber)})
     const supabase=await createClient();const{data,error}=await supabase.rpc('platform_activate_sms_sender_request',{p_request_id:requestId,p_provider_number_id:providerNumber.providerNumberId,p_friendly_name:providerNumber.friendlyName,p_capabilities:providerNumber.capabilities,p_provider_note:'SignalWire number synchronized, inbound SMS webhook configured, and company sender activated.'});if(error||data!==true)throw new Error(error?.message??'The provider number was configured, but Flowtix could not activate the sender record.')
-    revalidatePath(`/platform/telephony/${integrationId}`);revalidatePath('/dashboard/organization');revalidatePath('/dashboard/settings/automation');revalidatePath('/dashboard/communications')
+    revalidatePath('/platform/telephony');revalidatePath(`/platform/telephony/${integrationId}`);revalidatePath('/dashboard/organization');revalidatePath('/dashboard/settings/automation');revalidatePath('/dashboard/communications')
     return{status:'success',message:`${requestedNumber} is now the active Flowtix SMS sender. Outbound SMS and inbound replies use this company number.`}
   }catch(error){return{status:'error',message:sanitizeProviderMessage(error,'Unable to synchronize the SignalWire SMS number.')}}
 }

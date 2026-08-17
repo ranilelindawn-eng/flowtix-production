@@ -298,6 +298,7 @@ export async function submitExistingCompanySmsNumber(
 
     revalidatePath('/dashboard/organization')
     revalidatePath('/dashboard/settings/automation')
+    revalidatePath('/platform/telephony')
 
     return {
       status: 'success',
@@ -348,6 +349,7 @@ export async function cancelExistingCompanySmsNumberRequest(
     }
 
     revalidatePath('/dashboard/organization')
+    revalidatePath('/platform/telephony')
     return { status: 'success', message: 'The SMS provisioning request was cancelled.' }
   } catch (error) {
     return {

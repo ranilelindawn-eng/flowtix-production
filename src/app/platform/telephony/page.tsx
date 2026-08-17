@@ -10,6 +10,8 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 
+import PlatformSmsProvisioningDirectory from '@/components/platform/PlatformSmsProvisioningDirectory'
+import { getPlatformSmsSenderRequestDirectory } from '@/lib/platform/sms-provisioning'
 import {
   getPlatformTelephonyConnections,
   getPlatformTelephonyMetrics,
@@ -21,6 +23,7 @@ type SearchParams = Promise<{
   provider?: string
   status?: string
   page?: string
+  smsPage?: string
 }>
 
 function normalizeProvider(
@@ -75,10 +78,13 @@ export default async function PlatformTelephonyPage({
   const provider = normalizeProvider(query.provider)
   const status = query.status?.trim() || 'all'
   const requestedPage = normalizePage(query.page)
+  const requestedSmsPage = normalizePage(query.smsPage)
   const pageSize = 25
+  const smsPageSize = 25
   const offset = (requestedPage - 1) * pageSize
+  const smsOffset = (requestedSmsPage - 1) * smsPageSize
 
-  const [metrics, directory] = await Promise.all([
+  const [metrics, directory, smsDirectory] = await Promise.all([
     getPlatformTelephonyMetrics(),
     getPlatformTelephonyConnections({
       search: q,
@@ -87,10 +93,27 @@ export default async function PlatformTelephonyPage({
       limit: pageSize,
       offset,
     }),
+    getPlatformSmsSenderRequestDirectory({
+      limit: smsPageSize,
+      offset: smsOffset,
+    }),
   ])
 
   const totalPages = Math.max(Math.ceil(directory.total / pageSize), 1)
   const page = Math.min(requestedPage, totalPages)
+  const smsTotalPages = Math.max(Math.ceil(smsDirectory.total / smsPageSize), 1)
+  const smsPage = Math.min(requestedSmsPage, smsTotalPages)
+
+  const smsPageHref = (targetPage: number): string => {
+    const params = new URLSearchParams()
+    if (q) params.set('q', q)
+    if (provider !== 'all') params.set('provider', provider)
+    if (status !== 'all') params.set('status', status)
+    if (page > 1) params.set('page', String(page))
+    if (targetPage > 1) params.set('smsPage', String(targetPage))
+    const queryString = params.toString()
+    return `${queryString ? `/platform/telephony?${queryString}` : '/platform/telephony'}#sms-provisioning`
+  }
 
   const metricCards = [
     {
@@ -172,6 +195,12 @@ export default async function PlatformTelephonyPage({
           </p>
         </div>
       </section>
+
+      <PlatformSmsProvisioningDirectory
+        directory={smsDirectory}
+        previousHref={smsPage > 1 ? smsPageHref(smsPage - 1) : null}
+        nextHref={smsPage < smsTotalPages ? smsPageHref(smsPage + 1) : null}
+      />
 
       <section className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
         <form

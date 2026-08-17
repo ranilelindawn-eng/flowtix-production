@@ -35,6 +35,21 @@ export type PlatformSmsSenderRequest = {
   activatedAt: string | null
 }
 
+export type PlatformSmsSenderRequestDirectoryItem = PlatformSmsSenderRequest & {
+  organizationName: string
+  organizationStatus: string
+  integrationId: string | null
+  integrationStatus: string | null
+  integrationEnabled: boolean | null
+}
+
+export type PlatformSmsSenderRequestDirectory = {
+  items: PlatformSmsSenderRequestDirectoryItem[]
+  total: number
+  limit: number
+  offset: number
+}
+
 type Row = Record<string, unknown>
 type CarrierSecret = { providerAccountPin?: unknown }
 
@@ -126,6 +141,126 @@ export async function getPlatformSmsSenderRequests(organizationId: string) {
     const parsed = parse(value as Row)
     return parsed ? [parsed] : []
   })
+}
+
+export async function getPlatformSmsSenderRequestDirectory(input?: {
+  limit?: number
+  offset?: number
+}): Promise<PlatformSmsSenderRequestDirectory> {
+  await requirePlatformPermission('platform.telephony.manage')
+
+  const limit = Math.min(Math.max(input?.limit ?? 25, 1), 100)
+  const offset = Math.max(input?.offset ?? 0, 0)
+  const admin = createTelephonyAdminClient()
+
+  const firstPage = await admin
+    .from('organization_sms_sender_requests')
+    .select('*', { count: 'exact' })
+    .order('submitted_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (firstPage.error) {
+    if (firstPage.error.code === '42P01') {
+      return { items: [], total: 0, limit, offset }
+    }
+    throw new Error(
+      `Unable to load company SMS provisioning requests: ${firstPage.error.message}`,
+    )
+  }
+
+  const total = firstPage.count ?? 0
+  const effectiveOffset =
+    total > 0 && offset >= total ? Math.floor((total - 1) / limit) * limit : offset
+
+  let pageData = firstPage.data
+  if (effectiveOffset !== offset) {
+    const lastPage = await admin
+      .from('organization_sms_sender_requests')
+      .select('*')
+      .order('submitted_at', { ascending: false })
+      .range(effectiveOffset, effectiveOffset + limit - 1)
+
+    if (lastPage.error) {
+      throw new Error(
+        `Unable to load company SMS provisioning requests: ${lastPage.error.message}`,
+      )
+    }
+    pageData = lastPage.data
+  }
+
+  const requests = (pageData ?? []).flatMap((value) => {
+    const parsed = parse(value as Row)
+    return parsed ? [parsed] : []
+  })
+
+  if (requests.length === 0) {
+    return { items: [], total, limit, offset: effectiveOffset }
+  }
+
+  const organizationIds = [...new Set(requests.map((request) => request.organizationId))]
+
+  const [{ data: organizations, error: organizationError }, { data: integrations, error: integrationError }] =
+    await Promise.all([
+      admin.from('organizations').select('id,name,status').in('id', organizationIds),
+      admin
+        .from('organization_integrations')
+        .select('id,organization_id,status,enabled,updated_at')
+        .eq('provider', 'signalwire')
+        .in('organization_id', organizationIds)
+        .order('updated_at', { ascending: false }),
+    ])
+
+  if (organizationError) {
+    throw new Error(`Unable to load SMS request organizations: ${organizationError.message}`)
+  }
+  if (integrationError) {
+    throw new Error(`Unable to load SMS request telephony connections: ${integrationError.message}`)
+  }
+
+  const organizationById = new Map<string, { name: string; status: string }>()
+  for (const value of organizations ?? []) {
+    const row = value as Row
+    const id = stringValue(row.id)
+    if (!id) continue
+    organizationById.set(id, {
+      name: stringValue(row.name) ?? 'Unnamed organization',
+      status: stringValue(row.status) ?? 'active',
+    })
+  }
+
+  const integrationByOrganizationId = new Map<
+    string,
+    { id: string; status: string | null; enabled: boolean | null }
+  >()
+  for (const value of integrations ?? []) {
+    const row = value as Row
+    const organizationId = stringValue(row.organization_id)
+    const id = stringValue(row.id)
+    if (!organizationId || !id || integrationByOrganizationId.has(organizationId)) continue
+    integrationByOrganizationId.set(organizationId, {
+      id,
+      status: stringValue(row.status),
+      enabled: typeof row.enabled === 'boolean' ? row.enabled : null,
+    })
+  }
+
+  return {
+    items: requests.map((request) => {
+      const organization = organizationById.get(request.organizationId)
+      const integration = integrationByOrganizationId.get(request.organizationId)
+      return {
+        ...request,
+        organizationName: organization?.name ?? 'Unknown organization',
+        organizationStatus: organization?.status ?? 'unknown',
+        integrationId: integration?.id ?? null,
+        integrationStatus: integration?.status ?? null,
+        integrationEnabled: integration?.enabled ?? null,
+      }
+    }),
+    total,
+    limit,
+    offset: effectiveOffset,
+  }
 }
 
 export async function getPlatformSmsSenderDocument(input: {
