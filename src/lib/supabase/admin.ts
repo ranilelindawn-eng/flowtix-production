@@ -94,6 +94,10 @@ type SubscriptionPlanRow = {
   max_storage_bytes: number | null
   max_calls_per_month: number | null
   public_price_usd_cents: number | null
+  paymongo_fx_rate: number | null
+  paymongo_fx_rate_date: string | null
+  paymongo_fx_provider: string | null
+  paymongo_fx_updated_at: string | null
   max_active_campaigns: number | null
   max_active_sequences: number | null
   recording_retention_days: number | null
@@ -282,6 +286,10 @@ type Database = {
           max_storage_bytes?: number | null
           max_calls_per_month?: number | null
           public_price_usd_cents?: number | null
+          paymongo_fx_rate?: number | null
+          paymongo_fx_rate_date?: string | null
+          paymongo_fx_provider?: string | null
+          paymongo_fx_updated_at?: string | null
           max_active_campaigns?: number | null
           max_active_sequences?: number | null
           recording_retention_days?: number | null
@@ -434,6 +442,53 @@ type Database = {
           payment_id?: string
           checkout_id?: string
           plan_code?: string
+        }
+      }
+      begin_paymongo_fx_checkout_creation: {
+        Args: {
+          p_organization_id: string
+          p_plan_id: string
+          p_plan_code: string
+          p_amount: number
+          p_currency: string
+          p_source_usd_cents: number
+          p_fx_rate: number
+          p_fx_rate_date: string
+          p_fx_provider: string
+        }
+        Returns: {
+          subscription_id?: string
+          creation_token?: string
+          plan_id?: string
+          plan_code?: string
+          amount_centavos?: number
+          source_usd_cents?: number
+          fx_rate?: number
+          fx_rate_date?: string
+          fx_provider?: string
+        }
+      }
+      finalize_paymongo_fx_checkout_creation: {
+        Args: {
+          p_organization_id: string
+          p_creation_token: string
+          p_checkout_id: string
+          p_plan_id: string
+          p_plan_code: string
+          p_amount: number
+          p_currency: string
+          p_expires_at: string
+        }
+        Returns: {
+          subscription_id?: string
+          payment_id?: string
+          checkout_id?: string
+          plan_code?: string
+          amount_centavos?: number
+          source_usd_cents?: number
+          fx_rate?: number
+          fx_rate_date?: string
+          fx_provider?: string
         }
       }
       begin_paymongo_checkout_creation: {

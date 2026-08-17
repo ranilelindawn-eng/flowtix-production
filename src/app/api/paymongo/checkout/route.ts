@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server'
 
 import { getCurrentSubscription } from '@/lib/billing'
 import { getBillingAppUrl } from '@/lib/billing/config'
+import {
+  convertUsdCentsToPhpCentavos,
+  FxReferenceRateError,
+  getUsdPhpReferenceQuote,
+} from '@/lib/billing/fx'
 import { schedulePlanChange } from '@/lib/billing/platform'
 import {
   beginIdempotentOperation,
@@ -205,10 +210,25 @@ export async function POST(request: Request) {
       }
     }
 
+    const fxQuote = await getUsdPhpReferenceQuote()
+    const checkoutAmount = convertUsdCentsToPhpCentavos(
+      plan.publicPriceUsdCents,
+      fxQuote.rate,
+    )
+
     idempotency = await beginIdempotentOperation({
       organizationId,
       scope: 'billing.paymongo.checkout',
-      payload: { planCode: plan.code, amount: plan.amount },
+      payload: {
+        planCode: plan.code,
+        sourceCurrency: 'USD',
+        sourceAmountCents: plan.publicPriceUsdCents,
+        settlementCurrency: 'PHP',
+        settlementAmountCentavos: checkoutAmount,
+        fxRate: fxQuote.rate,
+        fxRateDate: fxQuote.rateDate,
+        fxProvider: fxQuote.provider,
+      },
       key: formData.get('idempotency_key')?.toString() || null,
       ttlSeconds: 3_600,
       fallbackWindowSeconds: 600,
@@ -225,13 +245,17 @@ export async function POST(request: Request) {
     }
 
     const { data: lease, error: leaseError } = await admin.rpc(
-      'begin_paymongo_checkout_creation',
+      'begin_paymongo_fx_checkout_creation',
       {
         p_organization_id: organizationId,
         p_plan_id: plan.id,
         p_plan_code: plan.code,
-        p_amount: plan.amount,
+        p_amount: checkoutAmount,
         p_currency: 'PHP',
+        p_source_usd_cents: plan.publicPriceUsdCents,
+        p_fx_rate: fxQuote.rate,
+        p_fx_rate_date: fxQuote.rateDate,
+        p_fx_provider: fxQuote.provider,
       },
     )
 
@@ -247,13 +271,20 @@ export async function POST(request: Request) {
 
     const appUrl = getBillingAppUrl()
     const { checkoutId, checkoutUrl } = await createPayMongoCheckoutSession({
-      amount: plan.amount,
+      amount: checkoutAmount,
       name: plan.name,
       description: `${plan.name} monthly subscription`,
       metadata: {
         organization_id: organizationId,
         plan_code: plan.code,
         billing_provider: 'paymongo',
+        source_currency: 'USD',
+        source_amount_cents: String(plan.publicPriceUsdCents),
+        settlement_currency: 'PHP',
+        settlement_amount_centavos: String(checkoutAmount),
+        fx_rate: String(fxQuote.rate),
+        fx_rate_date: fxQuote.rateDate,
+        fx_provider: fxQuote.provider,
       },
       successUrl: `${appUrl}/dashboard/billing?checkout=success`,
       cancelUrl: `${appUrl}/dashboard/billing?checkout=cancelled`,
@@ -263,14 +294,14 @@ export async function POST(request: Request) {
       Date.now() + 24 * 60 * 60 * 1000,
     ).toISOString()
     const { data: registration, error: registrationError } = await admin.rpc(
-      'finalize_paymongo_checkout_creation',
+      'finalize_paymongo_fx_checkout_creation',
       {
         p_organization_id: organizationId,
         p_creation_token: creationToken,
         p_checkout_id: checkoutId,
         p_plan_id: plan.id,
         p_plan_code: plan.code,
-        p_amount: plan.amount,
+        p_amount: checkoutAmount,
         p_currency: 'PHP',
         p_expires_at: checkoutExpiresAt,
       },
@@ -304,8 +335,13 @@ export async function POST(request: Request) {
         checkout_id: checkoutId,
         payment_id: registrationResult.payment_id,
         plan_code: plan.code,
-        amount: plan.amount,
+        amount: checkoutAmount,
         currency: 'PHP',
+        source_currency: 'USD',
+        source_amount_cents: plan.publicPriceUsdCents,
+        fx_rate: fxQuote.rate,
+        fx_rate_date: fxQuote.rateDate,
+        fx_provider: fxQuote.provider,
       },
     })
 
@@ -328,7 +364,9 @@ export async function POST(request: Request) {
     const status =
       error instanceof PayMongoApiError
         ? Math.max(400, Math.min(error.status, 599))
-        : idempotencyErrorStatus(error) ?? 500
+        : error instanceof FxReferenceRateError
+          ? 503
+          : idempotencyErrorStatus(error) ?? 500
 
     await failIdempotentOperation(idempotency, error, status)
 
@@ -353,9 +391,11 @@ export async function POST(request: Request) {
         error:
           error instanceof PayMongoApiError
             ? 'PayMongo checkout could not be created.'
-            : error instanceof Error
-              ? error.message
-              : 'Server error.',
+            : error instanceof FxReferenceRateError
+              ? 'The current USD to PHP conversion rate is temporarily unavailable. Please try checkout again shortly.'
+              : error instanceof Error
+                ? error.message
+                : 'Server error.',
       },
       { status },
     )

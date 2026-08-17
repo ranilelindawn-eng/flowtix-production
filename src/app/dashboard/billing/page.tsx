@@ -14,6 +14,10 @@ import {
   getPlans,
 } from '@/lib/billing'
 import {
+  convertUsdCentsToPhpCentavos,
+  getUsdPhpReferenceQuoteOrNull,
+} from '@/lib/billing/fx'
+import {
   getFeatureLabel,
   getMinimumPlanForFeature,
   getPlanDefinition,
@@ -41,6 +45,15 @@ function formatPublicPrice(cents: number) {
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(cents / 100)
+}
+
+function formatPhpConversion(centavos: number) {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(centavos / 100)
 }
 
 function formatBytes(bytes: number) {
@@ -110,11 +123,13 @@ export default async function BillingPage({
     subscription,
     usage,
     query,
+    usdPhpQuote,
   ] = await Promise.all([
     getPlans(),
     getCurrentSubscription(),
     getUsageSnapshot(),
     searchParams,
+    getUsdPhpReferenceQuoteOrNull(),
   ])
 
   const canManage =
@@ -585,6 +600,14 @@ export default async function BillingPage({
                 ? subscription.billing_metadata.enterprise_monthly_price_cents
                 : null
 
+            const currentPhpConversion =
+              catalogPlan?.selfService === true && usdPhpQuote
+                ? convertUsdCentsToPhpCentavos(
+                    catalogPlan.publicPriceUsdCents,
+                    usdPhpQuote.rate,
+                  )
+                : null
+
             return (
               <article
                 key={plan.id}
@@ -649,11 +672,19 @@ export default async function BillingPage({
                       </>
                     ) : (
                       <>
-                        Current PayMongo checkout amount:{' '}
-                        <span className="font-medium text-slate-300">
-                          {formatPayMongoPrice(plan.monthly_price_cents)}/month
-                        </span>
-                        . PayMongo settlement is processed in PHP.
+                        {currentPhpConversion !== null && usdPhpQuote ? (
+                          <>
+                            Current PHP reference conversion:{' '}
+                            <span className="font-medium text-slate-300">
+                              {formatPhpConversion(currentPhpConversion)}/month
+                            </span>{' '}
+                            at USD/PHP {usdPhpQuote.rate.toFixed(4)}. The exact PHP amount is locked when checkout is created.
+                          </>
+                        ) : (
+                          <>
+                            Your plan price remains in USD. The PHP PayMongo amount is calculated from the current USD/PHP reference rate when checkout is created.
+                          </>
+                        )}
                       </>
                     )}
                   </p>

@@ -16,6 +16,7 @@ export type PayMongoPlan = {
   name: string
   description: string | null
   amount: number
+  publicPriceUsdCents: number
   sortOrder: number
   providerPriceCode: string
 }
@@ -39,7 +40,7 @@ export async function getPayMongoPlan(
   const { data, error } = await admin
     .from('subscription_plans')
     .select(
-      'id,code,name,description,monthly_price_cents,sort_order,billing_provider,provider_price_code,is_active,is_public',
+      'id,code,name,description,monthly_price_cents,public_price_usd_cents,sort_order,billing_provider,provider_price_code,is_active,is_public',
     )
     .eq('code', code)
     .eq('billing_provider', 'paymongo')
@@ -53,7 +54,7 @@ export async function getPayMongoPlan(
     )
   }
 
-  if (!data || data.monthly_price_cents <= 0) {
+  if (!data || !data.public_price_usd_cents || data.public_price_usd_cents <= 0) {
     return null
   }
 
@@ -63,6 +64,7 @@ export async function getPayMongoPlan(
     name: data.name,
     description: data.description,
     amount: data.monthly_price_cents,
+    publicPriceUsdCents: data.public_price_usd_cents,
     sortOrder: data.sort_order,
     providerPriceCode:
       data.provider_price_code?.trim() || data.code,

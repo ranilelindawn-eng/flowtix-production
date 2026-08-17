@@ -304,9 +304,6 @@ export async function getPlanAcceptanceReport(): Promise<PlanAcceptanceReport> {
       if (!actual.isActive || !actual.isPublic) {
         planIssues.push('Canonical plan must remain active and public.')
       }
-      if (!actual.monthlyPriceCents || actual.monthlyPriceCents <= 0) {
-        planIssues.push('PayMongo PHP checkout amount must be positive.')
-      }
       if (actual.publicPriceUsdCents !== expected.publicPriceUsdCents) {
         planIssues.push('Public USD list price does not match the canonical catalog.')
       }

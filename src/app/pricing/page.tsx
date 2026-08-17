@@ -9,6 +9,10 @@ import {
   FLOWTIX_PLAN_ORDER,
   FLOWTIX_PLANS,
 } from '@/lib/plans/catalog'
+import {
+  convertUsdCentsToPhpCentavos,
+  getUsdPhpReferenceQuoteOrNull,
+} from '@/lib/billing/fx'
 import { createMarketingMetadata } from '@/lib/seo'
 
 export const metadata = createMarketingMetadata({
@@ -26,9 +30,20 @@ function formatPublicPrice(cents: number): string {
   }).format(cents / 100)
 }
 
+function formatPhpConversion(centavos: number): string {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(centavos / 100)
+}
+
 const plans = FLOWTIX_PLAN_ORDER.map((code) => FLOWTIX_PLANS[code])
 
-export default function Page() {
+export default async function Page() {
+  const usdPhpQuote = await getUsdPhpReferenceQuoteOrNull()
+
   return (
     <MarketingShell>
       <MarketingHero
@@ -61,6 +76,12 @@ export default function Page() {
           {plans.map((plan) => {
             const featured = plan.code === 'pro'
             const price = formatPublicPrice(plan.publicPriceUsdCents)
+            const phpConversion = usdPhpQuote
+              ? convertUsdCentsToPhpCentavos(
+                  plan.publicPriceUsdCents,
+                  usdPhpQuote.rate,
+                )
+              : null
 
             return (
               <article
@@ -94,6 +115,22 @@ export default function Page() {
 
                   <p className="mt-3 font-semibold text-cyan-300">
                     {plan.selfService ? '7-day free trial' : 'Assisted onboarding'}
+                  </p>
+
+                  <p className="mt-3 text-xs leading-5 text-slate-500">
+                    {phpConversion !== null && usdPhpQuote ? (
+                      <>
+                        Approx. {formatPhpConversion(phpConversion)}/month at USD/PHP{' '}
+                        {usdPhpQuote.rate.toFixed(4)}.{' '}
+                        {plan.selfService
+                          ? 'The exact PHP PayMongo amount is locked when checkout is created.'
+                          : 'Enterprise pricing is finalized through assisted onboarding.'}
+                      </>
+                    ) : (
+                      <>
+                        PHP settlement is calculated from the current USD/PHP reference rate when needed.
+                      </>
+                    )}
                   </p>
 
                   <p className="mt-4 leading-7 text-slate-400">

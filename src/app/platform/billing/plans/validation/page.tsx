@@ -9,6 +9,10 @@ import {
 } from 'lucide-react'
 
 import { getPlanAcceptanceReport } from '@/lib/platform/plan-validation'
+import {
+  convertUsdCentsToPhpCentavos,
+  getUsdPhpReferenceQuoteOrNull,
+} from '@/lib/billing/fx'
 
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -28,18 +32,20 @@ function usd(cents: number): string {
   }).format(cents / 100)
 }
 
-function php(cents: number | null): string {
-  if (cents === null) return '—'
-
+function php(centavos: number): string {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
-    maximumFractionDigits: 0,
-  }).format(cents / 100)
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(centavos / 100)
 }
 
 export default async function PlatformPlanValidationPage() {
-  const report = await getPlanAcceptanceReport()
+  const [report, usdPhpQuote] = await Promise.all([
+    getPlanAcceptanceReport(),
+    getUsdPhpReferenceQuoteOrNull(),
+  ])
 
   const stateCards = [
     ['Subscriptions', report.subscriptions.total],
@@ -125,7 +131,20 @@ export default async function PlatformPlanValidationPage() {
               {usd(plan.publicPriceUsdCents)}
             </p>
             <p className="mt-1 text-xs text-slate-500">
-              PayMongo reference: {php(plan.paymongoAmountCents)}
+              {usdPhpQuote ? (
+                <>
+                  Current PHP conversion:{' '}
+                  {php(
+                    convertUsdCentsToPhpCentavos(
+                      plan.publicPriceUsdCents,
+                      usdPhpQuote.rate,
+                    ),
+                  )}{' '}
+                  at USD/PHP {usdPhpQuote.rate.toFixed(4)}
+                </>
+              ) : (
+                'PHP conversion is calculated at checkout.'
+              )}
             </p>
             <p className="mt-3 text-xs text-slate-500">
               {plan.entitlementCount} entitlements ·{' '}
