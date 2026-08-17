@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import {
   AlertTriangle,
   Check,
@@ -12,10 +13,17 @@ import {
   getCurrentSubscription,
   getPlans,
 } from '@/lib/billing'
+import {
+  getFeatureLabel,
+  getMinimumPlanForFeature,
+  getPlanDefinition,
+  isFeatureEntitlement,
+} from '@/lib/plans/catalog'
 import { getUsageSnapshot } from '@/lib/usage-limits'
 
 import { getCurrentOrganizationTimezone } from '@/lib/team'
-function formatPrice(cents: number) {
+
+function formatPayMongoPrice(cents: number) {
   if (cents === 0) {
     return 'Custom'
   }
@@ -23,6 +31,14 @@ function formatPrice(cents: number) {
   return new Intl.NumberFormat('en-PH', {
     style: 'currency',
     currency: 'PHP',
+    maximumFractionDigits: 0,
+  }).format(cents / 100)
+}
+
+function formatPublicPrice(cents: number) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
     maximumFractionDigits: 0,
   }).format(cents / 100)
 }
@@ -48,7 +64,7 @@ function formatBytes(bytes: number) {
   ).toFixed(1)} GB`
 }
 
-function isCancelableActiveSubscription(
+function hasCurrentPaidPeriod(
   subscription: OrganizationSubscription | null,
 ): boolean {
   if (
@@ -59,33 +75,20 @@ function isCancelableActiveSubscription(
     return false
   }
 
-  const planCode =
-    subscription.plan?.code ?? subscription.paymongo_plan_code
-
-  if (planCode === 'starter') {
-    return false
-  }
-
   return Date.parse(subscription.current_period_end) > Date.now()
 }
 
-function getPayMongoPlanCode(
-  subscription: unknown,
-): string | null {
-  if (
-    typeof subscription !== 'object' ||
-    subscription === null ||
-    !('paymongo_plan_code' in subscription)
-  ) {
-    return null
+function isCancelableActiveSubscription(
+  subscription: OrganizationSubscription | null,
+): boolean {
+  if (!hasCurrentPaidPeriod(subscription)) {
+    return false
   }
 
-  const value = subscription.paymongo_plan_code
+  const planCode =
+    subscription?.plan?.code ?? subscription?.paymongo_plan_code
 
-  return typeof value === 'string' &&
-    value.trim().length > 0
-    ? value.trim()
-    : null
+  return planCode !== 'starter'
 }
 
 export default async function BillingPage({
@@ -129,19 +132,26 @@ export default async function BillingPage({
     typeof query.feature === 'string'
       ? query.feature
       : null
+  const requestedFeatureEntitlement =
+    isFeatureEntitlement(requestedFeature)
+      ? requestedFeature
+      : null
+  const requestedFeatureLabel = requestedFeatureEntitlement
+    ? getFeatureLabel(requestedFeatureEntitlement)
+    : requestedFeature
+  const requestedFeaturePlan = requestedFeatureEntitlement
+    ? getMinimumPlanForFeature(requestedFeatureEntitlement)
+    : null
   const trialState =
     typeof query.trial === 'string'
       ? query.trial
       : null
 
-  const paymongoPlanCode =
-    getPayMongoPlanCode(subscription)
-
   const pendingCheckout =
-    subscription?.status === 'pending' &&
-    subscription.pending_plan_id !== null &&
-    subscription.last_payment_status === 'pending' &&
-    subscription.pending_checkout_expires_at !== null
+    subscription?.pending_plan_id !== null &&
+    subscription?.last_payment_status === 'pending' &&
+    subscription?.pending_checkout_expires_at !== null &&
+    subscription?.paymongo_checkout_id !== null
 
   const trialActive =
     subscription?.status === 'trialing'
@@ -152,19 +162,26 @@ export default async function BillingPage({
 
   const pendingPlan =
     pendingCheckout &&
-    paymongoPlanCode
+    subscription?.pending_plan_id
       ? plans.find(
           (plan) =>
-            plan.code === paymongoPlanCode ||
-            plan.code ===
-              (paymongoPlanCode === 'professional'
-                ? 'pro'
-                : paymongoPlanCode),
+            plan.id === subscription.pending_plan_id,
+        ) ?? null
+      : null
+
+  const scheduledPlan =
+    subscription?.scheduled_plan_id
+      ? plans.find(
+          (plan) =>
+            plan.id === subscription.scheduled_plan_id,
         ) ?? null
       : null
 
   const activePlan =
     subscription?.plan ?? null
+
+  const activePaidPeriod =
+    hasCurrentPaidPeriod(subscription) && activePlan !== null
 
   const checkoutPaymentConfirmed =
     checkoutState === 'success' &&
@@ -188,6 +205,11 @@ export default async function BillingPage({
             subscription?.status ??
             'active'
           )
+
+  const nullLimitLabel =
+    usage?.planCode === 'enterprise'
+      ? 'Custom'
+      : 'No plan limit'
 
   // The cancellation button must only render for active paid subscriptions
   // that have a valid future period end.
@@ -251,13 +273,15 @@ export default async function BillingPage({
         </div>
       ) : null}
 
-      {requestedFeature ? (
+      {requestedFeatureLabel ? (
         <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
           Your current plan does not include{' '}
           <span className="font-semibold">
-            {requestedFeature}
+            {requestedFeatureLabel}
           </span>
-          . Choose a plan that includes this feature.
+          {requestedFeaturePlan
+            ? `. Choose ${requestedFeaturePlan.name} or a higher plan to unlock it.`
+            : '. Choose a plan that includes this feature.'}
         </div>
       ) : null}
 
@@ -288,12 +312,63 @@ export default async function BillingPage({
         </div>
       ) : null}
 
+      {subscriptionState === 'plan_scheduled' ? (
+        <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+          Your downgrade was scheduled for the end of the current billing
+          period. Your current plan remains active until then.
+        </div>
+      ) : null}
+
+      {subscriptionState === 'plan_change_cancelled' ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-200">
+          The scheduled plan change was cancelled. Your current plan will
+          continue.
+        </div>
+      ) : null}
+
+      {scheduledPlan ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <span className="font-semibold">
+                {scheduledPlan.name}
+              </span>{' '}
+              is scheduled to replace your current plan
+              {subscription?.scheduled_plan_effective_at
+                ? ` on ${new Date(
+                    subscription.scheduled_plan_effective_at,
+                  ).toLocaleString('en-PH', {
+                    timeZone,
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}`
+                : ' at the end of the current billing period'}
+              . Your existing data will not be deleted. The new plan&apos;s
+              entitlements and limits apply when the change becomes effective,
+              and PayMongo renewal payment will be required for the new period.
+            </div>
+
+            {canManage ? (
+              <form
+                action="/api/paymongo/subscription/cancel-plan-change"
+                method="post"
+                className="shrink-0"
+              >
+                <button className="rounded-xl border border-amber-400/40 px-3 py-2 font-semibold text-amber-100 transition hover:bg-amber-500/10">
+                  Keep current plan
+                </button>
+              </form>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {pendingPlan ? (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
           Your {pendingPlan.name} plan is waiting
-          for payment confirmation. Starter limits
-          remain active until PayMongo confirms the
-          payment.
+          for payment confirmation. Your{' '}
+          {activePlan?.name ?? usage?.planName ?? 'current plan'} entitlements
+          and limits remain active until PayMongo confirms the payment.
         </div>
       ) : null}
 
@@ -405,24 +480,28 @@ export default async function BillingPage({
               label="Team seats"
               used={usage.members.used}
               limit={usage.members.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Contacts"
               used={usage.contacts.used}
               limit={usage.contacts.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Calls this month"
               used={usage.calls.used}
               limit={usage.calls.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Private storage"
               used={usage.storage.used}
               limit={usage.storage.limit}
+              nullLimitLabel={nullLimitLabel}
               formatter={formatBytes}
             />
 
@@ -430,30 +509,35 @@ export default async function BillingPage({
               label="AI requests this month"
               used={usage.aiRequests.used}
               limit={usage.aiRequests.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Emails this month"
               used={usage.emails.used}
               limit={usage.emails.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="SMS this month"
               used={usage.sms.used}
               limit={usage.sms.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Phone numbers"
               used={usage.phoneNumbers.used}
               limit={usage.phoneNumbers.limit}
+              nullLimitLabel={nullLimitLabel}
             />
 
             <UsageMeter
               label="Active API keys"
               used={usage.apiKeys.used}
               limit={usage.apiKeys.limit}
+              nullLimitLabel={nullLimitLabel}
             />
           </div>
         </section>
@@ -469,17 +553,33 @@ export default async function BillingPage({
 
         <div className="mt-4 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {plans.map((plan) => {
+            const catalogPlan = getPlanDefinition(plan.code)
             const isPendingPlan =
               pendingPlan?.id === plan.id
 
+            const isScheduledPlan =
+              scheduledPlan?.id === plan.id
+
             const isActivePlan =
-              !pendingPlan &&
               !trialExpired &&
+              (subscription?.status === 'active' ||
+                subscription?.status === 'trialing') &&
               (activePlan?.id === plan.id ||
                 usage?.planCode === plan.code)
 
+            const isDowngrade =
+              activePaidPeriod &&
+              activePlan !== null &&
+              plan.sort_order < activePlan.sort_order
+
             const highlighted =
-              isPendingPlan || isActivePlan
+              isPendingPlan || isScheduledPlan || isActivePlan
+
+            const currentPlanCode =
+              activePlan?.code ?? subscription?.paymongo_plan_code
+            const requiresAssistedEnterpriseOnboarding =
+              catalogPlan?.selfService === false &&
+              currentPlanCode !== 'enterprise'
 
             return (
               <article
@@ -497,13 +597,17 @@ export default async function BillingPage({
                     </h3>
 
                     <p className="mt-1 text-sm text-slate-400">
-                      {plan.description}
+                      {catalogPlan?.description ?? plan.description}
                     </p>
                   </div>
 
                   {isPendingPlan ? (
                     <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-300">
                       Pending payment
+                    </span>
+                  ) : isScheduledPlan ? (
+                    <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold text-amber-300">
+                      Scheduled
                     </span>
                   ) : isActivePlan ? (
                     <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-xs font-semibold text-cyan-300">
@@ -512,20 +616,39 @@ export default async function BillingPage({
                   ) : null}
                 </div>
 
-                <p className="mt-6 text-4xl font-bold text-white">
-                  {formatPrice(
-                    plan.monthly_price_cents,
-                  )}
-
-                  {plan.monthly_price_cents > 0 ? (
+                <div className="mt-6">
+                  <p className="text-4xl font-bold text-white">
+                    {catalogPlan
+                      ? `${catalogPlan.priceStartsAt ? 'From ' : ''}${formatPublicPrice(catalogPlan.publicPriceUsdCents)}`
+                      : 'Plan price'}
                     <span className="text-sm font-normal text-slate-400">
                       /month
                     </span>
-                  ) : null}
-                </p>
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    {catalogPlan?.selfService === false ? (
+                      <>
+                        Enterprise billing is configured during assisted onboarding.
+                        The current PayMongo reference amount is{' '}
+                        <span className="font-medium text-slate-300">
+                          {formatPayMongoPrice(plan.monthly_price_cents)}/month
+                        </span>
+                        .
+                      </>
+                    ) : (
+                      <>
+                        Current PayMongo checkout amount:{' '}
+                        <span className="font-medium text-slate-300">
+                          {formatPayMongoPrice(plan.monthly_price_cents)}/month
+                        </span>
+                        . PayMongo settlement is processed in PHP.
+                      </>
+                    )}
+                  </p>
+                </div>
 
                 <ul className="mt-6 space-y-3 text-sm text-slate-300">
-                  {plan.features.map(
+                  {(catalogPlan?.marketingFeatures ?? plan.features).map(
                     (feature) => (
                       <li
                         key={feature}
@@ -547,6 +670,14 @@ export default async function BillingPage({
                     >
                       Payment pending
                     </button>
+                  ) : isScheduledPlan ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 font-semibold text-amber-300"
+                    >
+                      Scheduled for period end
+                    </button>
                   ) : isActivePlan ? (
                     <button
                       type="button"
@@ -555,9 +686,28 @@ export default async function BillingPage({
                     >
                       Current plan
                     </button>
+                  ) : pendingPlan ? (
+                    <button
+                      type="button"
+                      disabled
+                      className="w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-500"
+                    >
+                      Complete or cancel pending payment
+                    </button>
+                  ) : requiresAssistedEnterpriseOnboarding ? (
+                    <Link
+                      href="/contact"
+                      className="block w-full rounded-xl border border-blue-400/30 bg-blue-500/10 px-4 py-3 text-center font-semibold text-blue-200 transition hover:bg-blue-500/15"
+                    >
+                      Contact Flowtix
+                    </Link>
                   ) : canManage ? (
                     <form
-                      action="/api/paymongo/checkout"
+                      action={
+                        isDowngrade
+                          ? '/api/paymongo/subscription/change-plan'
+                          : '/api/paymongo/checkout'
+                      }
                       method="post"
                     >
                       <input
@@ -566,13 +716,28 @@ export default async function BillingPage({
                         value={plan.code}
                       />
 
+                      {isDowngrade ? (
+                        <input
+                          type="hidden"
+                          name="effective"
+                          value="period_end"
+                        />
+                      ) : null}
+
                       <button
                         type="submit"
                         className="w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
                       >
                         {trialActive
                           ? `Use ${plan.name} for trial`
-                          : `Choose ${plan.name}`}
+                          : isDowngrade
+                            ? `Schedule ${plan.name} downgrade`
+                            : subscription?.status === 'past_due' &&
+                                activePlan?.id === plan.id
+                              ? `Renew ${plan.name}`
+                              : activePaidPeriod
+                                ? `Upgrade to ${plan.name}`
+                                : `Choose ${plan.name}`}
                       </button>
                     </form>
                   ) : (

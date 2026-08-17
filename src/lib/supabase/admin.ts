@@ -65,6 +65,9 @@ type OrganizationSubscriptionRow = {
   billing_metadata: Json
   pending_plan_id: string | null
   pending_checkout_expires_at: string | null
+  scheduled_plan_id: string | null
+  scheduled_plan_effective_at: string | null
+  lifecycle_version: number
   activated_at: string | null
   cancelled_at: string | null
   grace_period_ends_at: string | null
@@ -90,6 +93,11 @@ type SubscriptionPlanRow = {
   max_contacts: number | null
   max_storage_bytes: number | null
   max_calls_per_month: number | null
+  public_price_usd_cents: number | null
+  max_active_campaigns: number | null
+  max_active_sequences: number | null
+  recording_retention_days: number | null
+  max_transcription_minutes_per_month: number | null
   max_ai_requests_per_month: number | null
   max_emails_per_month: number | null
   max_sms_per_month: number | null
@@ -241,6 +249,9 @@ type Database = {
           billing_metadata?: Json
           pending_plan_id?: string | null
           pending_checkout_expires_at?: string | null
+          scheduled_plan_id?: string | null
+          scheduled_plan_effective_at?: string | null
+          lifecycle_version?: number
           activated_at?: string | null
           cancelled_at?: string | null
           grace_period_ends_at?: string | null
@@ -270,6 +281,11 @@ type Database = {
           max_contacts?: number | null
           max_storage_bytes?: number | null
           max_calls_per_month?: number | null
+          public_price_usd_cents?: number | null
+          max_active_campaigns?: number | null
+          max_active_sequences?: number | null
+          recording_retention_days?: number | null
+          max_transcription_minutes_per_month?: number | null
           max_ai_requests_per_month?: number | null
           max_emails_per_month?: number | null
           max_sms_per_month?: number | null
@@ -487,6 +503,10 @@ type Database = {
       }
       schedule_subscription_plan_change: {
         Args: { p_organization_id: string; p_actor_user_id: string; p_plan_code: string; p_effective?: string }
+        Returns: Record<string, unknown>
+      }
+      cancel_scheduled_subscription_plan_change: {
+        Args: { p_organization_id: string; p_actor_user_id: string }
         Returns: Record<string, unknown>
       }
       process_subscription_renewals: {

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Activity, BrainCircuit, CheckCircle2, Clock3, Headphones, PhoneCall, Target, Users } from 'lucide-react'
 import MetricCard from '@/components/reports/MetricCard'
+import { requireFeature } from '@/lib/auth'
 import AgentAnalyticsAutoRefresh from './AgentAnalyticsAutoRefresh'
 import { getAgentAnalyticsOverview, normalizeAgentAnalyticsPeriod } from '@/lib/analytics/agents'
 
@@ -14,6 +15,7 @@ function duration(seconds: number): string {
 }
 
 export default async function AgentAnalyticsPage({ searchParams }: Props) {
+  await requireFeature('analytics.agents', 'reports.view')
   const params = await searchParams
   const period = normalizeAgentAnalyticsPeriod(params.period)
   const { snapshot, history } = await getAgentAnalyticsOverview(period)

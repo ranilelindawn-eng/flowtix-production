@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 
 import {
   getTranscripts,
@@ -214,10 +214,10 @@ function TranscriptCard({
 export default async function TranscriptsPage({
   searchParams,
 }: TranscriptsPageProps) {
+  await requireFeature('ai.transcription', 'transcripts.view')
+
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
-
-  await requirePermission('transcripts.view')
 
   const page = parsePage(params.page)
   const search = params.search?.trim() ?? ''

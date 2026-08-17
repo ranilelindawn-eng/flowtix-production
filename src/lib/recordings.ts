@@ -1,4 +1,8 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
+import {
+  assertStorageCapacity,
+  getRecordingRetentionCutoff,
+} from '@/lib/usage-limits'
 
 export const RECORDINGS_PER_PAGE = 12
 export const RECORDINGS_BUCKET = 'recordings'
@@ -195,6 +199,9 @@ export async function getRecordings(
 
   const page = normalizePage(filters.page)
   const offset = (page - 1) * RECORDINGS_PER_PAGE
+  const retentionCutoff = await getRecordingRetentionCutoff(
+    organizationId,
+  )
 
   let query = supabase
     .from('recordings')
@@ -205,6 +212,10 @@ export async function getRecordings(
 
   if (filters.callId?.trim()) {
     query = query.eq('call_id', filters.callId.trim())
+  }
+
+  if (retentionCutoff) {
+    query = query.gte('created_at', retentionCutoff)
   }
 
   const { data, count, error } = await query
@@ -230,13 +241,21 @@ export async function getRecording(
 
   const { supabase, organizationId } =
     await getRecordingContext()
+  const retentionCutoff = await getRecordingRetentionCutoff(
+    organizationId,
+  )
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('recordings')
     .select('*')
     .eq('id', normalizedId)
     .eq('organization_id', organizationId)
-    .maybeSingle()
+
+  if (retentionCutoff) {
+    query = query.gte('created_at', retentionCutoff)
+  }
+
+  const { data, error } = await query.maybeSingle()
 
   if (error) {
     throw new Error(error.message)
@@ -280,6 +299,7 @@ export async function uploadRecording(
     throw new Error('A valid recording file is required.')
   }
 
+  await assertStorageCapacity(input.file.size, organizationId)
   await verifyCallBelongsToOrganization(callId, context)
 
   const storagePath = createStoragePath(
@@ -349,6 +369,18 @@ export async function getRecordingSignedUrl(
     return null
   }
 
+  const retentionCutoff = await getRecordingRetentionCutoff(
+    organizationId,
+  )
+
+  if (
+    retentionCutoff &&
+    new Date(recording.created_at).getTime() <
+      new Date(retentionCutoff).getTime()
+  ) {
+    return null
+  }
+
   const { data, error } = await supabase.storage
     .from(recording.bucket_name)
     .createSignedUrl(
@@ -371,14 +403,28 @@ export async function getRecordingSignedUrl(
 export async function deleteRecording(
   id: string
 ): Promise<void> {
-  const recording = await getRecording(id)
+  const normalizedId = id.trim()
 
-  if (!recording) {
-    throw new Error('Recording not found.')
+  if (!normalizedId) {
+    throw new Error('A valid recording ID is required.')
   }
 
   const { supabase, organizationId } =
     await getRecordingContext()
+  const { data: recording, error: recordingError } = await supabase
+    .from('recordings')
+    .select('*')
+    .eq('id', normalizedId)
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  if (recordingError) {
+    throw new Error(recordingError.message)
+  }
+
+  if (!recording) {
+    throw new Error('Recording not found.')
+  }
 
   const { error: storageError } = await supabase.storage
     .from(recording.bucket_name)

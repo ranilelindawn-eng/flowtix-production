@@ -1,11 +1,14 @@
 import AttendanceClock from '@/components/attendance/AttendanceClock'
 import AttendanceMonitor from '@/components/attendance/AttendanceMonitor'
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import { getAttendanceDashboard } from '@/lib/attendance'
 import { hasPermission } from '@/lib/permissions'
 
 export default async function AttendancePage() {
-  const organization = await requirePermission('attendance.view_own')
+  const organization = await requireFeature(
+    'workforce.attendance',
+    'attendance.view_own',
+  )
   const canViewAll = hasPermission(
     organization.role,
     'attendance.view_all',

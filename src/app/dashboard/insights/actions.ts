@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+import { requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import {
   createInsight as createInsightRecord,
   deleteInsight as deleteInsightRecord,
@@ -31,6 +33,8 @@ function getInsightValues(formData: FormData) {
 }
 
 export async function createInsight(formData: FormData) {
+  const organization = await requirePermission('insights.view')
+  await assertEntitlement('ai.insights', organization.organization_id)
   const insight = await createInsightRecord(
     getInsightValues(formData)
   )
@@ -44,6 +48,8 @@ export async function createInsight(formData: FormData) {
 }
 
 export async function updateInsight(formData: FormData) {
+  const organization = await requirePermission('insights.view')
+  await assertEntitlement('ai.insights', organization.organization_id)
   const id = getString(formData, 'id')
 
   if (!id) {
@@ -68,6 +74,8 @@ export async function updateInsight(formData: FormData) {
 }
 
 export async function deleteInsight(formData: FormData) {
+  const organization = await requirePermission('insights.view')
+  await assertEntitlement('ai.insights', organization.organization_id)
   const id = getString(formData, 'id')
 
   if (!id) {

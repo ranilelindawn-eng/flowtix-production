@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 
 import MetricCard from '@/components/reports/MetricCard'
+import { requireFeature } from '@/lib/auth'
 import {
   getCallAnalyticsOverview,
   normalizeCallAnalyticsPeriod,
@@ -33,6 +34,7 @@ function duration(seconds: number): string {
 }
 
 export default async function CallAnalyticsPage({ searchParams }: Props) {
+  await requireFeature('analytics.calls', 'reports.view')
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = normalizeCallAnalyticsPeriod(params.period)

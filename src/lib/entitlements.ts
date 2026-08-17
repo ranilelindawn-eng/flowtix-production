@@ -1,34 +1,14 @@
 import { cache } from 'react'
 
+import {
+  FEATURE_ENTITLEMENTS,
+  type FeatureEntitlement,
+} from '@/lib/plans/catalog'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
-export const FEATURE_ENTITLEMENTS = [
-  'crm.core',
-  'calendar.core',
-  'communications.manual',
-  'campaigns.basic',
-  'reports.basic',
-  'reports.advanced',
-  'reports.export',
-  'dialer.cloud',
-  'ai.chat',
-  'ai.call_analysis',
-  'ai.email',
-  'ai.tasks',
-  'ai.transcription',
-  'automation.sequences',
-  'automation.campaigns',
-  'automation.advanced',
-  'integrations.google',
-  'integrations.premium',
-  'api.access',
-  'team.advanced',
-  'security.advanced',
-] as const
-
-export type FeatureEntitlement =
-  (typeof FEATURE_ENTITLEMENTS)[number]
+export { FEATURE_ENTITLEMENTS }
+export type { FeatureEntitlement }
 
 export type EntitlementSnapshot = {
   organizationId: string

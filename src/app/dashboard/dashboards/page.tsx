@@ -11,6 +11,7 @@ import {
   Workflow,
 } from 'lucide-react'
 
+import { requireFeature } from '@/lib/auth'
 import { listDashboards } from '@/lib/dashboards'
 
 const icons = {
@@ -25,6 +26,7 @@ const icons = {
 }
 
 export default async function DashboardsPage() {
+  await requireFeature('analytics.dashboards', 'reports.view')
   const dashboards = await listDashboards()
 
   return (

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import { createClient } from '@/lib/supabase/server'
 
 export type AttendanceActionState = {
@@ -25,6 +26,7 @@ async function runAttendanceAction(
 ): Promise<AttendanceActionState> {
   try {
     const organization = await requirePermission('attendance.clock')
+    await assertEntitlement('workforce.attendance', organization.organization_id)
     const supabase = await createClient()
     const { error } = await supabase.rpc(functionName, {
       target_organization_id: organization.organization_id,

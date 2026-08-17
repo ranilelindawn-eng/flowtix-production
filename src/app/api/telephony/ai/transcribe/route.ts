@@ -15,6 +15,11 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import { fetchProviderRecordingMedia } from '@/lib/telephony/recording-media'
 import { getCurrentOrganization } from '@/lib/team'
+import {
+  consumeTranscriptionSeconds,
+  getRecordingRetentionCutoff,
+  isUsageLimitError,
+} from '@/lib/usage-limits'
 
 export async function POST(request: Request) {
   try {
@@ -36,12 +41,24 @@ export async function POST(request: Request) {
     )
 
     const supabase = await createClient()
-    const { data: recording, error: recordingError } = await supabase
+    const retentionCutoff = await getRecordingRetentionCutoff(
+      organization.organization_id,
+    )
+    let recordingQuery = supabase
       .from('call_recordings')
-      .select('id,call_id,provider,provider_recording_sid,provider_url')
+      .select('id,call_id,provider,provider_recording_sid,provider_url,duration_seconds')
       .eq('id', recordingId)
       .eq('organization_id', organization.organization_id)
-      .maybeSingle()
+
+    if (retentionCutoff) {
+      recordingQuery = recordingQuery.gte(
+        'created_at',
+        retentionCutoff,
+      )
+    }
+
+    const { data: recording, error: recordingError } =
+      await recordingQuery.maybeSingle()
 
     if (recordingError) {
       return NextResponse.json(
@@ -75,6 +92,41 @@ export async function POST(request: Request) {
       [audioBuffer],
       `call.${media.extension}`,
       { type: media.contentType },
+    )
+
+    let durationSeconds = Number(recording.duration_seconds ?? 0)
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      const { data: call, error: callError } = await supabase
+        .from('calls')
+        .select('duration_seconds')
+        .eq('id', recording.call_id)
+        .eq('organization_id', organization.organization_id)
+        .maybeSingle()
+
+      if (callError) {
+        throw new Error(
+          `Unable to load call duration: ${callError.message}`,
+        )
+      }
+
+      durationSeconds = Number(call?.duration_seconds ?? 0)
+    }
+
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+      return NextResponse.json(
+        {
+          error:
+            'The recording duration is not available yet. Wait for recording processing to finish, then try transcription again.',
+        },
+        { status: 409 },
+      )
+    }
+
+    await consumeTranscriptionSeconds(
+      durationSeconds,
+      organization.organization_id,
+      `transcription:${recordingId}`,
     )
 
     const reservation = await reserveAIUsage(supabase, {
@@ -127,15 +179,17 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       {
-        error: customerAIErrorMessage(
-          error,
-          'AI transcription could not be completed. Please try again.',
-        ),
+        error: isUsageLimitError(error)
+          ? error.message
+          : customerAIErrorMessage(
+              error,
+              'AI transcription could not be completed. Please try again.',
+            ),
       },
       {
         status: isEntitlementError(error)
           ? 403
-          : isAIUsageControlError(error)
+          : isUsageLimitError(error) || isAIUsageControlError(error)
             ? 402
             : 500,
       },

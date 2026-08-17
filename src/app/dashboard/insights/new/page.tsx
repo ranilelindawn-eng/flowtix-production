@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+import { requireFeature } from '@/lib/auth'
 import InsightForm from '@/components/insights/InsightForm'
 import {
   getInsightSummaries,
@@ -7,6 +8,7 @@ import {
 } from '@/lib/insights'
 
 export default async function NewInsightPage() {
+  await requireFeature('ai.insights', 'insights.view')
   const [transcripts, summaries] = await Promise.all([
     getInsightTranscripts(),
     getInsightSummaries(),

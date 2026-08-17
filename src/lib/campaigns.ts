@@ -1,6 +1,7 @@
 import { createClient as createServerSupabaseClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 import { resolveOwnerAssignment } from '@/lib/ownership'
+import { assertActiveCampaignCapacity } from '@/lib/usage-limits'
 
 export const CAMPAIGNS_PER_PAGE = 12
 
@@ -254,6 +255,10 @@ export async function createCampaign(
     )
   }
 
+  if (values.status === 'active') {
+    await assertActiveCampaignCapacity(organizationId)
+  }
+
   const { data, error } = await supabase
     .from('campaigns')
     .insert({
@@ -314,6 +319,29 @@ export async function updateCampaign(
     throw new Error(
       'The campaign end date cannot be earlier than its start date.'
     )
+  }
+
+  const { data: currentCampaign, error: currentCampaignError } =
+    await supabase
+      .from('campaigns')
+      .select('status')
+      .eq('id', normalizedId)
+      .eq('organization_id', organizationId)
+      .maybeSingle()
+
+  if (currentCampaignError) {
+    throw new Error(currentCampaignError.message)
+  }
+
+  if (!currentCampaign) {
+    throw new Error('Campaign not found.')
+  }
+
+  if (
+    currentCampaign.status !== 'active' &&
+    values.status === 'active'
+  ) {
+    await assertActiveCampaignCapacity(organizationId)
   }
 
   const { data, error } = await supabase

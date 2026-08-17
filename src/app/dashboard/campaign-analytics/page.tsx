@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Activity, BadgeDollarSign, Mail, MessageSquareReply, MousePointerClick, PhoneCall, Target, Users } from 'lucide-react'
 import MetricCard from '@/components/reports/MetricCard'
+import { requireFeature } from '@/lib/auth'
 import { getCampaignAnalyticsOverview, normalizeCampaignAnalyticsPeriod } from '@/lib/analytics/campaigns'
 
 type Props = { searchParams: Promise<{ period?: string }> }
@@ -8,6 +9,7 @@ const percent = (value: number): string => `${value.toFixed(1)}%`
 const money = (value: number): string => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 
 export default async function CampaignAnalyticsPage({ searchParams }: Props) {
+  await requireFeature('analytics.campaigns', 'reports.view')
   const period = normalizeCampaignAnalyticsPeriod((await searchParams).period)
   const { snapshot, history } = await getCampaignAnalyticsOverview(period)
   const ranges = [['7d', '7 days'], ['30d', '30 days'], ['90d', '90 days'], ['365d', '1 year']] as const

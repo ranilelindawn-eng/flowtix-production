@@ -1,5 +1,7 @@
 import Link from 'next/link'
 
+import { requireFeature } from '@/lib/auth'
+
 import {
   getInsights,
   INSIGHTS_PER_PAGE,
@@ -186,6 +188,7 @@ function InsightCard({
 export default async function InsightsPage({
   searchParams,
 }: InsightsPageProps) {
+  await requireFeature('ai.insights', 'insights.view')
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 

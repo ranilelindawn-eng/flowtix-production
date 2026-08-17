@@ -79,6 +79,19 @@ export async function schedulePlanChange(planCode: string, effective: 'immediate
   return data
 }
 
+export async function cancelScheduledPlanChange() {
+  const organization = await requireOwnerOrganization()
+  const { data, error } = await createAdminClient().rpc(
+    'cancel_scheduled_subscription_plan_change',
+    {
+      p_organization_id: organization.organization_id,
+      p_actor_user_id: organization.user_id,
+    },
+  )
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export async function getInvoices(limit = 100): Promise<BillingInvoice[]> {
   const organization = await requireBillingOrganization()
   const { data, error } = await createAdminClient()

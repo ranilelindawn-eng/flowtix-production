@@ -1,13 +1,10 @@
 import { cache } from 'react'
 
+import type { PlanCode as CanonicalPlanCode } from '@/lib/plans/catalog'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
 
-export type PlanCode =
-  | 'starter'
-  | 'pro'
-  | 'business'
-  | 'enterprise'
+export type PlanCode = CanonicalPlanCode
 
 export type SubscriptionPlan = {
   id: string
@@ -22,6 +19,11 @@ export type SubscriptionPlan = {
   max_contacts: number | null
   max_storage_bytes: number | null
   max_calls_per_month: number | null
+  public_price_usd_cents: number | null
+  max_active_campaigns: number | null
+  max_active_sequences: number | null
+  recording_retention_days: number | null
+  max_transcription_minutes_per_month: number | null
   sort_order: number
   is_public: boolean
   features: string[]
@@ -48,6 +50,9 @@ export type OrganizationSubscription = {
   billing_metadata: Record<string, unknown>
   pending_plan_id: string | null
   pending_checkout_expires_at: string | null
+  scheduled_plan_id: string | null
+  scheduled_plan_effective_at: string | null
+  lifecycle_version: number
   activated_at: string | null
   cancelled_at: string | null
   grace_period_ends_at: string | null

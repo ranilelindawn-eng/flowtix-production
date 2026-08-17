@@ -11,7 +11,6 @@ const allowedPlans = [
   'starter',
   'professional',
   'business',
-  'enterprise',
 ] as const
 
 type Plan = (typeof allowedPlans)[number]

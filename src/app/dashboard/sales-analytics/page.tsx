@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BadgeDollarSign, CalendarClock, CircleDollarSign, Gauge, Target, Trophy } from 'lucide-react'
 import MetricCard from '@/components/reports/MetricCard'
+import { requireFeature } from '@/lib/auth'
 import { getSalesAnalyticsOverview, normalizeSalesAnalyticsPeriod } from '@/lib/analytics/sales'
 
 import { getCurrentOrganizationTimezone } from '@/lib/team'
@@ -15,6 +16,7 @@ function percent(value: number): string {
 }
 
 export default async function SalesAnalyticsPage({ searchParams }: Props) {
+  await requireFeature('analytics.sales', 'reports.view')
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = normalizeSalesAnalyticsPeriod(params.period)

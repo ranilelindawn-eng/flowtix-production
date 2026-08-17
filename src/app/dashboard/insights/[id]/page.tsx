@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requireFeature } from '@/lib/auth'
 import { deleteInsight } from '@/app/dashboard/insights/actions'
 import { getInsight } from '@/lib/insights'
 
@@ -43,6 +44,7 @@ function sentimentClass(sentiment: string | null) {
 export default async function InsightPage({
   params,
 }: InsightPageProps) {
+  await requireFeature('ai.insights', 'insights.view')
   const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
 

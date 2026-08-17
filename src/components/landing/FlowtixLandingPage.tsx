@@ -25,76 +25,29 @@ import {
 } from 'lucide-react'
 
 import Logo from '@/components/Logo'
+import {
+  FLOWTIX_PLAN_ORDER,
+  FLOWTIX_PLANS,
+} from '@/lib/plans/catalog'
 
-const plans = [
-  {
-    name: 'Starter',
-    price: '₱1,700',
-    description: 'For freelancers, virtual assistants, and small teams building a reliable sales workspace.',
-    features: [
-      '5 team members including the owner',
-      '1,000 contacts',
-      'Core CRM workspace',
-      'Contacts, tasks, and notes',
-      'Campaign and call records',
-      'Basic reporting',
-      'Bring your own calling provider',
-    ],
-    href: '/signup?plan=starter',
-  },
-  {
-    name: 'Professional',
-    price: '₱4,600',
-    description: 'For active sales teams that need collaboration, recordings, AI, and advanced workflow tools.',
-    features: [
-      'Everything in Starter',
-      'Up to 10 team members including the owner',
-      '10,000 contacts',
-      'Team collaboration',
-      'Call recordings and transcripts',
-      'AI summaries and call analysis',
-      'Advanced workflow controls',
-      'Advanced analytics',
-      'Priority support',
-    ],
-    href: '/signup?plan=professional',
-    featured: true,
-  },
-  {
-    name: 'Business',
-    price: '₱11,500',
-    description: 'For larger organizations that require advanced automation, permissions, onboarding, and support.',
-    features: [
-      'Everything in Professional',
-      '30 team members including the owner',
-      'Advanced automation controls',
-      'Post-call email and SMS automation',
-      'Campaign automation',
-      'Advanced permissions',
-      'Custom onboarding',
-      'Security review support',
-      'Priority implementation support',
-    ],
-    href: '/signup?plan=business',
-  },
-  {
-    name: 'Enterprise',
-    price: '₱29,000',
-    description: 'For high-volume organizations that need unlimited scale, enterprise controls, and dedicated support.',
-    features: [
-      'Everything in Business',
-      'Unlimited team members',
-      'Unlimited contacts',
-      'Unlimited storage',
-      'Unlimited calls',
-      'Advanced automation controls',
-      'Enterprise controls',
-      'Dedicated support',
-      'Premium integrations',
-    ],
-    href: '/signup?plan=enterprise',
-  },
-]
+const plans = FLOWTIX_PLAN_ORDER.map((code) => {
+  const plan = FLOWTIX_PLANS[code]
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(plan.publicPriceUsdCents / 100)
+
+  return {
+    name: plan.name,
+    price: plan.priceStartsAt ? `From ${formattedPrice}` : formattedPrice,
+    description: plan.description,
+    features: plan.marketingFeatures.slice(0, 7),
+    href: plan.selfService ? `/signup?plan=${plan.publicSlug}` : '/contact',
+    cta: plan.selfService ? 'Start Free Trial' : 'Contact Flowtix',
+    featured: plan.code === 'pro',
+  }
+})
 
 const features = [
   {
@@ -288,8 +241,8 @@ function PricingSection() {
     <section id="pricing" className="border-t border-white/[0.06] py-20 sm:py-24">
       <div className="mx-auto max-w-[1480px] px-5 sm:px-8 lg:px-10">
         <p className="text-xs font-semibold uppercase tracking-[.2em] text-violet-300">Simple, transparent pricing</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Choose the plan that’s right for you.</h2>
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => <article key={plan.name} className={`relative flex flex-col rounded-2xl border p-6 ${plan.featured ? 'border-fuchsia-400/40 bg-gradient-to-b from-violet-500/[0.12] to-[#07101f] shadow-[0_0_42px_rgba(168,85,247,.16)]' : 'border-white/[0.09] bg-[#06101e]/80'}`}>{plan.featured && <span className="absolute right-5 top-5 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">Most Popular</span>}<h3 className="text-lg font-semibold text-white">{plan.name}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-slate-500">{plan.description}</p><p className="mt-5 text-3xl font-semibold tracking-tight text-white">{plan.price}<span className="text-xs font-normal text-slate-500">/month</span></p><ul className="mt-7 flex-1 space-y-3 text-sm text-slate-300">{plan.features.map((item) => <li key={item} className="flex gap-3"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{item}</li>)}</ul><Link href={plan.href} className={`mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition ${plan.featured ? 'bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white' : 'border border-blue-400/30 text-blue-300 hover:bg-blue-500/10'}`}>Start Free Trial</Link></article>)}</div>
-        <p className="mt-6 text-center text-xs text-slate-500">Carrier and provider usage are billed separately.</p>
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{plans.map((plan) => <article key={plan.name} className={`relative flex flex-col rounded-2xl border p-6 ${plan.featured ? 'border-fuchsia-400/40 bg-gradient-to-b from-violet-500/[0.12] to-[#07101f] shadow-[0_0_42px_rgba(168,85,247,.16)]' : 'border-white/[0.09] bg-[#06101e]/80'}`}>{plan.featured && <span className="absolute right-5 top-5 rounded-full bg-blue-600 px-3 py-1 text-[10px] font-semibold text-white">Most Popular</span>}<h3 className="text-lg font-semibold text-white">{plan.name}</h3><p className="mt-3 min-h-14 text-sm leading-6 text-slate-500">{plan.description}</p><p className="mt-5 text-3xl font-semibold tracking-tight text-white">{plan.price}<span className="text-xs font-normal text-slate-500">/month</span></p><ul className="mt-7 flex-1 space-y-3 text-sm text-slate-300">{plan.features.map((item) => <li key={item} className="flex gap-3"><Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />{item}</li>)}</ul><Link href={plan.href} className={`mt-8 inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition ${plan.featured ? 'bg-gradient-to-r from-blue-600 to-fuchsia-600 text-white' : 'border border-blue-400/30 text-blue-300 hover:bg-blue-500/10'}`}>{plan.cta}</Link></article>)}</div>
+        <p className="mt-6 text-center text-xs leading-5 text-slate-500">Public plan prices are listed in USD. PayMongo settlement is processed in PHP, with the exact PHP amount shown in Billing and at checkout. Carrier and provider usage are billed separately.</p>
       </div>
     </section>
   )

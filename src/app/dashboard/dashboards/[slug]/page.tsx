@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft, ArrowUpRight, BarChart3 } from 'lucide-react'
 
+import { requireFeature } from '@/lib/auth'
 import { getDashboard } from '@/lib/dashboards'
 
 type Props = {
@@ -27,6 +28,7 @@ const format = (value: number | string, kind?: string) => {
 }
 
 export default async function DashboardViewPage({ params }: Props) {
+  await requireFeature('analytics.dashboards', 'reports.view')
   const { slug } = await params
   const { dashboard, metrics } = await getDashboard(slug)
 

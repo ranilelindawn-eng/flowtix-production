@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 
+import { getCurrentSubscription } from '@/lib/billing'
 import { getBillingAppUrl } from '@/lib/billing/config'
+import { schedulePlanChange } from '@/lib/billing/platform'
 import {
   beginIdempotentOperation,
   completeIdempotentOperation,
@@ -79,6 +81,33 @@ export async function POST(request: Request) {
       )
     }
 
+    const currentSubscription = await getCurrentSubscription()
+    const currentPlanCode =
+      currentSubscription?.plan?.code ??
+      currentSubscription?.paymongo_plan_code
+
+    if (plan.code === 'enterprise' && currentPlanCode !== 'enterprise') {
+      await writeAuditEvent({
+        action: 'billing.paymongo.checkout.denied',
+        organizationId,
+        resourceType: 'organization_subscription',
+        resourceId: currentSubscription?.id ?? undefined,
+        outcome: 'denied',
+        metadata: {
+          reason: 'enterprise_assisted_onboarding_required',
+          requested_plan_code: plan.code,
+        },
+      })
+
+      return NextResponse.json(
+        {
+          error:
+            'Enterprise requires assisted onboarding. Contact Flowtix to configure custom capacity before activation.',
+        },
+        { status: 400 },
+      )
+    }
+
     const admin = createAdminClient()
 
     const {
@@ -125,6 +154,54 @@ export async function POST(request: Request) {
         `${appUrl}/dashboard/billing?trial=plan-changed`,
         303,
       )
+    }
+
+    const activePaidPeriod =
+      currentSubscription?.status === 'active' &&
+      currentSubscription.current_period_end !== null &&
+      Date.parse(currentSubscription.current_period_end) > Date.now() &&
+      currentSubscription.plan !== null
+
+    if (activePaidPeriod && currentSubscription?.plan) {
+      if (currentSubscription.cancel_at_period_end) {
+        throw new Error(
+          'Reactivate the subscription before changing plans.',
+        )
+      }
+
+      if (currentSubscription.plan.id === plan.id) {
+        throw new Error(
+          'The subscription already uses this plan.',
+        )
+      }
+
+      if (plan.sortOrder < currentSubscription.plan.sort_order) {
+        const result = await schedulePlanChange(
+          plan.code,
+          'period_end',
+        )
+
+        await writeAuditEvent({
+          action: 'billing.subscription.plan_change_scheduled',
+          organizationId,
+          resourceType: 'organization_subscription',
+          resourceId: currentSubscription.id,
+          metadata: {
+            plan_code: plan.code,
+            plan_id: plan.id,
+            effective: 'period_end',
+            charged: false,
+            result,
+          },
+        })
+
+        const appUrl = getBillingAppUrl()
+
+        return NextResponse.redirect(
+          `${appUrl}/dashboard/billing?subscription=plan_scheduled`,
+          303,
+        )
+      }
     }
 
     idempotency = await beginIdempotentOperation({

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 
 import {
   getSummaries,
@@ -234,12 +234,12 @@ function SummaryCard({
 export default async function SummariesPage({
   searchParams,
 }: SummariesPageProps) {
+  await requireFeature('ai.call_analysis', 'summaries.view')
+
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
 
-await requirePermission('summaries.view')
-
-const requestedPage = parsePage(params.page)
+  const requestedPage = parsePage(params.page)
   const search = params.search?.trim() ?? ''
   const sentiment = params.sentiment?.trim() ?? ''
   const transcriptId = params.transcriptId?.trim() ?? ''

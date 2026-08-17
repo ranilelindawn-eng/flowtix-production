@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import {
   createSummary as createSummaryRecord,
   deleteSummary as deleteSummaryRecord,
@@ -27,7 +28,8 @@ function getSummaryValues(formData: FormData) {
 }
 
 export async function createSummary(formData: FormData) {
-  await requirePermission('summaries.create')
+  const organization = await requirePermission('summaries.create')
+  await assertEntitlement('ai.call_analysis', organization.organization_id)
 
   const summary = await createSummaryRecord(
     getSummaryValues(formData),
@@ -44,7 +46,8 @@ export async function createSummary(formData: FormData) {
 }
 
 export async function updateSummary(formData: FormData) {
-  await requirePermission('summaries.create')
+  const organization = await requirePermission('summaries.create')
+  await assertEntitlement('ai.call_analysis', organization.organization_id)
 
   const id = getString(formData, 'id')
 
@@ -68,7 +71,8 @@ export async function updateSummary(formData: FormData) {
 }
 
 export async function deleteSummary(formData: FormData) {
-  await requirePermission('summaries.create')
+  const organization = await requirePermission('summaries.create')
+  await assertEntitlement('ai.call_analysis', organization.organization_id)
 
   const id = getString(formData, 'id')
 

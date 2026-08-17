@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Activity, BadgeDollarSign, Clock3, PhoneCall, Target, TrendingDown, TrendingUp } from 'lucide-react'
 import MetricCard from '@/components/reports/MetricCard'
+import { requireFeature } from '@/lib/auth'
 import { getKpiOverview, type KpiPeriod, type KpiValue } from '@/lib/kpis'
 
 import { getCurrentOrganizationTimezone } from '@/lib/team'
@@ -33,6 +34,7 @@ function icon(value: KpiValue) {
 }
 
 export default async function KpisPage({ searchParams }: Props) {
+  await requireFeature('analytics.kpi', 'reports.view')
   const timeZone = await getCurrentOrganizationTimezone()
   const params = await searchParams
   const period = periodValue(params.period)

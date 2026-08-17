@@ -38,6 +38,7 @@ import {
 import type { FeatureEntitlement } from '@/lib/entitlements'
 import type { Permission } from '@/lib/permissions'
 import { hasPermission } from '@/lib/permissions'
+import { getMinimumPlanForFeature } from '@/lib/plans/catalog'
 import type { TeamRole } from '@/lib/team'
 
 type NavItem = {
@@ -192,6 +193,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'dashboards',
+    feature: 'analytics.dashboards',
     label: 'Dashboards',
     href: '/dashboard/dashboards',
     permission: 'reports.view',
@@ -215,6 +217,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'kpis',
+    feature: 'analytics.kpi',
     label: 'KPI Engine',
     href: '/dashboard/kpis',
     permission: 'reports.view',
@@ -222,6 +225,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'sales-analytics',
+    feature: 'analytics.sales',
     label: 'Sales Analytics',
     href: '/dashboard/sales-analytics',
     permission: 'reports.view',
@@ -229,6 +233,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'call-analytics',
+    feature: 'analytics.calls',
     label: 'Call Analytics',
     href: '/dashboard/call-analytics',
     permission: 'reports.view',
@@ -236,6 +241,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'agent-analytics',
+    feature: 'analytics.agents',
     label: 'Agent Analytics',
     href: '/dashboard/agent-analytics',
     permission: 'reports.view',
@@ -243,6 +249,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'campaign-analytics',
+    feature: 'analytics.campaigns',
     label: 'Campaign Analytics',
     href: '/dashboard/campaign-analytics',
     permission: 'reports.view',
@@ -250,7 +257,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'ai-analytics',
-    feature: 'ai.call_analysis',
+    feature: 'analytics.ai',
     label: 'AI Analytics',
     href: '/dashboard/ai-analytics',
     permission: 'reports.view',
@@ -266,7 +273,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'insights',
-    feature: 'ai.call_analysis',
+    feature: 'ai.insights',
     label: 'AI Insights',
     href: '/dashboard/insights',
     permission: 'insights.view',
@@ -288,6 +295,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'attendance',
+    feature: 'workforce.attendance',
     label: 'Time & Attendance',
     href: '/dashboard/attendance',
     permission: 'attendance.view_own',
@@ -295,7 +303,7 @@ const navItems: NavItem[] = [
   },
   {
     id: 'roles',
-    feature: 'security.advanced',
+    feature: 'team.advanced',
     label: 'Roles & Permissions',
     href: '/dashboard/roles',
     permission: 'team.update_roles',
@@ -310,7 +318,6 @@ const navItems: NavItem[] = [
   },
   {
     id: 'security-center',
-    feature: 'security.advanced',
     label: 'Security Center',
     href: '/dashboard/security',
     permission: 'settings.manage',
@@ -344,6 +351,21 @@ function getOrganizationInitial(name: string): string {
   return firstCharacter ? firstCharacter.toUpperCase() : 'W'
 }
 
+function getRequiredPlanBadgeLabel(
+  planName: string,
+): string {
+  switch (planName) {
+    case 'Professional':
+      return 'PRO'
+    case 'Business':
+      return 'BUS'
+    case 'Enterprise':
+      return 'ENT'
+    default:
+      return planName.toUpperCase()
+  }
+}
+
 export default function Sidebar({
   role,
   organizationName,
@@ -352,10 +374,9 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname() ?? '/dashboard'
 
-  const visibleNavItems = navItems.filter(
+  const authorizedNavItems = navItems.filter(
     (item) =>
       (!item.permission || hasPermission(role, item.permission)) &&
-      (!item.feature || entitlements.includes(item.feature)) &&
       (!item.ownerOnly || role === 'owner'),
   )
 
@@ -417,8 +438,15 @@ export default function Sidebar({
             className="space-y-1"
             aria-label="Dashboard navigation"
           >
-            {visibleNavItems.map((item) => {
+            {authorizedNavItems.map((item) => {
               const isActive = isItemActive(item)
+              const isLocked = Boolean(
+                item.feature &&
+                  !entitlements.includes(item.feature),
+              )
+              const requiredPlan = item.feature
+                ? getMinimumPlanForFeature(item.feature)
+                : null
 
               return (
                 <Link
@@ -427,17 +455,45 @@ export default function Sidebar({
                   aria-current={
                     isActive ? 'page' : undefined
                   }
+                  aria-label={
+                    isLocked && requiredPlan
+                      ? `${item.label} — ${requiredPlan.name} plan required`
+                      : undefined
+                  }
                   className={
                     isActive
                       ? 'flex items-center gap-3 rounded-3xl bg-white/5 px-4 py-3 text-white shadow-[0_12px_35px_-20px_rgba(34,211,238,0.55)]'
-                      : 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-300 transition hover:bg-white/5 hover:text-white'
+                      : isLocked
+                        ? 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-slate-200'
+                        : 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-300 transition hover:bg-white/5 hover:text-white'
                   }
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon
+                    className={
+                      isLocked
+                        ? 'h-5 w-5 opacity-70'
+                        : 'h-5 w-5'
+                    }
+                  />
 
-                  <span className="text-sm font-medium">
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">
                     {item.label}
                   </span>
+
+                  {isLocked && requiredPlan ? (
+                    <span
+                      className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200"
+                      title={`${requiredPlan.name} plan required`}
+                    >
+                      <LockKeyhole
+                        className="h-3 w-3"
+                        aria-hidden="true"
+                      />
+                      {getRequiredPlanBadgeLabel(
+                        requiredPlan.name,
+                      )}
+                    </span>
+                  ) : null}
                 </Link>
               )
             })}
@@ -454,8 +510,15 @@ export default function Sidebar({
               className="mt-4 space-y-2"
               aria-label="Mobile dashboard navigation"
             >
-              {visibleNavItems.map((item) => {
+              {authorizedNavItems.map((item) => {
                 const isActive = isItemActive(item)
+                const isLocked = Boolean(
+                  item.feature &&
+                    !entitlements.includes(item.feature),
+                )
+                const requiredPlan = item.feature
+                  ? getMinimumPlanForFeature(item.feature)
+                  : null
 
                 return (
                   <Link
@@ -464,17 +527,45 @@ export default function Sidebar({
                     aria-current={
                       isActive ? 'page' : undefined
                     }
+                    aria-label={
+                      isLocked && requiredPlan
+                        ? `${item.label} — ${requiredPlan.name} plan required`
+                        : undefined
+                    }
                     className={
                       isActive
                         ? 'flex items-center gap-3 rounded-3xl bg-white/5 px-4 py-3 text-white'
-                        : 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-300 transition hover:bg-white/5 hover:text-white'
+                        : isLocked
+                          ? 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-slate-200'
+                          : 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-300 transition hover:bg-white/5 hover:text-white'
                     }
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon
+                      className={
+                        isLocked
+                          ? 'h-5 w-5 opacity-70'
+                          : 'h-5 w-5'
+                      }
+                    />
 
-                    <span className="text-sm font-medium">
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
                       {item.label}
                     </span>
+
+                    {isLocked && requiredPlan ? (
+                      <span
+                        className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200"
+                        title={`${requiredPlan.name} plan required`}
+                      >
+                        <LockKeyhole
+                          className="h-3 w-3"
+                          aria-hidden="true"
+                        />
+                        {getRequiredPlanBadgeLabel(
+                          requiredPlan.name,
+                        )}
+                      </span>
+                    ) : null}
                   </Link>
                 )
               })}

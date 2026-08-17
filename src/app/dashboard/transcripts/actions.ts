@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { requirePermission } from '@/lib/auth'
+import { assertEntitlement } from '@/lib/entitlements'
 import {
   createTranscript as createTranscriptRecord,
   deleteTranscript as deleteTranscriptRecord,
@@ -24,7 +25,8 @@ function getTranscriptValues(formData: FormData) {
 }
 
 export async function createTranscript(formData: FormData) {
-  await requirePermission('transcripts.update')
+  const organization = await requirePermission('transcripts.update')
+  await assertEntitlement('ai.transcription', organization.organization_id)
 
   const transcript = await createTranscriptRecord(
     getTranscriptValues(formData),
@@ -41,7 +43,8 @@ export async function createTranscript(formData: FormData) {
 }
 
 export async function updateTranscript(formData: FormData) {
-  await requirePermission('transcripts.update')
+  const organization = await requirePermission('transcripts.update')
+  await assertEntitlement('ai.transcription', organization.organization_id)
 
   const id = getString(formData, 'id')
 
@@ -65,7 +68,8 @@ export async function updateTranscript(formData: FormData) {
 }
 
 export async function deleteTranscript(formData: FormData) {
-  await requirePermission('transcripts.update')
+  const organization = await requirePermission('transcripts.update')
+  await assertEntitlement('ai.transcription', organization.organization_id)
 
   const id = getString(formData, 'id')
 

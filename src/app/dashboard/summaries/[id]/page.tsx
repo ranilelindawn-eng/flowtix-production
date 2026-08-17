@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { deleteSummary } from '@/app/dashboard/summaries/actions'
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import { getSummary } from '@/lib/summaries'
 
 import { getCurrentOrganizationTimezone } from '@/lib/team'
@@ -42,10 +42,10 @@ function sentimentColor(sentiment: string | null) {
 export default async function SummaryDetailPage({
   params,
 }: SummaryDetailPageProps) {
+  await requireFeature('ai.call_analysis', 'summaries.view')
+
   const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
-
-  await requirePermission('summaries.view')
 
   const summary = await getSummary(id)
 

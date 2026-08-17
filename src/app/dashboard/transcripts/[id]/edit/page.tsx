@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import { deleteTranscript } from '@/app/dashboard/transcripts/actions'
 import { getTranscript } from '@/lib/transcripts'
 
@@ -65,10 +65,10 @@ function formatTranscriptContent(content: string): string[] {
 export default async function TranscriptDetailPage({
   params,
 }: TranscriptDetailPageProps) {
+  await requireFeature('ai.transcription', 'transcripts.view')
+
   const timeZone = await getCurrentOrganizationTimezone()
   const { id } = await params
-
-  await requirePermission('transcripts.view')
 
   const transcript = await getTranscript(id)
 

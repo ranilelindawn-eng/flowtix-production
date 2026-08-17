@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
+import { assertContactCapacity, isUsageLimitError } from '@/lib/usage-limits'
 import type { ContactLifecycleStage } from '@/types/contact'
 
 type ImportContact = {
@@ -791,6 +792,13 @@ export async function POST(
         return !duplicate
       })
 
+    if (insertable.length > 0) {
+      await assertContactCapacity(
+        organization.organization_id,
+        insertable.length,
+      )
+    }
+
     let imported = 0
 
     for (
@@ -849,7 +857,7 @@ export async function POST(
             : 'The CSV import failed.',
       },
       {
-        status: 500,
+        status: isUsageLimitError(error) ? error.status : 500,
       },
     )
   }

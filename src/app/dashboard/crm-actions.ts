@@ -13,6 +13,7 @@ import { resolveOwnerAssignment } from '@/lib/ownership'
 import { createClient } from '@/lib/supabase/server'
 import { enqueueJob } from '@/lib/jobs/queue'
 import { ATTACHMENT_BUCKET, MAX_ATTACHMENT_BYTES, checksumFile, sanitizeAttachmentName, type AttachmentCategory, type AttachmentEntityType } from '@/lib/attachments'
+import { assertStorageCapacity } from '@/lib/usage-limits'
 
 const text = (formData: FormData, key: string) => formData.get(key)?.toString().trim() ?? ''
 const optional = (value: string) => value || null
@@ -772,9 +773,12 @@ export async function createSnippet(formData: FormData) {
 }
 
 export async function createSequence(formData: FormData) {
-  await assertEntitlement('automation.sequences')
   const { membership, supabase, user } = await context(
     'campaigns.create',
+  )
+  await assertEntitlement(
+    'automation.sequences',
+    membership.organization_id,
   )
   const name = text(formData, 'name')
   const channel = text(formData, 'channel') || 'email'
@@ -958,6 +962,7 @@ export async function uploadAttachment(formData: FormData) {
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a file to upload.')
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
+  await assertStorageCapacity(file.size, membership.organization_id)
   const entityId = text(formData, 'entity_id')
   const category = (text(formData, 'category') || 'general') as AttachmentCategory
   if (!entityId) throw new Error('Attachment entity is required.')

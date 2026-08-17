@@ -1,16 +1,14 @@
 import 'server-only'
 
+import {
+  FLOWTIX_PLAN_CODES,
+  normalizePlanCode,
+  type PlanCode,
+} from '@/lib/plans/catalog'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-export const PAYMONGO_PLAN_CODES = [
-  'starter',
-  'pro',
-  'business',
-  'enterprise',
-] as const
-
-export type PayMongoPlanCode =
-  (typeof PAYMONGO_PLAN_CODES)[number]
+export const PAYMONGO_PLAN_CODES = FLOWTIX_PLAN_CODES
+export type PayMongoPlanCode = PlanCode
 
 export type PayMongoPlan = {
   id: string
@@ -18,20 +16,14 @@ export type PayMongoPlan = {
   name: string
   description: string | null
   amount: number
+  sortOrder: number
   providerPriceCode: string
 }
 
 export function normalizePayMongoPlanCode(
   value: string,
 ): PayMongoPlanCode | null {
-  const normalized = value.trim().toLowerCase()
-  const alias = normalized === 'professional' ? 'pro' : normalized
-
-  return PAYMONGO_PLAN_CODES.includes(
-    alias as PayMongoPlanCode,
-  )
-    ? (alias as PayMongoPlanCode)
-    : null
+  return normalizePlanCode(value)
 }
 
 export async function getPayMongoPlan(
@@ -47,7 +39,7 @@ export async function getPayMongoPlan(
   const { data, error } = await admin
     .from('subscription_plans')
     .select(
-      'id,code,name,description,monthly_price_cents,billing_provider,provider_price_code,is_active,is_public',
+      'id,code,name,description,monthly_price_cents,sort_order,billing_provider,provider_price_code,is_active,is_public',
     )
     .eq('code', code)
     .eq('billing_provider', 'paymongo')
@@ -71,6 +63,7 @@ export async function getPayMongoPlan(
     name: data.name,
     description: data.description,
     amount: data.monthly_price_cents,
+    sortOrder: data.sort_order,
     providerPriceCode:
       data.provider_price_code?.trim() || data.code,
   }

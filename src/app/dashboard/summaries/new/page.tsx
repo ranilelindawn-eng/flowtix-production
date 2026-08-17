@@ -1,11 +1,11 @@
 import Link from 'next/link'
 
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import SummaryForm from '@/components/summaries/SummaryForm'
 import { getSummaryTranscripts } from '@/lib/summaries'
 
 export default async function NewSummaryPage() {
-  await requirePermission('summaries.create')
+  await requireFeature('ai.call_analysis', 'summaries.create')
   const transcripts = await getSummaryTranscripts()
 
   return (

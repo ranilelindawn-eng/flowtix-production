@@ -67,6 +67,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.call_analysis', organization.organization_id)
     const url = new URL(request.url)
     const transcriptId = url.searchParams.get('transcriptId')?.trim()
     const callId = url.searchParams.get('callId')?.trim()
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to load sentiment analyses.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

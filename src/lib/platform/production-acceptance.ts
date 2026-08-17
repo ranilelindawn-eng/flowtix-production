@@ -1,6 +1,7 @@
 import 'server-only'
 
 import { getPayMongoAcceptanceReport } from '@/lib/platform/billing-validation'
+import { getPlanAcceptanceReport } from '@/lib/platform/plan-validation'
 import { getOperationsValidationReport } from '@/lib/platform/operations-validation'
 import { getPlatformPermissions } from '@/lib/platform/permissions'
 import { getProviderUsageValidationReport } from '@/lib/platform/provider-validation'
@@ -114,6 +115,7 @@ export async function getProductionAcceptanceReport(): Promise<ProductionAccepta
   const [
     tenantIsolation,
     billing,
+    plans,
     support,
     providers,
     operations,
@@ -121,6 +123,7 @@ export async function getProductionAcceptanceReport(): Promise<ProductionAccepta
   ] = await Promise.all([
     getTenantIsolationAcceptance(),
     getPayMongoAcceptanceReport(),
+    getPlanAcceptanceReport(),
     getSupportSecurityReport(),
     getProviderUsageValidationReport(),
     getOperationsValidationReport(),
@@ -148,6 +151,14 @@ export async function getProductionAcceptanceReport(): Promise<ProductionAccepta
       score: billing.score,
       href: '/platform/billing/validation',
       detail: `${billing.payments.paid} paid payments · ${billing.webhooks.processed} processed PayMongo webhooks`,
+    },
+    {
+      key: 'plans',
+      label: 'Plans, Entitlements & Quotas',
+      healthy: plans.healthy,
+      score: plans.score,
+      href: '/platform/billing/plans/validation',
+      detail: `${plans.plans.filter((plan) => plan.healthy).length}/4 canonical plans healthy · ${plans.subscriptions.total} subscriptions checked`,
     },
     {
       key: 'support',

@@ -7,6 +7,7 @@ import {
   ATTACHMENT_BUCKET, MAX_ATTACHMENT_BYTES, checksumFile, sanitizeAttachmentName,
   type AttachmentCategory, type AttachmentEntityType,
 } from '@/lib/attachments'
+import { assertStorageCapacity } from '@/lib/usage-limits'
 
 const allowedEntityTypes = new Set<AttachmentEntityType>(['contact','company','opportunity','campaign','comment','task','activity','calendar','call','transcript'])
 const allowedCategories = new Set<AttachmentCategory>(['general','contract','proposal','invoice','recording','transcript','image','document','other'])
@@ -30,6 +31,7 @@ export async function uploadAdvancedAttachment(formData: FormData) {
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a file to upload.')
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
+  await assertStorageCapacity(file.size, membership.organization_id)
   const entityType = value(formData, 'entity_type') as AttachmentEntityType
   const entityId = value(formData, 'entity_id')
   const category = (value(formData, 'category') || 'general') as AttachmentCategory
@@ -76,6 +78,7 @@ export async function uploadAttachmentVersion(formData: FormData) {
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) throw new Error('Choose a replacement file.')
   if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('Maximum file size is 25 MB.')
+  await assertStorageCapacity(file.size, membership.organization_id)
   const { data: attachment, error: loadError } = await supabase.from('attachments')
     .select('id,entity_type,entity_id,version_number')
     .eq('id', attachmentId).eq('organization_id', membership.organization_id).maybeSingle()

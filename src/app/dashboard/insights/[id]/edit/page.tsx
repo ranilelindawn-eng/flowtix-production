@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { requireFeature } from '@/lib/auth'
 import InsightForm from '@/components/insights/InsightForm'
 import {
   getInsight,
@@ -17,6 +18,7 @@ type EditInsightPageProps = {
 export default async function EditInsightPage({
   params,
 }: EditInsightPageProps) {
+  await requireFeature('ai.insights', 'insights.view')
   const { id } = await params
 
   const insight = await getInsight(id)

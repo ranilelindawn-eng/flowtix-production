@@ -1,11 +1,11 @@
 import Link from 'next/link'
 
-import { requirePermission } from '@/lib/auth'
+import { requireFeature } from '@/lib/auth'
 import TranscriptForm from '@/components/transcripts/TranscriptForm'
 import { getTranscriptRecordings } from '@/lib/transcripts'
 
 export default async function NewTranscriptPage() {
-  await requirePermission('transcripts.update')
+  await requireFeature('ai.transcription', 'transcripts.update')
   const recordings = await getTranscriptRecordings()
 
   return (

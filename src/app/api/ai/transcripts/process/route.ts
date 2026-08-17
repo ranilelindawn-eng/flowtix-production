@@ -45,6 +45,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.transcription', organization.organization_id)
     const url = new URL(request.url)
     const transcriptId = url.searchParams.get('transcriptId')?.trim()
     const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') ?? 25) || 25))
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to load transcript processing history.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

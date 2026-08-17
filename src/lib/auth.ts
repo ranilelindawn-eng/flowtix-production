@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 
 import {
   assertEntitlement,
+  isEntitlementError,
   type FeatureEntitlement,
 } from '@/lib/entitlements'
 import { hasPermission, type Permission } from '@/lib/permissions'
@@ -47,9 +48,13 @@ export async function requireFeature(
       feature,
       organization.organization_id,
     )
-  } catch {
+  } catch (error) {
+    if (!isEntitlementError(error)) {
+      throw error
+    }
+
     redirect(
-      `/dashboard/billing?feature=${encodeURIComponent(feature)}`,
+      `/dashboard/upgrade?feature=${encodeURIComponent(feature)}`,
     )
   }
 

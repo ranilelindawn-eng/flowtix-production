@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
+import { getRecordingRetentionCutoff } from '@/lib/usage-limits'
 import { fetchProviderRecordingMedia } from '@/lib/telephony/recording-media'
 
 function safeDispositionFilename(id: string, extension: string): string {
@@ -30,12 +31,24 @@ export async function GET(request: Request) {
     }
 
     const supabase = await createClient()
-    const { data: recording, error } = await supabase
+    const retentionCutoff = await getRecordingRetentionCutoff(
+      organization.organization_id,
+    )
+    let recordingQuery = supabase
       .from('call_recordings')
       .select('provider_url,provider,provider_recording_sid')
       .eq('id', id)
       .eq('organization_id', organization.organization_id)
-      .maybeSingle()
+
+    if (retentionCutoff) {
+      recordingQuery = recordingQuery.gte(
+        'created_at',
+        retentionCutoff,
+      )
+    }
+
+    const { data: recording, error } =
+      await recordingQuery.maybeSingle()
 
     if (error) {
       return NextResponse.json(

@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import { requirePermission } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { getRecordingRetentionCutoff } from '@/lib/usage-limits'
 import CloudRecordingActions from '@/components/dialer/CloudRecordingActions'
 
 import {
@@ -251,12 +252,24 @@ export default async function RecordingsPage({
 
   const organization = await requirePermission('recordings.view')
   const supabase = await createClient()
-  const { data: cloudRecordings } = await supabase
+  const retentionCutoff = await getRecordingRetentionCutoff(
+    organization.organization_id,
+  )
+  let cloudRecordingQuery = supabase
     .from('call_recordings')
     .select('id, call_id, provider, provider_recording_sid, status, duration_seconds, channels, created_at')
     .eq('organization_id', organization.organization_id)
     .order('created_at', { ascending: false })
     .limit(12)
+
+  if (retentionCutoff) {
+    cloudRecordingQuery = cloudRecordingQuery.gte(
+      'created_at',
+      retentionCutoff,
+    )
+  }
+
+  const { data: cloudRecordings } = await cloudRecordingQuery
 
   const page = parsePage(params.page)
   const callId = params.callId?.trim() ?? ''

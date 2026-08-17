@@ -6,6 +6,7 @@ import { assertEntitlement } from '@/lib/entitlements'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
+import { assertActiveSequenceCapacity } from '@/lib/usage-limits'
 
 function text(formData: FormData, key: string) {
   const item = formData.get(key)
@@ -13,12 +14,16 @@ function text(formData: FormData, key: string) {
 }
 
 async function context() {
-  await assertEntitlement('automation.sequences')
   const membership = await getCurrentOrganization()
 
   if (!membership || !hasPermission(membership.role, 'campaigns.update')) {
     throw new Error('You do not have permission to manage sequences.')
   }
+
+  await assertEntitlement(
+    'automation.sequences',
+    membership.organization_id,
+  )
 
   return { membership, supabase: await createClient() }
 }
@@ -30,6 +35,26 @@ export async function setSequenceStatus(formData: FormData) {
 
   if (!sequenceId || !['active', 'paused', 'archived', 'draft'].includes(status)) {
     throw new Error('Invalid sequence status.')
+  }
+
+  const { data: currentSequence, error: currentSequenceError } =
+    await supabase
+      .from('sequences')
+      .select('status')
+      .eq('id', sequenceId)
+      .eq('organization_id', membership.organization_id)
+      .maybeSingle()
+
+  if (currentSequenceError) {
+    throw new Error(currentSequenceError.message)
+  }
+
+  if (!currentSequence) {
+    throw new Error('Sequence not found.')
+  }
+
+  if (currentSequence.status !== 'active' && status === 'active') {
+    await assertActiveSequenceCapacity(membership.organization_id)
   }
 
   const { error } = await supabase

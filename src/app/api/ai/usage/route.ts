@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 
 import { requireOrganization } from '@/lib/auth'
+import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.limited', organization.organization_id)
     const supabase = await createClient()
     const [{ data: snapshot, error: snapshotError }, { data: recent, error: recentError }] = await Promise.all([
       supabase.rpc('ai_usage_snapshot', { target_org: organization.organization_id }),
@@ -15,6 +17,6 @@ export async function GET() {
     if (recentError) throw new Error(recentError.message)
     return NextResponse.json({ snapshot: Array.isArray(snapshot) ? snapshot[0] ?? null : snapshot, recent: recent ?? [] })
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load AI usage.' }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to load AI usage.' }, { status: isEntitlementError(error) ? 403 : 500 })
   }
 }

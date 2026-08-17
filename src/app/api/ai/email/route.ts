@@ -82,6 +82,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.email', organization.organization_id)
     const url = new URL(request.url)
     const status = url.searchParams.get('status')?.trim()
     const contactId = url.searchParams.get('contactId')?.trim()
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to load AI-generated emails.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.email', organization.organization_id)
     const body = (await request.json()) as { action?: unknown; emailId?: unknown }
     const action = typeof body.action === 'string' ? body.action.trim() : ''
     const emailId = optionalId(body.emailId)
@@ -132,7 +134,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to update the AI-generated email.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }

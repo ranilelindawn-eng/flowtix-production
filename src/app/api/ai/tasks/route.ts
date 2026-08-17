@@ -74,6 +74,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.tasks', organization.organization_id)
     const url = new URL(request.url)
     const status = url.searchParams.get('status')?.trim()
     const contactId = url.searchParams.get('contactId')?.trim()
@@ -97,7 +98,7 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to load AI task suggestions.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }
@@ -105,6 +106,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const organization = await requireOrganization()
+    await assertEntitlement('ai.tasks', organization.organization_id)
     const body = (await request.json()) as {
       action?: unknown
       suggestionId?: unknown
@@ -137,7 +139,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Unable to update the AI task suggestion.' },
-      { status: 500 },
+      { status: isEntitlementError(error) ? 403 : 500 },
     )
   }
 }
