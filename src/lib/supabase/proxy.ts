@@ -113,7 +113,6 @@ export async function updateSession(request: NextRequest) {
             ['/dashboard/insights', 'ai.call_analysis'],
             ['/dashboard/exports', 'reports.export'],
             ['/dashboard/roles', 'security.advanced'],
-            ['/dashboard/security', 'security.advanced'],
           ]
 
           const requiredFeature = featureByPath.find(
