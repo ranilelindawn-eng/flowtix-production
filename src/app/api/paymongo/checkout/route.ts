@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       currentSubscription?.plan?.code ??
       currentSubscription?.paymongo_plan_code
 
-    if (plan.code === 'enterprise' && currentPlanCode !== 'enterprise') {
+    if (plan.code === 'enterprise') {
       await writeAuditEvent({
         action: 'billing.paymongo.checkout.denied',
         organizationId,
@@ -96,13 +96,14 @@ export async function POST(request: Request) {
         metadata: {
           reason: 'enterprise_assisted_onboarding_required',
           requested_plan_code: plan.code,
+          current_plan_code: currentPlanCode ?? null,
         },
       })
 
       return NextResponse.json(
         {
           error:
-            'Enterprise requires assisted onboarding. Contact Flowtix to configure custom capacity before activation.',
+            'Enterprise billing is managed through assisted onboarding. Contact Flowtix for activation, renewal, or custom-limit changes.',
         },
         { status: 400 },
       )

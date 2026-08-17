@@ -10,6 +10,7 @@ export type PlatformPermission =
   | 'platform.customers.view'
   | 'platform.organizations.manage'
   | 'platform.subscriptions.manage'
+  | 'platform.enterprise.manage'
   | 'platform.billing.view'
   | 'platform.billing.manage'
   | 'platform.telephony.manage'

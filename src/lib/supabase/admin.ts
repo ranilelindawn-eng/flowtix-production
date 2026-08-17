@@ -566,6 +566,26 @@ type Database = {
         }
         Returns: Record<string, unknown>
       }
+      process_enterprise_paymongo_event: {
+        Args: {
+          p_enterprise_account_id: string
+          p_event_id: string
+          p_event_type: string
+          p_livemode: boolean | null
+          p_signature_timestamp: string
+          p_resource_type: string | null
+          p_resource_id: string | null
+          p_checkout_id: string | null
+          p_payment_id: string | null
+          p_amount: number | null
+          p_currency: string | null
+          p_payment_status: string | null
+          p_failure_code: string | null
+          p_failure_message: string | null
+          p_payload: Json
+        }
+        Returns: Record<string, unknown>
+      }
     }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>

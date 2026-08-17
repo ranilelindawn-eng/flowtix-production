@@ -575,11 +575,15 @@ export default async function BillingPage({
             const highlighted =
               isPendingPlan || isScheduledPlan || isActivePlan
 
-            const currentPlanCode =
-              activePlan?.code ?? subscription?.paymongo_plan_code
             const requiresAssistedEnterpriseOnboarding =
-              catalogPlan?.selfService === false &&
-              currentPlanCode !== 'enterprise'
+              catalogPlan?.selfService === false
+
+            const configuredEnterprisePrice =
+              plan.code === 'enterprise' &&
+              subscription?.plan?.code === 'enterprise' &&
+              typeof subscription.billing_metadata?.enterprise_monthly_price_cents === 'number'
+                ? subscription.billing_metadata.enterprise_monthly_price_cents
+                : null
 
             return (
               <article
@@ -628,12 +632,20 @@ export default async function BillingPage({
                   <p className="mt-2 text-xs leading-5 text-slate-500">
                     {catalogPlan?.selfService === false ? (
                       <>
-                        Enterprise billing is configured during assisted onboarding.
-                        The current PayMongo reference amount is{' '}
-                        <span className="font-medium text-slate-300">
-                          {formatPayMongoPrice(plan.monthly_price_cents)}/month
-                        </span>
-                        .
+                        Enterprise billing is configured during assisted onboarding.{' '}
+                        {configuredEnterprisePrice !== null ? (
+                          <>
+                            Your configured PayMongo amount is{' '}
+                            <span className="font-medium text-slate-300">
+                              {formatPayMongoPrice(configuredEnterprisePrice)}/month
+                            </span>
+                            .
+                          </>
+                        ) : (
+                          <>
+                            Contact Flowtix to configure your negotiated monthly price, limits, and renewal.
+                          </>
+                        )}
                       </>
                     ) : (
                       <>

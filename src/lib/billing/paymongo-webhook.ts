@@ -8,6 +8,8 @@ type PayMongoMetadata = {
   plan_code?: string
   checkout_id?: string
   billing_provider?: string
+  enterprise_account_id?: string
+  enterprise_assisted_onboarding?: string
 }
 
 type PayMongoPayment = {
@@ -146,6 +148,15 @@ export async function processPayMongoWebhookBody(
       ? organizationText
       : null
 
+  const enterpriseAccountText = cleanText(
+    metadata.enterprise_account_id ??
+      paymentAttributes?.metadata?.enterprise_account_id,
+  )
+  const enterpriseAccountId =
+    enterpriseAccountText && UUID_PATTERN.test(enterpriseAccountText)
+      ? enterpriseAccountText
+      : null
+
   if (!eventId) {
     throw new Error('Webhook event ID is required.')
   }
@@ -156,19 +167,15 @@ export async function processPayMongoWebhookBody(
   const admin = createAdminClient()
 
   try {
-    const { data, error } = await admin.rpc('process_paymongo_lifecycle_event', {
+    const commonInput = {
       p_event_id: eventId,
       p_event_type: eventType,
       p_livemode: body.data?.attributes?.livemode ?? null,
       p_signature_timestamp: signatureTimestamp,
       p_resource_type: resourceType ?? null,
       p_resource_id: resourceId,
-      p_organization_id: organizationId,
       p_checkout_id: checkoutId,
       p_payment_id: cleanText(payment?.id),
-      p_plan_code: cleanText(
-        metadata.plan_code ?? paymentAttributes?.metadata?.plan_code,
-      ),
       p_amount: paymentAmount ?? resourceAmount ?? paymentIntentAmount,
       p_currency:
         cleanText(paymentAttributes?.currency) ??
@@ -181,12 +188,26 @@ export async function processPayMongoWebhookBody(
       p_failure_code: cleanText(paymentAttributes?.failed_code),
       p_failure_message: cleanText(paymentAttributes?.failed_message),
       p_payload: body,
-    })
-
-    if (error) {
-      throw new Error(error.message)
     }
 
+    const result = enterpriseAccountId
+      ? await admin.rpc('process_enterprise_paymongo_event', {
+          p_enterprise_account_id: enterpriseAccountId,
+          ...commonInput,
+        })
+      : await admin.rpc('process_paymongo_lifecycle_event', {
+          ...commonInput,
+          p_organization_id: organizationId,
+          p_plan_code: cleanText(
+            metadata.plan_code ?? paymentAttributes?.metadata?.plan_code,
+          ),
+        })
+
+    if (result.error) {
+      throw new Error(result.error.message)
+    }
+
+    const data = result.data
     const status = typeof data?.status === 'string' ? data.status : 'failed'
 
 if (status !== 'processed' && status !== 'ignored') {
