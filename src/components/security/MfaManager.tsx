@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 
 type Factor = {
   id: string
@@ -24,7 +25,9 @@ export default function MfaManager() {
     const { data, error } = await supabase.auth.mfa.listFactors()
 
     if (error) {
-      setMessage(error.message)
+      setMessage(
+        getUserFacingErrorMessage(error, { context: 'security' }),
+      )
       return
     }
 
@@ -48,7 +51,9 @@ export default function MfaManager() {
     })
 
     if (error) {
-      setMessage(error.message)
+      setMessage(
+        getUserFacingErrorMessage(error, { context: 'security' }),
+      )
       return
     }
 
@@ -61,7 +66,9 @@ export default function MfaManager() {
     const challenge = await supabase.auth.mfa.challenge({ factorId })
 
     if (challenge.error) {
-      setMessage(challenge.error.message)
+      setMessage(
+        getUserFacingErrorMessage(challenge.error, { context: 'security' }),
+      )
       return
     }
 
@@ -72,7 +79,9 @@ export default function MfaManager() {
     })
 
     if (result.error) {
-      setMessage(result.error.message)
+      setMessage(
+        getUserFacingErrorMessage(result.error, { context: 'security' }),
+      )
       return
     }
 
@@ -88,7 +97,9 @@ export default function MfaManager() {
     const { error } = await supabase.auth.mfa.unenroll({ factorId: id })
 
     setMessage(
-      error?.message ?? 'Two-factor authentication was removed.',
+      error
+        ? getUserFacingErrorMessage(error, { context: 'security' })
+        : 'Two-factor authentication was removed.',
     )
 
     if (!error) {

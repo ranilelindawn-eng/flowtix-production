@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { enforceRateLimit } from '@/lib/security/rate-limit'
 import { writeAuditLog } from '@/lib/security/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -178,7 +179,11 @@ async function startSignupTrial({
 }
 
 
-export async function signIn(formData: FormData) {
+export async function signIn(
+  previousState: { status: 'idle' | 'error'; message: string },
+  formData: FormData,
+) {
+  void previousState
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
   const next = getSafeRedirectPath(
@@ -186,16 +191,39 @@ export async function signIn(formData: FormData) {
   )
 
   if (!email || !password) {
-    throw new Error('Email and password are required.')
+    return {
+      status: 'error' as const,
+      message: 'Enter both your email address and password.',
+    }
   }
 
-  await enforceRateLimit(
-    `signin:${email.toLowerCase()}`,
-    8,
-    300,
-  )
+  try {
+    await enforceRateLimit(
+      `signin:${email.toLowerCase()}`,
+      8,
+      300,
+    )
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'authentication',
+      }),
+    }
+  }
 
-  const supabase = await createAuthClient()
+  let supabase: Awaited<ReturnType<typeof createAuthClient>>
+
+  try {
+    supabase = await createAuthClient()
+  } catch (error) {
+    console.error('Unable to create the sign-in client:', error)
+    return {
+      status: 'error' as const,
+      message:
+        'Flowtix authentication is temporarily unavailable. Please try again shortly.',
+    }
+  }
 
   const { error } =
     await supabase.auth.signInWithPassword({
@@ -204,15 +232,33 @@ export async function signIn(formData: FormData) {
     })
 
   if (error) {
-    throw new Error(error.message)
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'authentication',
+      }),
+    }
   }
 
-  await writeAuditLog('auth.sign_in', 'user')
+  try {
+    await writeAuditLog('auth.sign_in', 'user')
+  } catch (error) {
+    console.error('Unable to record the sign-in audit event:', error)
+    return {
+      status: 'error' as const,
+      message:
+        'Your credentials were accepted, but Flowtix could not finish the secure sign-in process. Refresh the page or sign in again.',
+    }
+  }
 
   redirect(next)
 }
 
-export async function signUp(formData: FormData) {
+export async function signUp(
+  previousState: { status: 'idle' | 'error'; message: string },
+  formData: FormData,
+) {
+  void previousState
   const email = getString(formData, 'email')
   const password = getString(formData, 'password')
   const plan = getPlan(formData)
@@ -227,13 +273,17 @@ export async function signUp(formData: FormData) {
   ).toLowerCase()
 
   if (!email || !password) {
-    throw new Error('Email and password are required.')
+    return {
+      status: 'error' as const,
+      message: 'Enter both an email address and password.',
+    }
   }
 
   if (password.length < 8) {
-    throw new Error(
-      'Your password must contain at least 8 characters.',
-    )
+    return {
+      status: 'error' as const,
+      message: 'Your password must contain at least 8 characters.',
+    }
   }
 
   if (
@@ -241,18 +291,40 @@ export async function signUp(formData: FormData) {
     (!invitedEmail ||
       email.toLowerCase() !== invitedEmail)
   ) {
-    throw new Error(
-      'Use the email address that received the invitation.',
-    )
+    return {
+      status: 'error' as const,
+      message: 'Use the email address that received the invitation.',
+    }
   }
 
-  await enforceRateLimit(
-    `signup:${email.toLowerCase()}`,
-    3,
-    300,
-  )
+  try {
+    await enforceRateLimit(
+      `signup:${email.toLowerCase()}`,
+      3,
+      300,
+    )
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'signup',
+      }),
+    }
+  }
 
-  const supabase = await createAuthClient()
+  let supabase: Awaited<ReturnType<typeof createAuthClient>>
+
+  try {
+    supabase = await createAuthClient()
+  } catch (error) {
+    console.error('Unable to create the signup client:', error)
+    return {
+      status: 'error' as const,
+      message:
+        'Flowtix account registration is temporarily unavailable. Please try again shortly.',
+    }
+  }
+
   const siteUrl = getSiteUrl()
 
   const { data, error } = await supabase.auth.signUp({
@@ -277,20 +349,50 @@ export async function signUp(formData: FormData) {
   })
 
   if (error) {
-    throw new Error(error.message)
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'signup',
+      }),
+    }
+  }
+
+  // Supabase can intentionally obscure duplicate registrations by returning
+  // a user with no identities. Turn that into useful, non-technical guidance.
+  if (
+    data.user &&
+    Array.isArray(data.user.identities) &&
+    data.user.identities.length === 0
+  ) {
+    return {
+      status: 'error' as const,
+      message:
+        'A Flowtix account already uses this email address. Sign in instead, or use Forgot password if you cannot remember the password.',
+    }
   }
 
   if (!data.user) {
-    throw new Error(
-      'Supabase did not return a user after signup.',
-    )
+    return {
+      status: 'error' as const,
+      message:
+        'Flowtix could not finish creating your account. Please try again. If the email is already registered, sign in instead.',
+    }
   }
 
   if (invitationSignup) {
-    await writeAuditLog(
-      'auth.invited_user_sign_up',
-      'user',
-    )
+    try {
+      await writeAuditLog(
+        'auth.invited_user_sign_up',
+        'user',
+      )
+    } catch (auditError) {
+      console.error('Unable to record invited-user signup:', auditError)
+      return {
+        status: 'error' as const,
+        message:
+          'Your account was created, but Flowtix could not finish the secure invitation setup. Sign in again and reopen the invitation.',
+      }
+    }
 
     if (data.session) {
       redirect(requestedNext)
@@ -303,18 +405,30 @@ export async function signUp(formData: FormData) {
     )
   }
 
-  const organizationId =
-    await findCreatedOrganization(data.user.id)
+  try {
+    const organizationId =
+      await findCreatedOrganization(data.user.id)
 
-  await waitForSubscription(organizationId)
+    await waitForSubscription(organizationId)
 
-  await startSignupTrial({
-    organizationId,
-    userId: data.user.id,
-    plan,
-  })
+    await startSignupTrial({
+      organizationId,
+      userId: data.user.id,
+      plan,
+    })
 
-  await writeAuditLog('auth.sign_up', 'user')
+    await writeAuditLog('auth.sign_up', 'user')
+  } catch (signupError) {
+    console.error('Flowtix signup setup failed:', signupError)
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(signupError, {
+        context: 'signup',
+        fallbackMessage:
+          'Your account was created, but Flowtix could not finish setting up the workspace and trial. Sign in and retry, or contact support if the workspace is still unavailable.',
+      }),
+    }
+  }
 
   const trialDestination =
     '/dashboard/billing?trial=started'
@@ -336,7 +450,11 @@ export async function signOut() {
   const { error } = await supabase.auth.signOut()
 
   if (error) {
-    throw new Error(error.message)
+    throw new Error(
+      getUserFacingErrorMessage(error, {
+        context: 'signout',
+      }),
+    )
   }
 
   redirect('/')

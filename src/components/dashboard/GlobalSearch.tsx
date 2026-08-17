@@ -22,6 +22,8 @@ import {
   useState,
 } from 'react'
 
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
+
 type SearchResult = {
   id: string
   type:
@@ -124,7 +126,11 @@ export default function GlobalSearch() {
         console.error('Unable to search Flowtix:', searchError)
         setResults([])
         setActiveIndex(-1)
-        setError('Unable to search Flowtix right now.')
+        setError(
+          getUserFacingErrorMessage(searchError, {
+            context: 'search',
+          }),
+        )
         setIsOpen(true)
       } finally {
         if (!controller.signal.aborted) {

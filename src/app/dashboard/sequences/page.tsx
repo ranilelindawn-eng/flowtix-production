@@ -8,9 +8,9 @@ import {
 import SequenceCreateForm from './SequenceCreateForm'
 import {
   enrollContact,
-  setSequenceStatus,
   updateEnrollmentStatus,
 } from './actions'
+import SequenceStatusControl from '@/components/sequences/SequenceStatusControl'
 
 export default async function SequencesPage() {
   const timeZone = await getCurrentOrganizationTimezone()
@@ -135,14 +135,12 @@ export default async function SequencesPage() {
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {['active', 'paused', 'archived'].map((status) => (
-                  <form action={setSequenceStatus} key={status}>
-                    <input type="hidden" name="sequence_id" value={sequence.id} />
-                    <input type="hidden" name="status" value={status} />
-                    <button className="rounded-lg border border-white/10 px-3 py-2 text-xs capitalize text-slate-200">
-                      {status}
-                    </button>
-                  </form>
+                {(['active', 'paused', 'archived'] as const).map((status) => (
+                  <SequenceStatusControl
+                    key={status}
+                    sequenceId={sequence.id}
+                    status={status}
+                  />
                 ))}
               </div>
 

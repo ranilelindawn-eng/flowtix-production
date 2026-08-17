@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { signIn } from '../auth/actions'
+import LoginForm from './LoginForm'
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -115,40 +115,7 @@ export default async function LoginPage({
             </div>
           )}
 
-          <form action={signIn} className="space-y-6">
-            <input type="hidden" name="next" value={next} />
-            <label className="block">
-              <span className="text-sm text-slate-300">Email</span>
-
-              <input
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                defaultValue={prefilledEmail}
-                className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70"
-              />
-            </label>
-
-            <label className="block">
-              <span className="text-sm text-slate-300">Password</span>
-
-              <input
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70"
-              />
-            </label>
-
-            <button
-              type="submit"
-              className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5"
-            >
-              Login
-            </button>
-          </form>
+          <LoginForm next={next} prefilledEmail={prefilledEmail} />
 
           <p className="mt-6 text-center text-sm text-slate-400">
             Don’t have an account?{' '}

@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react'
 import { useRouter } from 'next/navigation'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { createRecoveryClient } from '@/lib/supabase/recovery-client'
 
 export default function ResetPasswordPage() {
@@ -118,7 +119,11 @@ export default function ResetPasswordPage() {
         })
 
       if (error) {
-        setErrorMessage(error.message)
+        setErrorMessage(
+          getUserFacingErrorMessage(error, {
+            context: 'password-reset',
+          }),
+        )
         return
       }
 
@@ -135,7 +140,11 @@ export default function ResetPasswordPage() {
       )
 
       setErrorMessage(
-        'We could not update your password. Please request a new reset link.',
+        getUserFacingErrorMessage(error, {
+          context: 'password-reset',
+          fallbackMessage:
+            'We could not update your password. Please request a new reset link and try again.',
+        }),
       )
     } finally {
       setIsSubmitting(false)

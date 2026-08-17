@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 
 type ImageUploaderProps = {
   bucket: 'avatars' | 'organization-logos'
@@ -179,9 +180,11 @@ export default function ImageUploader({
 
       setLocalPreviewUrl(undefined)
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'The image could not be uploaded.',
+        getUserFacingErrorMessage(error, {
+          context: 'upload',
+          fallbackMessage:
+            'The image could not be uploaded. Check the file type, size, and storage limit, then try again.',
+        }),
       )
     } finally {
       URL.revokeObjectURL(objectUrl)
@@ -263,9 +266,10 @@ export default function ImageUploader({
       console.error('Image removal failed:', error)
 
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'The image could not be removed.',
+        getUserFacingErrorMessage(error, {
+          context: 'upload',
+          fallbackMessage: 'The image could not be removed. Please try again.',
+        }),
       )
     } finally {
       setIsUploading(false)

@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 
+import { getUserFacingError } from '@/lib/errors/user-facing'
+
 type GlobalErrorProps = {
   error: Error & {
     digest?: string
@@ -16,6 +18,12 @@ export default function GlobalError({
   useEffect(() => {
     console.error(error)
   }, [error])
+
+  const friendly = getUserFacingError(error, {
+    context: 'general',
+    fallbackTitle: 'Flowtix could not complete this request',
+    fallbackMessage: 'Please try again. If the problem continues, use the error reference when contacting Flowtix support.',
+  })
 
   return (
     <html lang="en">
@@ -58,13 +66,18 @@ export default function GlobalError({
             </p>
 
             <h1 className="mt-3 text-3xl font-bold tracking-tight">
-              Flowtix could not load
+              {friendly.title}
             </h1>
 
             <p className="mt-4 text-sm leading-7 text-slate-400">
-              An unexpected application error occurred. Please try
-              loading Flowtix again.
+              {friendly.message}
             </p>
+
+            {error.digest ? (
+              <p className="mt-4 text-xs text-slate-500">
+                Error reference: <span className="font-mono text-slate-400">{error.digest}</span>
+              </p>
+            ) : null}
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
               <button

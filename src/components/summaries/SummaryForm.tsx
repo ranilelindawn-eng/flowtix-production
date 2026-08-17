@@ -15,6 +15,7 @@ import type {
 } from '@/lib/summaries'
 
 import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 type SummaryFormProps = {
   transcripts: SummaryTranscriptOption[]
   summary?: Summary
@@ -121,7 +122,12 @@ export default function SummaryForm({
       router.push(`/dashboard/summaries/${payload.summary.id}`)
       router.refresh()
     } catch (error) {
-      setGenerationError(error instanceof Error ? error.message : 'AI summary generation failed.')
+      setGenerationError(
+        getUserFacingErrorMessage(error, {
+          context: 'ai',
+          fallbackMessage: 'AI summary generation could not be completed. Check your AI access and usage, then try again.',
+        }),
+      )
     } finally {
       setGenerating(false)
     }

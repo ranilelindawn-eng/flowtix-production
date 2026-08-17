@@ -18,6 +18,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
 import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 export type ConversationSummary = {
   id: string
   title: string
@@ -126,7 +127,12 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
       setMessages(payload.messages ?? [])
       setAgentKey(payload.conversation?.agent_key ?? 'general')
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to load conversation.')
+      setError(
+        getUserFacingErrorMessage(caught, {
+          context: 'ai',
+          fallbackMessage: 'Unable to load this AI conversation. Please try again.',
+        }),
+      )
     } finally {
       setLoadingConversation(false)
     }
@@ -168,7 +174,11 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
     } catch (caught) {
       setMessages((current) => current.filter((item) => item.id !== optimistic.id))
       setDraft(message)
-      setError(caught instanceof Error ? caught.message : 'AI request failed.')
+      setError(
+        getUserFacingErrorMessage(caught, {
+          context: 'ai',
+        }),
+      )
     } finally {
       setSending(false)
     }
@@ -179,7 +189,12 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
     const response = await fetch(`/api/ai/conversations/${activeId}`, { method: 'DELETE' })
     if (!response.ok) {
       const payload = (await response.json()) as ConversationPayload
-      setError(payload.error || 'Unable to delete conversation.')
+      setError(
+        getUserFacingErrorMessage(payload.error, {
+          context: 'ai',
+          fallbackMessage: 'Unable to delete this AI conversation. Please try again.',
+        }),
+      )
       return
     }
     setConversations((current) => current.filter((item) => item.id !== activeId))
@@ -195,7 +210,12 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
     })
     if (!response.ok) {
       const payload = (await response.json()) as ConversationPayload
-      setError(payload.error || 'Unable to archive conversation.')
+      setError(
+        getUserFacingErrorMessage(payload.error, {
+          context: 'ai',
+          fallbackMessage: 'Unable to archive this AI conversation. Please try again.',
+        }),
+      )
       return
     }
     setConversations((current) => current.filter((item) => item.id !== activeId))

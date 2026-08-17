@@ -2,6 +2,8 @@
 
 import { FormEvent, useState } from 'react'
 
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
+
 type SubmissionState = 'idle' | 'sending' | 'sent' | 'error'
 
 export default function ContactForm() {
@@ -47,9 +49,11 @@ export default function ContactForm() {
     } catch (error) {
       setState('error')
       setFeedback(
-        error instanceof Error
-          ? error.message
-          : 'The message could not be submitted. Please try again.',
+        getUserFacingErrorMessage(error, {
+          context: 'general',
+          fallbackMessage:
+            'The message could not be submitted. Check your connection and try again.',
+        }),
       )
     }
   }

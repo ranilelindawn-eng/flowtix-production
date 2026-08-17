@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { signUp } from '../auth/actions'
+import SignupForm from './SignupForm'
 
 type Plan = 'starter' | 'professional' | 'business'
 
@@ -93,20 +93,13 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               </p>
             )}
           </div>
-          <form action={signUp} className="space-y-6">
-            <input type="hidden" name="next" value={next} />
-            <input type="hidden" name="plan" value={plan} />
-            <input type="hidden" name="invited_email" value={invitedEmail} />
-            <label className="block">
-              <span className="text-sm text-slate-300">Email</span>
-              <input name="email" type="email" required defaultValue={invitedEmail} readOnly={invitationSignup} autoComplete="email" className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70 read-only:cursor-not-allowed read-only:opacity-80" />
-            </label>
-            <label className="block">
-              <span className="text-sm text-slate-300">Password</span>
-              <input name="password" type="password" required minLength={8} autoComplete="new-password" className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70" />
-            </label>
-            <button type="submit" className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5">{invitationSignup ? 'Sign up' : 'Start 7-Day Free Trial'}</button>
-          </form>
+          <SignupForm
+            next={next}
+            plan={plan}
+            invitedEmail={invitedEmail}
+            invitationSignup={invitationSignup}
+          />
+
           <p className="mt-6 text-center text-sm text-slate-400">
             Already have an account?{' '}
             <Link href={`/login?${loginParams.toString()}`} className="text-white underline">Sign in</Link>

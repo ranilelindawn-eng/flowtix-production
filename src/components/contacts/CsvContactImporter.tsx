@@ -9,6 +9,8 @@ import {
   Upload,
 } from 'lucide-react'
 
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
+
 type CsvRow = Record<string, string>
 
 type ImportResult = {
@@ -355,9 +357,10 @@ export default function CsvContactImporter() {
       setResult(data)
     } catch (caught) {
       setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Import failed.',
+        getUserFacingErrorMessage(caught, {
+          context: 'upload',
+          fallbackMessage: 'The contact import could not be completed. Check the CSV file and your contact limit, then try again.',
+        }),
       )
     } finally {
       setLoading(false)

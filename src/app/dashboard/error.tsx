@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react'
 
+import { getUserFacingError } from '@/lib/errors/user-facing'
+
 type DashboardErrorProps = {
   error: Error & {
     digest?: string
@@ -16,6 +18,10 @@ export default function DashboardError({
   useEffect(() => {
     console.error(error)
   }, [error])
+
+  const friendly = getUserFacingError(error, {
+    context: 'dashboard',
+  })
 
   return (
     <div className="flex min-h-[70vh] items-center justify-center px-6">
@@ -52,13 +58,18 @@ export default function DashboardError({
         </div>
 
         <h1 className="mt-6 text-3xl font-bold text-white">
-          Something went wrong
+          {friendly.title}
         </h1>
 
         <p className="mt-4 text-sm leading-7 text-slate-400">
-          An unexpected error occurred while loading this dashboard
-          page. Your data has not been lost. Please try again.
+          {friendly.message}
         </p>
+
+        {error.digest ? (
+          <p className="mt-4 text-xs text-slate-500">
+            Error reference: <span className="font-mono text-slate-400">{error.digest}</span>
+          </p>
+        ) : null}
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <button

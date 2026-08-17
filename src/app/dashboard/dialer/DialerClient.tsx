@@ -26,6 +26,7 @@ import {
 } from './actions'
 
 import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { organizationLocalDateTimeToUtc, toOrganizationDateTimeLocal } from '@/lib/timezone'
 type DialerPhoneNumber = {
   id: string
@@ -581,7 +582,12 @@ export default function DialerClient({
     try {
       await updatePresence({ action: 'availability', availability: next })
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Unable to update availability.')
+      setMessage(
+        getUserFacingErrorMessage(error, {
+          context: 'general',
+          fallbackMessage: 'Unable to update your availability. Please try again.',
+        }),
+      )
     }
   }, [updatePresence])
 
@@ -735,7 +741,12 @@ export default function DialerClient({
       throw new Error('Flowtix Cloud Calling is the supported telephony service.')
     } catch (error) {
       setDeviceState('error')
-      setMessage(error instanceof Error ? error.message : 'Unable to connect the softphone.')
+      setMessage(
+        getUserFacingErrorMessage(error, {
+          context: 'general',
+          fallbackMessage: 'Unable to connect the Flowtix softphone. Check your calling setup and try again.',
+        }),
+      )
     }
   }, [
     fetchToken,
@@ -844,7 +855,10 @@ export default function DialerClient({
     } catch (error) {
       outboundCallPendingRef.current = false
       setMessage(
-        error instanceof Error ? error.message : 'Unable to place the call.',
+        getUserFacingErrorMessage(error, {
+          context: 'general',
+          fallbackMessage: 'Unable to place the call. Check the phone number and softphone connection, then try again.',
+        }),
       )
     }
   }
@@ -940,7 +954,7 @@ export default function DialerClient({
       setSaveMessage(
         error instanceof Error
           ? error.message
-          : 'Unable to save the client update.',
+          : 'Unable to save the contact update. Review the changes and try again.',
       )
     }
   }

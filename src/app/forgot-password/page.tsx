@@ -5,6 +5,7 @@ import {
   FormEvent,
   useState,
 } from 'react'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { createRecoveryClient } from '@/lib/supabase/recovery-client'
 
 export default function ForgotPasswordPage() {
@@ -74,7 +75,11 @@ const redirectTo =
           return
         }
 
-        setErrorMessage(error.message)
+        setErrorMessage(
+          getUserFacingErrorMessage(error, {
+            context: 'password-reset',
+          }),
+        )
         return
       }
 
@@ -90,7 +95,11 @@ const redirectTo =
       )
 
       setErrorMessage(
-        'We could not send the reset email. Please try again.',
+        getUserFacingErrorMessage(error, {
+          context: 'password-reset',
+          fallbackMessage:
+            'We could not send the reset email. Check your connection and try again.',
+        }),
       )
     } finally {
       setIsSubmitting(false)

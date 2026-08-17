@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { assertEntitlement } from '@/lib/entitlements'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { hasPermission } from '@/lib/permissions'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentOrganization } from '@/lib/team'
@@ -28,61 +29,77 @@ async function context() {
   return { membership, supabase: await createClient() }
 }
 
-export async function setSequenceStatus(formData: FormData) {
-  const { membership, supabase } = await context()
-  const sequenceId = text(formData, 'sequence_id')
-  const status = text(formData, 'status')
+export async function setSequenceStatus(
+  previousState: { status: 'idle' | 'error'; message: string },
+  formData: FormData,
+) {
+  void previousState
 
-  if (!sequenceId || !['active', 'paused', 'archived', 'draft'].includes(status)) {
-    throw new Error('Invalid sequence status.')
-  }
+  try {
+    const { membership, supabase } = await context()
+    const sequenceId = text(formData, 'sequence_id')
+    const status = text(formData, 'status')
 
-  const { data: currentSequence, error: currentSequenceError } =
-    await supabase
+    if (!sequenceId || !['active', 'paused', 'archived', 'draft'].includes(status)) {
+      return {
+        status: 'error' as const,
+        message: 'Choose a valid sequence status.',
+      }
+    }
+
+    const { data: currentSequence, error: currentSequenceError } =
+      await supabase
+        .from('sequences')
+        .select('status')
+        .eq('id', sequenceId)
+        .eq('organization_id', membership.organization_id)
+        .maybeSingle()
+
+    if (currentSequenceError) throw currentSequenceError
+    if (!currentSequence) throw new Error('Sequence not found.')
+
+    if (currentSequence.status !== 'active' && status === 'active') {
+      await assertActiveSequenceCapacity(membership.organization_id)
+    }
+
+    const { error } = await supabase
       .from('sequences')
-      .select('status')
+      .update({ status, updated_at: new Date().toISOString() })
       .eq('id', sequenceId)
       .eq('organization_id', membership.organization_id)
-      .maybeSingle()
 
-  if (currentSequenceError) {
-    throw new Error(currentSequenceError.message)
+    if (error) throw error
+
+    if (status !== 'active') {
+      const nextEnrollmentStatus = status === 'archived' ? 'cancelled' : 'paused'
+      const { error: enrollmentError } = await supabase
+        .from('sequence_enrollments')
+        .update({
+          status: nextEnrollmentStatus,
+          paused_at: status === 'paused' ? new Date().toISOString() : null,
+          cancelled_at: status === 'archived' ? new Date().toISOString() : null,
+          next_run_at: null,
+        })
+        .eq('sequence_id', sequenceId)
+        .eq('organization_id', membership.organization_id)
+        .eq('status', 'active')
+
+      if (enrollmentError) throw enrollmentError
+    }
+
+    revalidatePath('/dashboard/sequences')
+
+    return { status: 'idle' as const, message: '' }
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'general',
+        fallbackMessage:
+          'The sequence status could not be updated. Review the sequence and try again.',
+      }),
+    }
   }
-
-  if (!currentSequence) {
-    throw new Error('Sequence not found.')
-  }
-
-  if (currentSequence.status !== 'active' && status === 'active') {
-    await assertActiveSequenceCapacity(membership.organization_id)
-  }
-
-  const { error } = await supabase
-    .from('sequences')
-    .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', sequenceId)
-    .eq('organization_id', membership.organization_id)
-
-  if (error) throw new Error(error.message)
-
-  if (status !== 'active') {
-    const nextEnrollmentStatus = status === 'archived' ? 'cancelled' : 'paused'
-    const { error: enrollmentError } = await supabase
-      .from('sequence_enrollments')
-      .update({
-        status: nextEnrollmentStatus,
-        paused_at: status === 'paused' ? new Date().toISOString() : null,
-        cancelled_at: status === 'archived' ? new Date().toISOString() : null,
-        next_run_at: null,
-      })
-      .eq('sequence_id', sequenceId)
-      .eq('organization_id', membership.organization_id)
-      .eq('status', 'active')
-
-    if (enrollmentError) throw new Error(enrollmentError.message)
-  }
-
-  revalidatePath('/dashboard/sequences')
 }
 
 export async function enrollContact(formData: FormData) {

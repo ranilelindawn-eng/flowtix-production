@@ -25,6 +25,7 @@ import {
 } from '@/app/dashboard/calendar/actions'
 
 import { toOrganizationDateTimeLocal } from '@/lib/timezone'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 type SelectOption = {
   id: string
   label: string
@@ -247,9 +248,10 @@ export default function CalendarBoard({
         setAttendeeError('')
       } catch (caught) {
         setError(
-          caught instanceof Error
-            ? caught.message
-            : 'Unable to save the event.',
+          getUserFacingErrorMessage(caught, {
+            context: 'general',
+            fallbackMessage: 'Unable to save the calendar event. Check the event details and try again.',
+          }),
         )
       }
     })

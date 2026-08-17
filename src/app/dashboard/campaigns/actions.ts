@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
 import { requirePermission } from '@/lib/auth'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import {
   createCampaign as createCampaignRecord,
   deleteCampaign as deleteCampaignRecord,
@@ -44,16 +45,34 @@ function getCampaignValues(formData: FormData): CampaignFormValues {
   }
 }
 
-export async function createCampaign(formData: FormData) {
-  await requirePermission('campaigns.create')
+export async function createCampaign(
+  previousState: { status: 'idle' | 'error'; message: string },
+  formData: FormData,
+) {
+  void previousState
+  let campaign: Awaited<ReturnType<typeof createCampaignRecord>>
 
-  const values = getCampaignValues(formData)
+  try {
+    await requirePermission('campaigns.create')
 
-  if (!values.name) {
-    throw new Error('Campaign name is required.')
+    const values = getCampaignValues(formData)
+
+    if (!values.name) {
+      return {
+        status: 'error' as const,
+        message: 'Campaign name is required.',
+      }
+    }
+
+    campaign = await createCampaignRecord(values)
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'campaign',
+      }),
+    }
   }
-
-  const campaign = await createCampaignRecord(values)
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/campaigns')
@@ -61,22 +80,41 @@ export async function createCampaign(formData: FormData) {
   redirect(`/dashboard/campaigns/${campaign.id}`)
 }
 
-export async function updateCampaign(formData: FormData) {
-  await requirePermission('campaigns.update')
-
+export async function updateCampaign(
+  previousState: { status: 'idle' | 'error'; message: string },
+  formData: FormData,
+) {
+  void previousState
   const id = getString(formData, 'id')
 
   if (!id) {
-    throw new Error('A valid campaign ID is required.')
+    return {
+      status: 'error' as const,
+      message: 'A valid campaign ID is required.',
+    }
   }
 
-  const values = getCampaignValues(formData)
+  try {
+    await requirePermission('campaigns.update')
 
-  if (!values.name) {
-    throw new Error('Campaign name is required.')
+    const values = getCampaignValues(formData)
+
+    if (!values.name) {
+      return {
+        status: 'error' as const,
+        message: 'Campaign name is required.',
+      }
+    }
+
+    await updateCampaignRecord(id, values)
+  } catch (error) {
+    return {
+      status: 'error' as const,
+      message: getUserFacingErrorMessage(error, {
+        context: 'campaign',
+      }),
+    }
   }
-
-  await updateCampaignRecord(id, values)
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/campaigns')

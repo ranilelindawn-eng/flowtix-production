@@ -13,6 +13,7 @@ import {
   searchDialerContacts,
   type DialerContact,
 } from '@/app/dashboard/dialer/actions'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 
 type ContactSearchProps = {
   disabled?: boolean
@@ -82,9 +83,10 @@ export default function ContactSearch({
           setActiveIndex(-1)
 
           setSearchError(
-            error instanceof Error
-              ? error.message
-              : 'Unable to search contacts.',
+            getUserFacingErrorMessage(error, {
+              context: 'search',
+              fallbackMessage: 'Unable to search contacts. Please try again.',
+            }),
           )
         }
       } finally {

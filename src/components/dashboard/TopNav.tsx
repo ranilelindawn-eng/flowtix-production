@@ -10,6 +10,7 @@ import {
   Settings,
 } from 'lucide-react'
 import GlobalSearch from '@/components/dashboard/GlobalSearch'
+import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { createClient } from '@/lib/supabase/client'
 
 type TopNavProps = {
@@ -42,6 +43,7 @@ export default function TopNav({
 
   const [isOpen, setIsOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -70,7 +72,7 @@ export default function TopNav({
 
   async function handleLogout() {
     setIsLoggingOut(true)
-    setIsOpen(false)
+    setLogoutError('')
 
     try {
       const supabase = createClient()
@@ -78,6 +80,12 @@ export default function TopNav({
 
       if (error) {
         console.error('Unable to sign out:', error)
+        setLogoutError(
+          getUserFacingErrorMessage(error, {
+            context: 'signout',
+          }),
+        )
+        setIsOpen(true)
         setIsLoggingOut(false)
         return
       }
@@ -86,6 +94,12 @@ export default function TopNav({
       router.refresh()
     } catch (error) {
       console.error('Unexpected logout error:', error)
+      setLogoutError(
+        getUserFacingErrorMessage(error, {
+          context: 'signout',
+        }),
+      )
+      setIsOpen(true)
       setIsLoggingOut(false)
     }
   }
@@ -163,6 +177,16 @@ export default function TopNav({
                     {userEmail}
                   </p>
                 </div>
+
+                {logoutError ? (
+                  <div
+                    role="alert"
+                    className="mx-2 mt-2 rounded-2xl border border-red-400/25 bg-red-400/10 px-3 py-3 text-xs leading-5 text-red-200"
+                  >
+                    <p className="font-semibold text-red-300">Sign-out failed</p>
+                    <p className="mt-1">{logoutError}</p>
+                  </div>
+                ) : null}
 
                 <div className="py-2">
                   <Link
