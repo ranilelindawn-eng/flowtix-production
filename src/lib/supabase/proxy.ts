@@ -108,11 +108,19 @@ export async function updateSession(request: NextRequest) {
             ['/dashboard/telephony-monitoring', 'dialer.cloud'],
             ['/dashboard/recordings', 'dialer.cloud'],
             ['/dashboard/transcripts', 'ai.transcription'],
+            ['/dashboard/dashboards', 'analytics.dashboards'],
+            ['/dashboard/kpis', 'analytics.kpi'],
+            ['/dashboard/sales-analytics', 'analytics.sales'],
+            ['/dashboard/call-analytics', 'analytics.calls'],
+            ['/dashboard/agent-analytics', 'analytics.agents'],
+            ['/dashboard/campaign-analytics', 'analytics.campaigns'],
+            ['/dashboard/ai-analytics', 'analytics.ai'],
             ['/dashboard/ai', 'ai.chat'],
-            ['/dashboard/ai-analytics', 'ai.call_analysis'],
-            ['/dashboard/insights', 'ai.call_analysis'],
+            ['/dashboard/insights', 'ai.insights'],
+            ['/dashboard/summaries', 'ai.call_analysis'],
+            ['/dashboard/attendance', 'workforce.attendance'],
+            ['/dashboard/roles', 'team.advanced'],
             ['/dashboard/exports', 'reports.export'],
-            ['/dashboard/roles', 'security.advanced'],
           ]
 
           const requiredFeature = featureByPath.find(
@@ -122,10 +130,11 @@ export async function updateSession(request: NextRequest) {
           )?.[1]
 
           if (requiredFeature && !entitlements.includes(requiredFeature)) {
-            const billingUrl = request.nextUrl.clone()
-            billingUrl.pathname = '/dashboard/billing'
-            billingUrl.searchParams.set('feature', requiredFeature)
-            return NextResponse.redirect(billingUrl)
+            const upgradeUrl = request.nextUrl.clone()
+            upgradeUrl.pathname = '/dashboard/upgrade'
+            upgradeUrl.search = ''
+            upgradeUrl.searchParams.set('feature', requiredFeature)
+            return NextResponse.redirect(upgradeUrl)
           }
         }
       }
