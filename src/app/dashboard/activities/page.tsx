@@ -39,9 +39,6 @@ export default async function ActivitiesPage({
   const organization = await requirePermission('contacts.view')
   const filters = await searchParams
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) throw new Error('Authentication required.')
 
   const [activities, contactsResult, companiesResult, opportunitiesResult] = await Promise.all([
     getActivityFeed({
@@ -50,7 +47,7 @@ export default async function ActivitiesPage({
       status: filters.status,
       search: filters.q,
       limit: 150,
-      viewerUserId: user.id,
+      viewerUserId: organization.user_id,
       viewerMembershipId: organization.membership_id,
       canViewAllCalls: hasPermission(organization.role, 'calls.view_all'),
       canViewAllCalendar: hasPermission(organization.role, 'calendar.view_all'),

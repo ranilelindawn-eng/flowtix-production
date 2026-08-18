@@ -392,11 +392,23 @@ export async function getActivityFeed(input: FeedInput): Promise<ActivityFeedIte
     })
   }
 
+  async function loadOptionalSource(
+    source: 'calls' | 'calendar' | 'opportunities',
+    loader: () => Promise<ActivityFeedItem[]>,
+  ): Promise<ActivityFeedItem[]> {
+    try {
+      return await loader()
+    } catch (error) {
+      console.error(`[Activities] Unable to load automatic ${source} activity source.`, error)
+      return []
+    }
+  }
+
   const [manual, calls, meetings, opportunityChanges] = await Promise.all([
     loadManualActivities(),
-    loadCompletedCalls(),
-    loadCompletedMeetings(),
-    loadOpportunityChanges(),
+    loadOptionalSource('calls', loadCompletedCalls),
+    loadOptionalSource('calendar', loadCompletedMeetings),
+    loadOptionalSource('opportunities', loadOpportunityChanges),
   ])
 
   return [...manual, ...calls, ...meetings, ...opportunityChanges]
