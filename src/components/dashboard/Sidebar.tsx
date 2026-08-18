@@ -119,9 +119,9 @@ const navItems: NavItem[] = [
   },
   {
     id: 'communications',
-    label: 'Email & SMS',
+    label: 'Conversations',
     href: '/dashboard/communications',
-    permission: 'campaigns.view',
+    permission: 'communications.view',
     icon: Mail,
   },
   {

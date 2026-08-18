@@ -3,6 +3,7 @@ import { executeIntegrationMaintenance } from '@/lib/integrations/maintenance'
 import { executeCampaignMember } from '@/lib/campaigns/engine'
 import { executePostCallDispatch } from '@/lib/automation/post-call/dispatcher'
 import { deliverCommunication } from '@/lib/communications/delivery'
+import { renewGmailInboxWatch, syncGmailInbox } from '@/lib/communications/gmail-inbox'
 import type { JobHandler } from '@/lib/jobs/types'
 import { executeSequenceStep } from '@/lib/sequences/engine'
 
@@ -32,6 +33,22 @@ registerJobHandler('sequence.execute_step', async ({ job, heartbeat }) => {
 registerJobHandler('communications.send', async ({ job, heartbeat }) => {
   await heartbeat()
   return deliverCommunication(job.payload)
+})
+
+registerJobHandler('communications.gmail_sync', async ({ job, heartbeat }) => {
+  await heartbeat()
+  return syncGmailInbox(job.payload)
+})
+
+registerJobHandler('communications.gmail_watch_renew', async ({ job, heartbeat }) => {
+  await heartbeat()
+  const result = await renewGmailInboxWatch(job.payload)
+  return {
+    configured: result.configured,
+    organizationId: result.organizationId,
+    historyId: result.historyId ?? null,
+    expiration: result.expiration ?? null,
+  }
 })
 
 registerJobHandler('campaign.execute_member', async ({ job, heartbeat }) => {

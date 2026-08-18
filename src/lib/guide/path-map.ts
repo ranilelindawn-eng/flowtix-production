@@ -8,7 +8,7 @@ export const guidePathMap: ReadonlyArray<{ prefix: string; slug: string; title: 
   { prefix: '/dashboard/live-calls', slug: 'live-calls', title: 'Live Calls' },
   { prefix: '/dashboard/recordings', slug: 'recordings', title: 'Recordings' },
   { prefix: '/dashboard/transcripts', slug: 'transcripts', title: 'Transcripts' },
-  { prefix: '/dashboard/communications', slug: 'email-sms', title: 'Email & SMS' },
+  { prefix: '/dashboard/communications', slug: 'email-sms', title: 'Conversations' },
   { prefix: '/dashboard/dashboards', slug: 'dashboards', title: 'Custom Dashboards' },
   { prefix: '/dashboard/attendance', slug: 'attendance', title: 'Time & Attendance' },
   { prefix: '/dashboard/organization', slug: 'organization', title: 'Organization' },

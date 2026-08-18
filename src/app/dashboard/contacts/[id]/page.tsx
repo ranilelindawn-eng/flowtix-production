@@ -4,6 +4,7 @@ import ContactAISummary from '@/components/contacts/ContactAISummary'
 import ContactHeader from '@/components/contacts/ContactHeader'
 import ContactProfileCard from '@/components/contacts/ContactProfileCard'
 import ContactQuickActions from '@/components/contacts/ContactQuickActions'
+import ContactConversationsCard from '@/components/contacts/ContactConversationsCard'
 import ContactTags from '@/components/contacts/ContactTags'
 import ContactTimeline from '@/components/contacts/ContactTimeline'
 import { requirePermission } from '@/lib/auth'
@@ -14,6 +15,7 @@ import { getContactNotes } from '@/lib/contact-notes'
 import { getContactTasks } from '@/lib/contact-tasks'
 import { getTimelineEvents } from '@/lib/timeline'
 import { getContact } from '@/lib/contacts'
+import { getContactConversationPreviews } from '@/lib/communications/conversations'
 import { getEntityTags, getTags } from '@/lib/tags'
 
 type ContactPageProps = {
@@ -38,6 +40,7 @@ export default async function ContactPage({
     timelineEvents,
     availableTags,
     assignedTags,
+    conversations,
   ] = await Promise.all([
     getContact(id),
     getContactCalls(id),
@@ -50,6 +53,11 @@ export default async function ContactPage({
       organizationId: organization.organization_id,
       entityType: 'contact',
       entityId: id,
+    }),
+    getContactConversationPreviews({
+      organizationId: organization.organization_id,
+      contactId: id,
+      limit: 3,
     }),
   ])
 
@@ -82,6 +90,8 @@ export default async function ContactPage({
 
         <div className="min-w-0 space-y-6">
           <ContactAISummary contact={contact} />
+
+          <ContactConversationsCard conversations={conversations} />
 
           <ContactTimeline
             contactId={contact.id}

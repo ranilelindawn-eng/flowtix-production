@@ -4,6 +4,7 @@ import { encryptIntegrationSecret } from '@/lib/integrations/crypto'
 import { upsertEncryptedIntegrationSecret } from '@/lib/integrations/secret-store'
 import { getGoogleOAuthConfig, verifyGoogleState } from '@/lib/integrations/google-oauth'
 import { getProductionOrigin } from '@/lib/integrations/oauth-state'
+import { enqueueJob } from '@/lib/jobs/queue'
 
 export async function GET(request: NextRequest) {
   const origin = getProductionOrigin(request.nextUrl.origin)
@@ -117,6 +118,24 @@ export async function GET(request: NextRequest) {
       encryptedCredentials: encrypted,
       credentialVersion: 1,
     })
+
+    if (state.provider === 'gmail') {
+      try {
+        const dateKey = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+        await enqueueJob({
+          organizationId: state.organizationId,
+          queue: 'communications',
+          jobType: 'communications.gmail_watch_renew',
+          payload: { organizationId: state.organizationId },
+          priority: 60,
+          maxAttempts: 5,
+          idempotencyKey: `gmail-watch-connect:${integration.id}:${dateKey}`,
+        })
+      } catch (watchError) {
+        console.warn('Gmail connected, but the inbox watch could not be queued yet.', watchError)
+      }
+    }
+
     return redirect({ connected: state.provider })
   } catch (error) {
     console.error('Google integration callback failed:', error)

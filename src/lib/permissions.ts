@@ -58,6 +58,13 @@ export type Permission =
   | 'campaigns.create'
   | 'campaigns.update'
   | 'campaigns.delete'
+  | 'communications.view'
+  | 'communications.create'
+  | 'communications.view_all'
+  | 'communications.view_assigned'
+  | 'communications.reply'
+  | 'communications.assign'
+  | 'communications.manage'
   | 'calls.view'
   | 'calls.create'
   | 'calls.update'
@@ -148,6 +155,14 @@ const ownerPermissions: readonly Permission[] = [
   'campaigns.create',
   'campaigns.update',
   'campaigns.delete',
+
+  'communications.view',
+  'communications.create',
+  'communications.view_all',
+  'communications.view_assigned',
+  'communications.reply',
+  'communications.assign',
+  'communications.manage',
 
   'calls.view',
   'calls.create',
@@ -244,6 +259,13 @@ const adminPermissions: readonly Permission[] = [
   'campaigns.create',
   'campaigns.update',
   'campaigns.delete',
+  'communications.view',
+  'communications.create',
+  'communications.view_all',
+  'communications.view_assigned',
+  'communications.reply',
+  'communications.assign',
+  'communications.manage',
   'calls.view',
   'calls.create',
   'calls.update',
@@ -316,6 +338,12 @@ const managerPermissions: readonly Permission[] = [
   'campaigns.view',
   'campaigns.create',
   'campaigns.update',
+  'communications.view',
+  'communications.create',
+  'communications.view_all',
+  'communications.view_assigned',
+  'communications.reply',
+  'communications.assign',
   'calls.view',
   'calls.create',
   'calls.update',
@@ -359,6 +387,9 @@ const agentPermissions: readonly Permission[] = [
   'calls.view_own',
   'campaigns.view_own',
   'campaigns.view',
+  'communications.view',
+  'communications.view_assigned',
+  'communications.reply',
   'calls.view',
   'calls.create',
   'calls.update',

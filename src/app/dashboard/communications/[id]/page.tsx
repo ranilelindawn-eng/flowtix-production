@@ -82,7 +82,7 @@ export default async function CommunicationDetailsPage({
 }) {
   const { id } = await params
   const timeZone = await getCurrentOrganizationTimezone()
-  const membership = await requirePermission('campaigns.view')
+  const membership = await requirePermission('communications.view')
   const supabase = await createClient()
 
   const { data: messageData, error: messageError } = await supabase
@@ -168,7 +168,7 @@ export default async function CommunicationDetailsPage({
         className="inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        Back to Email &amp; SMS
+        Back to Conversations
       </Link>
 
       <header className="flex flex-wrap items-start justify-between gap-4">

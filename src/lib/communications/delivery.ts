@@ -23,6 +23,10 @@ type CommunicationMessage = {
   body: string
   provider: string | null
   provider_message_id: string | null
+  provider_thread_id: string | null
+  internet_message_id: string | null
+  in_reply_to: string | null
+  references_header: string | null
   status: string
   attempt_count: number
   usage_consumed_at: string | null
@@ -39,6 +43,8 @@ type CommunicationMessage = {
 type ProviderResult = {
   provider: string
   messageId: string | null
+  threadId?: string | null
+  internetMessageId?: string | null
   sender: string | null
 }
 
@@ -191,8 +197,17 @@ async function sendEmail(message: CommunicationMessage): Promise<ProviderResult>
       to: message.recipient,
       subject: message.subject || 'Message from Flowtix',
       body: message.body,
+      threadId: message.provider_thread_id,
+      inReplyTo: message.in_reply_to,
+      references: message.references_header,
     })
-    return { provider: 'gmail', messageId: gmail.id, sender: gmail.sender }
+    return {
+      provider: 'gmail',
+      messageId: gmail.id,
+      threadId: gmail.threadId,
+      internetMessageId: gmail.internetMessageId,
+      sender: gmail.sender,
+    }
   } catch (gmailError) {
     if (message.source === 'post_call_email') {
       throw gmailError
@@ -349,7 +364,7 @@ export async function deliverCommunication(
   const { data, error } = await client
     .from('communication_messages')
     .select(
-      'id,organization_id,contact_id,channel,recipient,sender,subject,body,provider,provider_message_id,status,attempt_count,usage_consumed_at,source',
+      'id,organization_id,contact_id,channel,recipient,sender,subject,body,provider,provider_message_id,provider_thread_id,internet_message_id,in_reply_to,references_header,status,attempt_count,usage_consumed_at,source',
     )
     .eq('id', messageId)
     .maybeSingle()
@@ -418,6 +433,8 @@ export async function deliverCommunication(
         sender: result.sender,
         provider: result.provider,
         provider_message_id: result.messageId,
+        provider_thread_id: result.threadId ?? message.provider_thread_id,
+        internet_message_id: result.internetMessageId ?? message.internet_message_id,
         status: 'sent',
         sent_at: sentAt,
         processing_started_at: null,

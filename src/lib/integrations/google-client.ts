@@ -105,13 +105,38 @@ export async function updateIntegrationHealth(
   }).eq('organization_id', organizationId).eq('provider', provider)
 }
 
-export async function sendGmailMessage(organizationId: string, input: { to: string; subject: string; body: string }) {
+function safeMailHeader(value: string) {
+  return value.replace(/[\r\n]+/g, ' ').trim()
+}
+
+export async function sendGmailMessage(
+  organizationId: string,
+  input: {
+    to: string
+    subject: string
+    body: string
+    threadId?: string | null
+    inReplyTo?: string | null
+    references?: string | null
+  },
+) {
   const { accessToken, integration } = await getGoogleConnection(organizationId, 'gmail')
   const connectedEmail = typeof integration.config?.connected_email === 'string' ? integration.config.connected_email : undefined
+  const headers = [
+    `From: ${safeMailHeader(connectedEmail ?? 'me')}`,
+    `To: ${safeMailHeader(input.to)}`,
+    `Subject: ${safeMailHeader(input.subject)}`,
+  ]
+
+  if (input.inReplyTo?.trim()) {
+    headers.push(`In-Reply-To: ${safeMailHeader(input.inReplyTo)}`)
+  }
+  if (input.references?.trim()) {
+    headers.push(`References: ${safeMailHeader(input.references)}`)
+  }
+
   const raw = [
-    `From: ${connectedEmail ?? 'me'}`,
-    `To: ${input.to}`,
-    `Subject: ${input.subject}`,
+    ...headers,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=UTF-8',
     '',
@@ -121,12 +146,48 @@ export async function sendGmailMessage(organizationId: string, input: { to: stri
   const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ raw: encoded }),
+    body: JSON.stringify({
+      raw: encoded,
+      ...(input.threadId?.trim() ? { threadId: input.threadId.trim() } : {}),
+    }),
     cache: 'no-store',
   })
-  const payload = await response.json() as { id?: string; error?: { message?: string } }
+  const payload = await response.json() as { id?: string; threadId?: string; error?: { message?: string } }
   if (!response.ok || !payload.id) throw new Error(payload.error?.message || 'Gmail rejected the message.')
-  return { id: payload.id, sender: connectedEmail ?? null }
+
+  // Gmail's send response contains its API message/thread IDs but not the RFC
+  // Message-ID header needed for reliable future In-Reply-To/References headers.
+  // Read that header back best-effort; a metadata lookup failure must never turn
+  // an already-successful send into a failed delivery.
+  let internetMessageId: string | null = null
+  try {
+    const metadataUrl = new URL(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(payload.id)}`,
+    )
+    metadataUrl.searchParams.set('format', 'metadata')
+    metadataUrl.searchParams.append('metadataHeaders', 'Message-ID')
+    const metadataResponse = await fetch(metadataUrl.toString(), {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    })
+    if (metadataResponse.ok) {
+      const metadata = await metadataResponse.json() as {
+        payload?: { headers?: Array<{ name?: string; value?: string }> }
+      }
+      internetMessageId = metadata.payload?.headers
+        ?.find((header) => header.name?.toLowerCase() === 'message-id')
+        ?.value?.trim() || null
+    }
+  } catch {
+    internetMessageId = null
+  }
+
+  return {
+    id: payload.id,
+    threadId: payload.threadId ?? input.threadId ?? null,
+    internetMessageId,
+    sender: connectedEmail ?? null,
+  }
 }
 
 export async function createGoogleCalendarEvent(organizationId: string, input: { summary: string; description?: string; start: Date; end: Date }) {
