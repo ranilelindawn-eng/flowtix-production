@@ -50,12 +50,12 @@ export default async function CommunicationsPage({
   }))
 
   return (
-    <div className="space-y-6 xl:-mx-6 2xl:-mx-16">
+    <div className="space-y-6 lg:relative lg:left-1/2 lg:w-[calc(100vw-280px-4rem)] lg:max-w-none lg:-translate-x-1/2">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-cyan-300">Omnichannel customer inbox</p>
+          <p className="text-sm font-medium text-cyan-200">Omnichannel customer inbox</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Conversations</h1>
-          <p className="mt-2 max-w-5xl text-sm leading-6 text-slate-400">
+          <p className="mt-2 max-w-5xl text-[15px] leading-6 text-slate-300">
             Read and reply to customer email and SMS conversations from one tenant-safe workspace.
             Owners and authorized members see only the conversations permitted by their organization role and assignment.
           </p>
@@ -113,7 +113,7 @@ export default async function CommunicationsPage({
         inbox={inbox}
       />
 
-      <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+      <div className="flex flex-wrap gap-3 text-sm text-slate-400">
         <span className="inline-flex items-center gap-1.5">
           <Mail className="h-3.5 w-3.5" aria-hidden="true" /> Email through connected Gmail when available
         </span>

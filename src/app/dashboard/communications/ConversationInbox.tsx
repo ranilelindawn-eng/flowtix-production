@@ -167,11 +167,11 @@ export default function ConversationInbox({
   const closedCount = inbox.conversations.filter((conversation) => conversation.status === 'closed').length
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#07111F]/75 shadow-2xl shadow-black/10">
-      <div className="grid min-h-[680px] xl:grid-cols-[210px_330px_minmax(0,1fr)]">
-        <aside className="border-b border-white/10 bg-[#08111D]/95 p-4 xl:border-b-0 xl:border-r">
+    <section className="overflow-hidden rounded-2xl border border-white/10 bg-[#07111F]/90 shadow-2xl shadow-black/10">
+      <div className="grid min-h-[720px] xl:grid-cols-[230px_380px_minmax(0,1fr)]">
+        <aside className="border-b border-white/10 bg-[#08111D]/95 p-5 xl:border-b-0 xl:border-r">
           <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Inbox</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Inbox</p>
           </div>
 
           <nav className="space-y-1">
@@ -188,39 +188,39 @@ export default function ConversationInbox({
                   key={item.key}
                   type="button"
                   onClick={() => setView(item.key)}
-                  className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm transition ${view === item.key ? 'bg-blue-500/10 text-blue-200' : 'text-slate-400 hover:bg-white/[0.035] hover:text-white'}`}
+                  className={`flex w-full items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition ${view === item.key ? 'bg-blue-500/15 text-blue-100 ring-1 ring-blue-400/20' : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'}`}
                 >
                   <span className="flex items-center gap-2">
                     <Icon className="h-4 w-4" aria-hidden="true" />
                     {item.label}
                   </span>
-                  <span className="rounded-full bg-white/5 px-2 py-0.5 text-[11px] text-slate-400">{item.count}</span>
+                  <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-xs text-slate-300">{item.count}</span>
                 </button>
               )
             })}
           </nav>
 
           <div className="mt-7 border-t border-white/10 pt-5">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Channels</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300">Channels</p>
             <div className="space-y-1">
               <button
                 type="button"
                 onClick={() => setChannel('all')}
-                className={`w-full rounded-lg px-3 py-2 text-left text-sm ${channel === 'all' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`w-full rounded-lg px-3.5 py-2.5 text-left text-[15px] font-medium ${channel === 'all' ? 'bg-white/[0.07] text-white ring-1 ring-white/10' : 'text-slate-300 hover:bg-white/[0.035] hover:text-white'}`}
               >
                 All
               </button>
               <button
                 type="button"
                 onClick={() => setChannel('email')}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${channel === 'email' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex w-full items-center gap-2 rounded-lg px-3.5 py-2.5 text-left text-[15px] font-medium ${channel === 'email' ? 'bg-white/[0.07] text-white ring-1 ring-white/10' : 'text-slate-300 hover:bg-white/[0.035] hover:text-white'}`}
               >
                 <Mail className="h-4 w-4" aria-hidden="true" /> Email
               </button>
               <button
                 type="button"
                 onClick={() => setChannel('sms')}
-                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${channel === 'sms' ? 'bg-white/5 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                className={`flex w-full items-center gap-2 rounded-lg px-3.5 py-2.5 text-left text-[15px] font-medium ${channel === 'sms' ? 'bg-white/[0.07] text-white ring-1 ring-white/10' : 'text-slate-300 hover:bg-white/[0.035] hover:text-white'}`}
               >
                 <MessageSquareText className="h-4 w-4" aria-hidden="true" /> SMS
               </button>
@@ -230,57 +230,57 @@ export default function ConversationInbox({
 
         <div className="min-w-0 border-b border-white/10 bg-[#091522]/90 xl:border-b-0 xl:border-r">
           <div className="border-b border-white/10 p-3">
-            <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#07111F] px-3 py-2">
-              <Search className="h-4 w-4 text-slate-600" aria-hidden="true" />
+            <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#07111F] px-3.5 py-2.5">
+              <Search className="h-4 w-4 text-slate-400" aria-hidden="true" />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search conversations..."
-                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
+                className="min-w-0 flex-1 bg-transparent text-[15px] text-white outline-none placeholder:text-slate-500"
               />
             </label>
           </div>
 
-          <div className="max-h-[680px] overflow-y-auto">
+          <div className="max-h-[720px] overflow-y-auto">
             {filteredConversations.length ? filteredConversations.map((conversation) => {
               const active = selected?.id === conversation.id
               return (
                 <Link
                   key={conversation.id}
                   href={`/dashboard/communications?conversation=${encodeURIComponent(conversation.id)}`}
-                  className={`block border-b border-white/[0.055] px-4 py-3 transition ${active ? 'bg-blue-500/[0.08]' : 'hover:bg-white/[0.025]'}`}
+                  className={`block border-b border-white/[0.07] px-4 py-4 transition ${active ? 'bg-blue-500/[0.11]' : 'hover:bg-white/[0.035]'}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`truncate text-sm ${conversation.unreadCount > 0 ? 'font-semibold text-white' : 'font-medium text-slate-200'}`}>
+                        <p className={`truncate text-[15px] ${conversation.unreadCount > 0 ? 'font-semibold text-white' : 'font-semibold text-slate-100'}`}>
                           {conversation.contactName}
                         </p>
                         {conversation.unreadCount > 0 ? (
                           <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">{conversation.unreadCount}</span>
                         ) : null}
                       </div>
-                      <p className="mt-1 truncate text-xs text-slate-500">
+                      <p className="mt-1.5 truncate text-sm leading-5 text-slate-300">
                         {conversation.subject || conversation.lastMessagePreview || 'No message preview'}
                       </p>
                     </div>
-                    <span className="shrink-0 text-[10px] text-slate-600">{formatConversationTime(conversation.lastMessageAt, timeZone)}</span>
+                    <span className="shrink-0 text-xs text-slate-400">{formatConversationTime(conversation.lastMessageAt, timeZone)}</span>
                   </div>
 
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-slate-600">
+                    <span className="inline-flex items-center gap-1 text-xs uppercase tracking-wide text-slate-400">
                       {conversation.lastChannel === 'email' ? <Mail className="h-3 w-3" aria-hidden="true" /> : <MessageSquareText className="h-3 w-3" aria-hidden="true" />}
                       {conversation.lastChannel}
                       {conversation.lastDirection ? ` · ${conversation.lastDirection}` : ''}
                     </span>
-                    <span className="max-w-[130px] truncate text-[10px] text-slate-600">
+                    <span className="max-w-[150px] truncate text-xs text-slate-400">
                       {conversation.assignedName || 'Unassigned'}
                     </span>
                   </div>
                 </Link>
               )
             }) : (
-              <div className="px-5 py-12 text-center text-sm text-slate-500">
+              <div className="px-5 py-12 text-center text-[15px] text-slate-400">
                 No conversations match this view.
               </div>
             )}
@@ -300,7 +300,7 @@ export default function ConversationInbox({
               timeZone={timeZone}
             />
           ) : (
-            <div className="flex min-h-[680px] items-center justify-center px-6 text-center text-sm text-slate-500">
+            <div className="flex min-h-[720px] items-center justify-center px-8 text-center text-base text-slate-400">
               Select a conversation to read and reply, or start a new message above.
             </div>
           )}
