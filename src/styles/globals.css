@@ -384,6 +384,17 @@ body.flowtix-root {
   animation: flowtixDrift 16s ease-in-out infinite reverse;
 }
 
+/*
+ * Authenticated workspaces intentionally keep the premium static backdrop
+ * while removing the large moving ambient orbs. This reduces visual motion
+ * inside long-running dashboard sessions without changing public marketing
+ * pages or any application/module behavior.
+ */
+body:has(.flowtix-dashboard-shell) .flowtix-ambient-orb,
+body:has(.flowtix-platform-shell) .flowtix-ambient-orb {
+  display: none;
+}
+
 .flowtix-ambient-noise {
   position: absolute;
   inset: 0;
