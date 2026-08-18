@@ -53,14 +53,6 @@ type IntegrationRow = {
   config: Record<string, unknown> | null
 }
 
-type PhoneNumberRow = {
-  provider: string
-  phone_number: string
-  friendly_name: string
-  capabilities: Record<string, boolean> | null
-  is_default: boolean
-}
-
 const DEFAULT_POST_CALL_CONFIG: PostCallConfig = {
   enabled: false,
   email_enabled: false,
@@ -105,12 +97,6 @@ function connectedEmailIdentity(integrations: IntegrationRow[]) {
     : 'Connected Gmail account'
 }
 
-function smsCapable(number: PhoneNumberRow) {
-  if (number.provider !== 'signalwire') return false
-  const capabilities = number.capabilities ?? {}
-  return capabilities.sms !== false
-}
-
 function signalWireConnected(integrations: IntegrationRow[]) {
   return integrations.some(
     (item) =>
@@ -135,7 +121,6 @@ export default async function AutomationOperationsPage() {
     runs,
     configResult,
     integrationResult,
-    phoneNumberResult,
   ] = await Promise.all([
     getAutomationControl(organization.organization_id),
     getAutomationSummary(organization.organization_id),
@@ -152,13 +137,6 @@ export default async function AutomationOperationsPage() {
       .from('organization_integrations')
       .select('provider,enabled,status,config')
       .eq('organization_id', organization.organization_id),
-    supabase
-      .from('organization_phone_numbers')
-      .select(
-        'provider,phone_number,friendly_name,capabilities,is_default',
-      )
-      .eq('organization_id', organization.organization_id)
-      .order('is_default', { ascending: false }),
   ])
 
   if (configResult.error) {
@@ -173,36 +151,20 @@ export default async function AutomationOperationsPage() {
     )
   }
 
-  if (phoneNumberResult.error) {
-    throw new Error(
-      `Unable to load SMS sender status: ${phoneNumberResult.error.message}`,
-    )
-  }
-
   const activeCompanySmsSender = await getActiveSmsSenderRequest(organization.organization_id)
   const postCallConfig =
     (configResult.data as PostCallConfig | null) ??
     DEFAULT_POST_CALL_CONFIG
   const integrations =
     (integrationResult.data ?? []) as IntegrationRow[]
-  const phoneNumbers =
-    (phoneNumberResult.data ?? []) as PhoneNumberRow[]
-
   const emailIdentity = connectedEmailIdentity(integrations)
   const smsInfrastructureConnected = signalWireConnected(integrations)
   const defaultSmsNumber = activeCompanySmsSender
     ? {
-        provider: 'signalwire',
         phone_number: activeCompanySmsSender.phone_number,
-        friendly_name: 'Company SMS number',
-        capabilities: { sms: true },
-        is_default: false,
+        friendly_name: 'Business SMS Number',
       }
-    : phoneNumbers.find(
-        (number) => number.is_default && smsCapable(number),
-      ) ??
-      phoneNumbers.find((number) => smsCapable(number)) ??
-      null
+    : null
 
   const canManage = hasPermission(
     organization.role,
@@ -403,7 +365,7 @@ export default async function AutomationOperationsPage() {
                     ? `${defaultSmsNumber.friendly_name} · ${defaultSmsNumber.phone_number}`
                     : !smsInfrastructureConnected
                       ? 'Flowtix SMS infrastructure is not currently connected for this workspace.'
-                      : 'No SMS-capable Flowtix phone number is assigned to this workspace.'}
+                      : 'No active Business SMS Number is configured for this workspace.'}
                 </p>
                 <p className="mt-2 text-xs font-medium text-primary opacity-70 transition group-hover:opacity-100">
                   Review SMS connection →

@@ -7,6 +7,7 @@ import { requireOwner } from '@/lib/auth'
 import { normalizeSmsNumber } from '@/lib/communications/sms-sender'
 import { encryptIntegrationSecret } from '@/lib/integrations/crypto'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
+import { getPlatformManagedSignalWireConnection } from '@/lib/telephony/platform-managed-calling'
 
 export type BusinessSmsActionState = {
   status: 'idle' | 'success' | 'error'
@@ -318,6 +319,20 @@ export async function submitExistingCompanySmsNumber(
     if (secretError) {
       await admin.from('organization_sms_sender_requests').delete().eq('id', requestId)
       throw new Error(`Unable to securely store the carrier account PIN: ${secretError.message}`)
+    }
+
+    // The subscriber only submits the company SMS request. Flowtix keeps the
+    // SignalWire infrastructure platform-managed and prepares the workspace
+    // connection server-side when the platform account is already available.
+    // A provisioning request must still be saved if infrastructure setup needs
+    // platform attention, so this preparation is intentionally best-effort.
+    try {
+      await getPlatformManagedSignalWireConnection(membership.organization_id)
+    } catch (error) {
+      console.warn(
+        '[Flowtix SMS provisioning] platform calling connection preparation deferred',
+        error,
+      )
     }
 
     revalidatePath('/dashboard/organization')

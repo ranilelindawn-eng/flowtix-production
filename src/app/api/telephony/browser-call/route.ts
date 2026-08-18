@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { assertEntitlement, isEntitlementError } from '@/lib/entitlements'
 import { hasPermission } from '@/lib/permissions'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
-import { getOrganizationProviderConnection } from '@/lib/telephony/provider-connections'
+import { resolvePlatformManagedCallerId } from '@/lib/telephony/platform-managed-calling'
 import {
   isTelephonyProvider,
   type ConfiguredTelephonyProviderName,
@@ -38,13 +38,12 @@ export async function POST(request: Request) {
     const payload = (await request.json()) as Record<string, unknown>
     const providerValue = text(payload.provider)
     const providerCallId = text(payload.providerCallId)
-    const fromNumber = text(payload.fromNumber)
     const toNumber = text(payload.toNumber)
     const contactId = text(payload.contactId) || null
 
     if (!isTelephonyProvider(providerValue) || providerValue !== 'signalwire') {
       return NextResponse.json(
-        { error: 'Only SignalWire browser call registration is supported.' },
+        { error: 'Only Flowtix browser call registration is supported.' },
         { status: 400 },
       )
     }
@@ -53,36 +52,22 @@ export async function POST(request: Request) {
     if (
       !providerCallId ||
       providerCallId.length > MAX_PROVIDER_CALL_ID_LENGTH ||
-      !/^\+[1-9]\d{7,14}$/.test(fromNumber) ||
       !/^\+[1-9]\d{7,14}$/.test(toNumber)
     ) {
-      return NextResponse.json({ error: 'Invalid browser call registration.' }, { status: 400 })
-    }
-
-    await getOrganizationProviderConnection(organization.organization_id, provider)
-
-    const admin = createTelephonyAdminClient()
-    const { data: ownedNumber, error: ownedNumberError } = await admin
-      .from('organization_phone_numbers')
-      .select('id,capabilities')
-      .eq('organization_id', organization.organization_id)
-      .eq('provider', provider)
-      .eq('phone_number', fromNumber)
-      .maybeSingle()
-
-    if (ownedNumberError) {
-      throw new Error(`Unable to validate caller ID: ${ownedNumberError.message}`)
-    }
-    const capabilities =
-      ownedNumber?.capabilities && typeof ownedNumber.capabilities === 'object'
-        ? (ownedNumber.capabilities as Record<string, unknown>)
-        : {}
-    if (!ownedNumber || capabilities.voice === false) {
       return NextResponse.json(
-        { error: 'The selected caller ID is not an active voice number in this workspace.' },
-        { status: 403 },
+        { error: 'Invalid browser call registration.' },
+        { status: 400 },
       )
     }
+
+    // Never trust a browser-supplied caller ID. The outbound identity is owned
+    // and selected by Flowtix platform infrastructure.
+    const callerId = await resolvePlatformManagedCallerId(
+      organization.organization_id,
+    )
+    const fromNumber = callerId.phoneNumber
+
+    const admin = createTelephonyAdminClient()
 
     if (contactId) {
       let contactQuery = admin
@@ -104,7 +89,10 @@ export async function POST(request: Request) {
       if (contactError) throw new Error(contactError.message)
       if (!contact) {
         return NextResponse.json(
-          { error: 'The selected contact is unavailable or is not assigned to you.' },
+          {
+            error:
+              'The selected contact is unavailable or is not assigned to you.',
+          },
           { status: 403 },
         )
       }
@@ -125,7 +113,10 @@ export async function POST(request: Request) {
         existing.to_number !== toNumber ||
         existing.from_number !== fromNumber
       ) {
-        return NextResponse.json({ error: 'Browser call identifier conflict.' }, { status: 409 })
+        return NextResponse.json(
+          { error: 'Browser call identifier conflict.' },
+          { status: 409 },
+        )
       }
       return NextResponse.json({ callId: existing.id, replay: true })
     }
@@ -144,7 +135,10 @@ export async function POST(request: Request) {
         provider_call_sid: providerCallId,
         from_number: fromNumber,
         to_number: toNumber,
-        metadata: { source: 'browser_dialer' },
+        metadata: {
+          source: 'browser_dialer',
+          caller_id_source: 'flowtix_platform',
+        },
       })
       .select('id')
       .single()
@@ -158,15 +152,24 @@ export async function POST(request: Request) {
           .eq('provider', provider)
           .eq('provider_call_sid', providerCallId)
           .maybeSingle()
-        if (raced?.id) return NextResponse.json({ callId: raced.id, replay: true })
+        if (raced?.id) {
+          return NextResponse.json({ callId: raced.id, replay: true })
+        }
       }
-      throw new Error(`Unable to create browser call record: ${insertError.message}`)
+      throw new Error(
+        `Unable to create browser call record: ${insertError.message}`,
+      )
     }
 
     return NextResponse.json({ callId: inserted.id, replay: false })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unable to register browser call.' },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unable to register browser call.',
+      },
       { status: isEntitlementError(error) ? 403 : 500 },
     )
   }

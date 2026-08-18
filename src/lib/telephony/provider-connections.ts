@@ -110,6 +110,6 @@ export async function getOrganizationActiveTelephonyProvider(
   }
 
   throw new Error(
-    'Connect SignalWire and import an owned voice-capable phone number before using the cloud dialer.',
+    'Flowtix calling is not available for this workspace yet. Contact Flowtix support.',
   )
 }

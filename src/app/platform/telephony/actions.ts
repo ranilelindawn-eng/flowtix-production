@@ -8,6 +8,7 @@ import { sanitizeProviderMessage } from '@/lib/platform/provider-security'
 import { createClient } from '@/lib/supabase/server'
 import { configureSignalWireSmsWebhook, listOwnedProviderNumbers, verifyProviderConnection } from '@/lib/telephony/provider-admin'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
+import { getPlatformManagedSignalWireConnection } from '@/lib/telephony/platform-managed-calling'
 import {
   isTelephonyProvider,
   type ConfiguredTelephonyProviderName,
@@ -185,7 +186,7 @@ export async function syncAndActivatePlatformSmsSender(_previousState: PlatformT
   if(!requestId||!integrationId||!organizationId)return{status:'error',message:'The SMS provisioning request information is incomplete.'}
   try{
     const admin=createTelephonyAdminClient();const{data:request,error:requestError}=await admin.from('organization_sms_sender_requests').select('id,organization_id,phone_number,status').eq('id',requestId).eq('organization_id',organizationId).maybeSingle();if(requestError)throw new Error(`Unable to load the SMS request: ${requestError.message}`);if(!request)throw new Error('The SMS provisioning request no longer exists.');if(['active','cancelled','replaced','rejected'].includes(request.status))throw new Error(`This request cannot be activated from its current ${request.status} state.`)
-    const requestedNumber=normalizeSmsNumber(request.phone_number);const providerNumbers=await listOwnedProviderNumbers(organizationId,'signalwire');const providerNumber=providerNumbers.find(number=>{try{return normalizeSmsNumber(number.phoneNumber)===requestedNumber}catch{return false}})
+    const requestedNumber=normalizeSmsNumber(request.phone_number);await getPlatformManagedSignalWireConnection(organizationId);const providerNumbers=await listOwnedProviderNumbers(organizationId,'signalwire');const providerNumber=providerNumbers.find(number=>{try{return normalizeSmsNumber(number.phoneNumber)===requestedNumber}catch{return false}})
     if(!providerNumber)return{status:'error',message:`${requestedNumber} is not present in the connected SignalWire account yet. Keep the request processing and retry after SignalWire approval.`}
     if(providerNumber.capabilities.sms!==true)return{status:'error',message:`${requestedNumber} exists in SignalWire but is not SMS-capable yet. Do not activate it until hosted messaging is ready.`}
     await configureSignalWireSmsWebhook({organizationId,providerNumberId:providerNumber.providerNumberId,smsUrl:inboundSmsWebhookUrl(organizationId,requestedNumber)})

@@ -124,8 +124,9 @@ function safeDomainMessage(message: string): boolean {
     lower.startsWith('the passwords do not match') ||
     lower.startsWith('please enter') ||
     lower.startsWith('use the email address that received') ||
-    lower.startsWith('select an owned voice number') ||
-    lower.startsWith('import and select an owned voice number') ||
+    lower.startsWith('flowtix calling') ||
+    lower.startsWith('flowtix softphone') ||
+    lower.startsWith('flowtix does not currently have a platform calling number') ||
     lower.startsWith('an identical request is already') ||
     lower.startsWith('this idempotency key') ||
     lower.startsWith('this password reset link is invalid') ||

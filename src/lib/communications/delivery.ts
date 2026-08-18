@@ -7,10 +7,7 @@ import { enforceAutomationRules } from '@/lib/compliance/automation-rules'
 import { getActiveSmsSenderRequest } from '@/lib/communications/sms-sender'
 import { sendGmailMessage } from '@/lib/integrations/google-client'
 import { NonRetryableJobError, type JsonValue } from '@/lib/jobs/types'
-import {
-  getOrganizationActiveTelephonyProvider,
-  getOrganizationProviderConnection,
-} from '@/lib/telephony/provider-connections'
+import { getPlatformManagedSignalWireConnection } from '@/lib/telephony/platform-managed-calling'
 import type { ConfiguredTelephonyProviderName } from '@/lib/telephony/provider'
 
 type CommunicationChannel = 'email' | 'sms'
@@ -233,44 +230,17 @@ async function sendEmail(message: CommunicationMessage): Promise<ProviderResult>
   }
 }
 
-async function getSmsSender(
-  organizationId: string,
-  provider: ConfiguredTelephonyProviderName,
-) {
+async function getSmsSender(organizationId: string) {
   const activeCompanySender = await getActiveSmsSenderRequest(organizationId)
-  if (activeCompanySender?.phone_number) {
-    return normalizeE164(activeCompanySender.phone_number, 'SMS sender')
-  }
-
-  const client = createServiceClient()
-  const { data, error } = await client
-    .from('organization_phone_numbers')
-    .select('phone_number,capabilities,is_default')
-    .eq('organization_id', organizationId)
-    .eq('provider', provider)
-    .order('is_default', { ascending: false })
-
-  if (error) {
-    throw new Error(`Unable to load an SMS sender: ${error.message}`)
-  }
-
-  const sender = (data ?? []).find((row) => {
-    const capabilities = row.capabilities && typeof row.capabilities === 'object'
-      ? row.capabilities as Record<string, unknown>
-      : {}
-    return capabilities.sms !== false
-  })
-
-  if (!sender?.phone_number) {
+  if (!activeCompanySender?.phone_number) {
     throw new ProviderRequestError(
-      `No SMS-capable ${provider} phone number is configured for this workspace.`,
+      'No active Business SMS Number is configured for this workspace. Submit and complete the Business SMS Number provisioning request before sending automated SMS.',
       { retryable: false, code: 'SMS_SENDER_NOT_CONFIGURED' },
     )
   }
 
-  return normalizeE164(sender.phone_number, 'SMS sender')
+  return normalizeE164(activeCompanySender.phone_number, 'SMS sender')
 }
-
 
 function communicationWebhookSecret() {
   const secret =
@@ -335,19 +305,10 @@ function deliveryCallbackUrl(
 
 async function sendSms(message: CommunicationMessage): Promise<ProviderResult> {
   const recipient = normalizeE164(message.recipient, 'SMS recipient')
-  const provider = await getOrganizationActiveTelephonyProvider(message.organization_id)
-  if (provider !== 'signalwire') {
-    throw new ProviderRequestError('Flowtix messaging uses SignalWire only.', {
-      retryable: false,
-      code: 'PROVIDER_RETIRED',
-    })
-  }
-
-  const connection = await getOrganizationProviderConnection<Record<string, unknown>>(
+  const connection = await getPlatformManagedSignalWireConnection(
     message.organization_id,
-    'signalwire',
   )
-  const sender = await getSmsSender(message.organization_id, 'signalwire')
+  const sender = await getSmsSender(message.organization_id)
   const statusCallback = deliveryCallbackUrl('signalwire', message.id)
   const projectId = requiredCredential(connection.credentials.projectId, 'SignalWire Project ID')
   const apiToken = requiredCredential(connection.credentials.apiToken, 'SignalWire API Token')

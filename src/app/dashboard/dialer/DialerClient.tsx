@@ -28,19 +28,10 @@ import {
 import { useOrganizationTimezone } from '@/components/timezone/OrganizationTimezoneProvider'
 import { getUserFacingErrorMessage } from '@/lib/errors/user-facing'
 import { organizationLocalDateTimeToUtc, toOrganizationDateTimeLocal } from '@/lib/timezone'
-type DialerPhoneNumber = {
-  id: string
-  phoneNumber: string
-  friendlyName: string
-  isDefault: boolean
-  provider: 'signalwire'
-}
-
 type DialerClientProps = {
   organizationId: string
   initialContact?: DialerContact | null
   initialPhoneNumber?: string
-  callerIds?: DialerPhoneNumber[]
   assignedContacts?: DialerContact[]
 }
 
@@ -194,7 +185,6 @@ export default function DialerClient({
   organizationId,
   initialContact = null,
   initialPhoneNumber = '',
-  callerIds = [],
   assignedContacts = [],
 }: DialerClientProps) {
   const timeZone = useOrganizationTimezone()
@@ -208,11 +198,7 @@ export default function DialerClient({
     useState<DialerContact[]>(assignedContacts)
   const [contactSearchState, setContactSearchState] =
     useState<'idle' | 'loading' | 'error'>('idle')
-  const [selectedCallerId] = useState(
-    callerIds.find((number) => number.isDefault)?.phoneNumber ??
-      callerIds[0]?.phoneNumber ??
-      '',
-  )
+  const [selectedCallerId, setSelectedCallerId] = useState('')
   const [deviceState, setDeviceState] = useState<DeviceState>('offline')
   const [callState, setCallState] = useState<CallState>('idle')
   const [message, setMessage] = useState(
@@ -251,7 +237,6 @@ export default function DialerClient({
   // every digit typed rebuilds registerBrowserCall -> connectDevice -> useEffect,
   // disconnecting an already-ready WebRTC session while the user is dialing.
   const phoneNumberRef = useRef(phoneNumber)
-  const selectedCallerIdRef = useRef(selectedCallerId)
   const initialContactIdRef = useRef(activeContact?.id ?? null)
 
   useEffect(() => {
@@ -261,10 +246,6 @@ export default function DialerClient({
   useEffect(() => {
     phoneNumberRef.current = phoneNumber
   }, [phoneNumber])
-
-  useEffect(() => {
-    selectedCallerIdRef.current = selectedCallerId
-  }, [selectedCallerId])
 
   useEffect(() => {
     let saved: string | null = null
@@ -303,10 +284,7 @@ export default function DialerClient({
     return () => window.clearTimeout(timeout)
   }, [contactSearch])
 
-  const selectedProvider =
-    callerIds.find((number) => number.phoneNumber === selectedCallerId)?.provider ??
-    callerIds[0]?.provider ??
-    'signalwire'
+  const selectedProvider = 'signalwire' as const
 
   const formatTime = (seconds: number) =>
     `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
@@ -326,9 +304,8 @@ export default function DialerClient({
     if (existingRegistration) return existingRegistration
 
     const registration = (async () => {
-      const fromNumber = selectedCallerIdRef.current
       const toNumber = phoneNumberRef.current.trim()
-      if (!fromNumber || !/^\+[1-9]\d{7,14}$/.test(toNumber)) {
+      if (!/^\+[1-9]\d{7,14}$/.test(toNumber)) {
         throw new Error('Unable to register browser call because the dialed number is invalid.')
       }
 
@@ -338,7 +315,6 @@ export default function DialerClient({
         body: JSON.stringify({
           provider: input.provider,
           providerCallId,
-          fromNumber,
           toNumber,
           contactId: initialContactIdRef.current,
         }),
@@ -591,31 +567,28 @@ export default function DialerClient({
     }
   }, [updatePresence])
 
-  const fetchToken = useCallback(async (provider: DialerPhoneNumber['provider']): Promise<TokenPayload> => {
-    if (!selectedCallerId) throw new Error('Select an owned voice number first.')
-    const params = new URLSearchParams({ provider, callerId: selectedCallerId })
-    const response = await fetch(`/api/telephony/token?${params.toString()}`, {
+  const fetchToken = useCallback(async (): Promise<TokenPayload> => {
+    const response = await fetch('/api/telephony/token?provider=signalwire', {
       cache: 'no-store',
     })
-    const payload = (await response.json()) as TokenPayload & {
-      error?: string
-    }
+    const payload = (await response.json()) as TokenPayload & { error?: string }
 
     if (!response.ok) {
       throw new Error(payload.error ?? 'Unable to create voice token.')
     }
 
-    setTokenPayload(payload)
-    return payload
-  }, [selectedCallerId])
-
-  const connectDevice = useCallback(async () => {
-    if (!selectedCallerId) {
-      setDeviceState('offline')
-      setMessage('Import and select an owned voice number before connecting the softphone.')
-      return
+    if (!payload.callerId || !/^\+[1-9]\d{7,14}$/.test(payload.callerId)) {
+      throw new Error(
+        'Flowtix calling number is unavailable. Reconnect the softphone or contact Flowtix support.',
+      )
     }
 
+    setSelectedCallerId(payload.callerId)
+    setTokenPayload(payload)
+    return payload
+  }, [])
+
+  const connectDevice = useCallback(async () => {
     setDeviceState('connecting')
     const providerLabel = providerDisplayName()
     setMessage(`Connecting ${providerLabel} browser softphone…`)
@@ -628,7 +601,7 @@ export default function DialerClient({
       if (selectedProvider === 'signalwire') {
         const [signalWireModule, payload] = await Promise.all([
           import('@signalwire/js'),
-          fetchToken('signalwire'),
+          fetchToken(),
         ])
         if (!payload.projectId) {
           throw new Error('SignalWire Project ID is unavailable.')
@@ -751,7 +724,6 @@ export default function DialerClient({
   }, [
     fetchToken,
     handleSignalWireNotification,
-    selectedCallerId,
     selectedProvider,
   ])
 
@@ -801,7 +773,7 @@ export default function DialerClient({
     }
 
     if (!selectedCallerId) {
-      setMessage('No Flowtix caller ID is assigned to this workspace yet.')
+      setMessage('Flowtix calling number is unavailable. Reconnect the softphone or contact Flowtix support.')
       return
     }
 
@@ -1024,12 +996,6 @@ export default function DialerClient({
             <Radio className="h-5 w-5 text-cyan-300" />
           </div>
 
-          {callerIds.length === 0 ? (
-            <div className="mt-6 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-100">
-              Calling is not available for this workspace yet. Contact your workspace owner or Flowtix support.
-            </div>
-          ) : null}
-
           <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
               <div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
@@ -1076,7 +1042,7 @@ export default function DialerClient({
                     <button
                       type="button"
                       onClick={() => void placeCall()}
-                      disabled={deviceState !== 'ready' || !selectedCallerId}
+                      disabled={deviceState !== 'ready'}
                       className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 disabled:opacity-40"
                     >
                       <Phone className="h-7 w-7" />
@@ -1257,7 +1223,7 @@ Key points / objection handling:`}
               Automatic recording enabled
             </div>
             <p className="mt-1 text-xs leading-5 text-slate-400">
-              Flowtix requests provider recording when the call reaches the connected state.
+              Flowtix requests call recording when the call reaches the connected state.
             </p>
           </div>
         </section>
