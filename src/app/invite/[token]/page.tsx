@@ -30,12 +30,12 @@ function InvitationMessage({
   actionLabel?: string
 }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+    <main className="flowtix-utility-page grid min-h-screen place-items-center bg-transparent p-6 text-white">
+      <div className="flowtix-utility-card w-full max-w-md rounded-3xl p-8 text-center">
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="mt-3 text-slate-400">{description}</p>
         {actionHref && actionLabel ? (
-          <Link href={actionHref} className="mt-6 inline-block rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500">
+          <Link href={actionHref} className="mt-6 inline-block rounded-xl bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-5 py-3 font-semibold hover:brightness-110">
             {actionLabel}
           </Link>
         ) : null}
@@ -93,8 +93,8 @@ redirect(`/signup?${signupParams.toString()}`)
     }
 
     return (
-      <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
-        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center">
+      <main className="flowtix-utility-page grid min-h-screen place-items-center bg-transparent p-6 text-white">
+        <div className="flowtix-utility-card w-full max-w-md rounded-3xl p-8 text-center">
           <h1 className="text-2xl font-bold">Email does not match</h1>
           <p className="mt-3 text-slate-400">
             This invitation belongs to {preview.email}. Create or sign in to the account that uses that email to continue.
@@ -102,7 +102,7 @@ redirect(`/signup?${signupParams.toString()}`)
           <form action={continueWithInvitedEmail} className="mt-6">
             <button
               type="submit"
-              className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500"
+              className="w-full rounded-xl bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-5 py-3 font-semibold hover:brightness-110"
             >
               Continue with invited email
             </button>
@@ -133,8 +133,8 @@ redirect(`/signup?${signupParams.toString()}`)
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-950 p-6 text-white">
-      <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8">
+    <main className="flowtix-utility-page grid min-h-screen place-items-center bg-transparent p-6 text-white">
+      <div className="flowtix-utility-card w-full max-w-md rounded-3xl p-8">
         <p className="text-sm font-medium text-cyan-400">Flowtix invitation</p>
         <h1 className="mt-2 text-2xl font-bold">Join {preview.organization_name}</h1>
         <p className="mt-3 text-slate-400">
@@ -142,7 +142,7 @@ redirect(`/signup?${signupParams.toString()}`)
         </p>
         {query.error ? <div role="alert" className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{query.error}</div> : null}
         <form action={acceptInvitation} className="mt-6">
-          <button className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-500">Accept invitation</button>
+          <button className="w-full rounded-xl bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-5 py-3 font-semibold hover:brightness-110">Accept invitation</button>
         </form>
       </div>
     </main>

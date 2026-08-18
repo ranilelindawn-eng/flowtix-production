@@ -35,10 +35,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
 
   if (enterpriseRequested) {
     return (
-      <div className="min-h-screen bg-[#07111F] text-white">
+      <div className="flowtix-auth-page min-h-screen bg-transparent text-white">
         <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-          <div className="rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-10 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">
+          <div className="flowtix-auth-card rounded-[2rem] p-10 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
+            <p className="text-sm uppercase tracking-[0.28em] text-violet-300">
               Enterprise
             </p>
             <h1 className="mt-4 text-3xl font-semibold text-white">
@@ -52,7 +52,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             <div className="mt-8 grid gap-3">
               <Link
                 href="/contact?topic=enterprise"
-                className="rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 font-semibold text-white"
+                className="rounded-full bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-6 py-3 font-semibold text-white"
               >
                 Contact Flowtix
               </Link>
@@ -74,11 +74,11 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   if (!invitationSignup) loginParams.set('plan', plan)
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-white">
+    <div className="flowtix-auth-page min-h-screen bg-transparent text-white">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
+        <div className="flowtix-auth-card rounded-[2rem] p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
           <div className="mb-8 text-center">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">{invitationSignup ? 'Workspace invitation' : 'Create account'}</p>
+            <p className="text-sm uppercase tracking-[0.28em] text-violet-300">{invitationSignup ? 'Workspace invitation' : 'Create account'}</p>
             <h1 className="mt-4 text-3xl font-semibold text-white">{invitationSignup ? 'Create your Flowtix account' : 'Join Flowtix'}</h1>
             {invitationSignup ? (
               <p className="mt-3 text-sm leading-6 text-slate-400">

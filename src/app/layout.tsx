@@ -6,6 +6,7 @@ import {
   FLOWTIX_SITE_URL,
   FLOWTIX_SOCIAL_IMAGE,
 } from '@/lib/seo'
+import FlowtixAmbientBackdrop from '@/components/layout/FlowtixAmbientBackdrop'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
@@ -66,9 +67,10 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" className="bg-slate-950" suppressHydrationWarning>
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
-        {children}
+    <html lang="en" className="bg-[#070A18]" suppressHydrationWarning>
+      <body className="flowtix-root min-h-screen text-slate-100 antialiased">
+        <FlowtixAmbientBackdrop />
+        <div className="relative z-10 min-h-screen">{children}</div>
       </body>
     </html>
   )

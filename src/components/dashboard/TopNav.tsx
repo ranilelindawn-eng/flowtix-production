@@ -107,7 +107,7 @@ export default function TopNav({
   return (
     <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
       <div>
-        <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">
+        <p className="text-sm uppercase tracking-[0.28em] text-[#8B90FF]">
           Organization
         </p>
 
@@ -123,7 +123,7 @@ export default function TopNav({
           <button
             type="button"
             aria-label="Notifications"
-            className="inline-flex h-12 min-w-[3rem] items-center justify-center rounded-3xl border border-white/10 bg-[#0B1726]/90 p-3 text-slate-300 transition hover:border-white/20 hover:text-white"
+            className="inline-flex h-12 min-w-[3rem] items-center justify-center rounded-3xl border border-white/10 bg-[#0B0F22]/80 p-3 text-slate-300 transition hover:border-white/20 hover:text-white"
           >
             <Bell className="h-5 w-5" />
           </button>
@@ -134,7 +134,7 @@ export default function TopNav({
               onClick={() => setIsOpen((current) => !current)}
               aria-expanded={isOpen}
               aria-haspopup="menu"
-              className="inline-flex items-center gap-3 rounded-3xl border border-white/10 bg-[#0B1726]/90 px-4 py-3 text-sm text-white transition hover:border-white/20"
+              className="inline-flex items-center gap-3 rounded-3xl border border-white/10 bg-[#0B0F22]/80 px-4 py-3 text-sm text-white transition hover:border-white/20"
             >
               {avatarUrl ? (
                 <span
@@ -146,7 +146,7 @@ export default function TopNav({
                   }}
                 />
               ) : (
-                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#22D3EE] to-[#2563EB] font-semibold text-white">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#4F8BFF] to-[#8B5CF6] font-semibold text-white">
                   {getInitials(userName)}
                 </span>
               )}
@@ -166,7 +166,7 @@ export default function TopNav({
               <div
                 role="menu"
                 aria-label="User menu"
-                className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726] p-2 shadow-2xl"
+                className="absolute right-0 z-50 mt-3 w-64 overflow-hidden rounded-3xl border border-white/10 bg-[#0B0F22]/95 p-2 shadow-[0_20px_70px_rgba(0,0,0,.5)] backdrop-blur-2xl"
               >
                 <div className="border-b border-white/10 px-4 py-3">
                   <p className="truncate text-sm font-semibold text-white">

@@ -395,14 +395,14 @@ export default function Sidebar({
     getOrganizationInitial(organizationName)
 
   return (
-    <aside className="h-full overflow-y-auto overscroll-contain border-r border-white/10 bg-[#0B1726] text-white [scrollbar-gutter:stable]">
+    <aside className="h-full overflow-y-auto overscroll-contain border-r border-white/[0.06] bg-[#070A18]/82 backdrop-blur-2xl text-white [scrollbar-gutter:stable]">
       <div className="mx-auto flex max-w-7xl flex-col px-6 py-6 lg:px-8 lg:py-8">
         <Link
           href="/dashboard/settings/organization"
           className="mb-8 flex items-center gap-3 rounded-2xl transition hover:opacity-90"
           aria-label="Open organization settings"
         >
-          <div className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#22D3EE]/20 to-[#2563EB]/15 text-white ring-1 ring-white/10">
+          <div className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#4F8BFF]/25 to-[#C05CFF]/20 text-white ring-1 ring-white/10">
             {organizationLogoUrl ? (
               <Image
                 src={organizationLogoUrl}
@@ -420,7 +420,7 @@ export default function Sidebar({
           </div>
 
           <div className="min-w-0">
-            <p className="text-sm uppercase tracking-[0.32em] text-slate-400">
+            <p className="text-sm uppercase tracking-[0.32em] text-white/40">
               Flowtix
             </p>
 
@@ -462,7 +462,7 @@ export default function Sidebar({
                   }
                   className={
                     isActive
-                      ? 'flex items-center gap-3 rounded-3xl bg-white/5 px-4 py-3 text-white shadow-[0_12px_35px_-20px_rgba(34,211,238,0.55)]'
+                      ? 'flex items-center gap-3 rounded-3xl border border-[#7B5CFF]/20 bg-gradient-to-r from-[#4F8BFF]/10 to-[#8B5CF6]/10 px-4 py-3 text-white shadow-[0_12px_35px_-20px_rgba(123,92,255,0.7)]'
                       : isLocked
                         ? 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-400 transition hover:bg-white/5 hover:text-slate-200'
                         : 'flex items-center gap-3 rounded-3xl px-4 py-3 text-slate-300 transition hover:bg-white/5 hover:text-white'
@@ -482,7 +482,7 @@ export default function Sidebar({
 
                   {isLocked && requiredPlan ? (
                     <span
-                      className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200"
+                      className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200"
                       title={`${requiredPlan.name} plan required`}
                     >
                       <LockKeyhole
@@ -501,7 +501,7 @@ export default function Sidebar({
         </div>
 
         <div className="lg:hidden">
-          <details className="rounded-3xl border border-white/10 bg-[#07111F]/70 p-4">
+          <details className="rounded-3xl border border-white/10 bg-[#0B0F22]/70 p-4">
             <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-semibold text-white">
               Menu
             </summary>
@@ -554,7 +554,7 @@ export default function Sidebar({
 
                     {isLocked && requiredPlan ? (
                       <span
-                        className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-cyan-200"
+                        className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200"
                         title={`${requiredPlan.name} plan required`}
                       >
                         <LockKeyhole

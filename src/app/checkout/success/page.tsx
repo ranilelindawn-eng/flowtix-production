@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function CheckoutSuccessPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#07111F] px-6 text-white">
-      <section className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-10 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
+    <main className="flowtix-utility-page flex min-h-screen items-center justify-center bg-transparent px-6 text-white">
+      <section className="flowtix-utility-card w-full max-w-xl rounded-[2rem] p-10 text-center shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-400/10 text-2xl text-emerald-300">
           ✓
         </div>
@@ -34,7 +34,7 @@ export default function CheckoutSuccessPage() {
 
         <Link
           href="/login"
-          className="mt-8 inline-flex rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 px-7 py-3 font-semibold text-white"
+          className="mt-8 inline-flex rounded-full bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-7 py-3 font-semibold text-white"
         >
           Continue to sign in
         </Link>

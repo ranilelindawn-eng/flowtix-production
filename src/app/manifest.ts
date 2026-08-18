@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Cloud dialer and CRM workspace for conversation-driven teams.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#07111F',
-    theme_color: '#07111F',
+    background_color: '#070A18',
+    theme_color: '#070A18',
     icons: [
       {
         src: '/flowtix-logo-512.png',

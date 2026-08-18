@@ -18,8 +18,8 @@ export default async function EnterpriseCheckoutPage({
   const success = params.status === 'success'
 
   return (
-    <main className="min-h-screen bg-[#07111F] px-6 py-20 text-white">
-      <div className="mx-auto max-w-2xl rounded-3xl border border-white/10 bg-white/[0.03] p-8 text-center sm:p-12">
+    <main className="flowtix-utility-page min-h-screen bg-transparent px-6 py-20 text-white">
+      <div className="flowtix-utility-card mx-auto max-w-2xl rounded-3xl p-8 text-center sm:p-12">
         <div
           className={`mx-auto flex h-14 w-14 items-center justify-center rounded-2xl ${
             success
@@ -48,7 +48,7 @@ export default async function EnterpriseCheckoutPage({
             : 'No Enterprise activation was performed. You may return to the secure checkout link from your Flowtix contact when you are ready.'}
         </p>
 
-        <div className="mt-8 rounded-2xl border border-white/10 bg-[#050D18] p-5 text-left">
+        <div className="mt-8 rounded-2xl border border-white/10 bg-[#0B0F22]/75 p-5 text-left">
           <div className="flex items-start gap-3">
             <CreditCard className="mt-0.5 h-5 w-5 text-blue-300" />
             <div>
@@ -66,7 +66,7 @@ export default async function EnterpriseCheckoutPage({
 
         <Link
           href="/contact?topic=enterprise"
-          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-500"
+          className="mt-8 inline-flex min-h-11 items-center justify-center rounded-xl bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-5 text-sm font-semibold text-white hover:brightness-110"
         >
           Contact Flowtix
         </Link>

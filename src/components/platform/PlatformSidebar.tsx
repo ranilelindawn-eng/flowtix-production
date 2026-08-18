@@ -60,9 +60,9 @@ export default function PlatformSidebar({ role }: { role: PlatformRole }) {
   )
 
   return (
-    <aside className="flex h-full flex-col border-r border-white/10 bg-[#050D18] px-4 py-6">
+    <aside className="flex h-full flex-col border-r border-white/[0.06] bg-[#070A18]/82 backdrop-blur-2xl px-4 py-6">
       <div className="flex items-center gap-3 px-3">
-        <div className="rounded-xl bg-blue-500/15 p-2 text-blue-300">
+        <div className="rounded-xl bg-gradient-to-br from-[#4F8BFF]/20 to-[#8B5CF6]/20 p-2 text-violet-200">
           <ShieldCheck className="h-6 w-6" />
         </div>
         <div>
@@ -98,7 +98,7 @@ export default function PlatformSidebar({ role }: { role: PlatformRole }) {
               href={item.href}
               className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${
                 active
-                  ? 'bg-blue-500/15 text-blue-200'
+                  ? 'border border-[#7B5CFF]/20 bg-gradient-to-r from-[#4F8BFF]/10 to-[#8B5CF6]/10 text-violet-100'
                   : 'text-slate-400 hover:bg-white/5 hover:text-white'
               }`}
             >
@@ -109,7 +109,7 @@ export default function PlatformSidebar({ role }: { role: PlatformRole }) {
         })}
       </nav>
 
-      <div className="mt-auto rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="mt-auto rounded-2xl border border-white/[0.07] bg-white/[0.035] p-3">
         <p className="text-xs uppercase tracking-wider text-slate-500">Platform role</p>
         <p className="mt-1 text-sm font-medium capitalize text-slate-200">
           {role.replaceAll('_', ' ')}

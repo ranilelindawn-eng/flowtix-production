@@ -25,7 +25,7 @@ export default async function PlatformLayout({ children }: { children: ReactNode
     : 'platform-user@flowtix.work'
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-white">
+    <div className="flowtix-platform-shell min-h-screen bg-transparent text-white">
       <div className="lg:fixed lg:inset-y-0 lg:left-0 lg:w-[280px]">
         <PlatformSidebar role={membership.role} />
       </div>

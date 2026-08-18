@@ -37,11 +37,11 @@ export default async function LoginPage({
         : null
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-white">
+    <div className="flowtix-auth-page min-h-screen bg-transparent text-white">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
+        <div className="flowtix-auth-card rounded-[2rem] p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
           <div className="mb-8 text-center">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">
+            <p className="text-sm uppercase tracking-[0.28em] text-violet-300">
               Sign in
             </p>
 
@@ -130,7 +130,7 @@ export default async function LoginPage({
           <p className="mt-2 text-center text-sm text-slate-400">
             <Link
               href="/forgot-password"
-              className="text-[#22D3EE] underline"
+              className="text-violet-300 underline"
             >
               Forgot your password?
             </Link>

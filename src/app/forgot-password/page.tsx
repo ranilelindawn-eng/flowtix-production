@@ -107,11 +107,11 @@ const redirectTo =
   }
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-white">
+    <div className="flowtix-auth-page min-h-screen bg-transparent text-white">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <div className="rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
+        <div className="flowtix-auth-card rounded-[2rem] p-10 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.55)]">
           <div className="mb-8 text-center">
-            <p className="text-sm uppercase tracking-[0.28em] text-[#22D3EE]">
+            <p className="text-sm uppercase tracking-[0.28em] text-violet-300">
               Reset password
             </p>
 
@@ -139,7 +139,7 @@ const redirectTo =
                 autoComplete="email"
                 required
                 disabled={isSubmitting}
-                className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#22D3EE]/70 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-2 w-full rounded-3xl border border-white/10 bg-[#07111F] px-4 py-3 text-white outline-none transition focus:border-[#7B5CFF]/70 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
 
@@ -166,7 +166,7 @@ const redirectTo =
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-full bg-gradient-to-r from-[#2563EB] to-[#22D3EE] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#22D3EE]/25 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+              className="w-full rounded-full bg-gradient-to-r from-[#4F8BFF] to-[#9A5CFF] px-6 py-3 text-base font-semibold text-white shadow-lg shadow-[#7B5CFF]/25 transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
             >
               {isSubmitting
                 ? 'Sending reset email...'
@@ -178,7 +178,7 @@ const redirectTo =
             Remembered your password?{' '}
             <Link
               href="/login"
-              className="text-[#22D3EE] underline"
+              className="text-violet-300 underline"
             >
               Sign in
             </Link>

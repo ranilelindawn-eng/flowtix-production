@@ -294,3 +294,190 @@ table {
     display: none !important;
   }
 }
+/* -------------------------------------------------------------------------- */
+/* Flowtix visual system — presentation only                                  */
+/* -------------------------------------------------------------------------- */
+:root {
+  --color-primary: #7b5cff;
+  --color-primary-hover: #8b6dff;
+  --color-secondary: #4f8bff;
+  --color-background: #070a18;
+  --color-surface: #0b0f22;
+  --color-surface-elevated: #151938;
+  --color-foreground: #ffffff;
+  --color-muted: #8b90a7;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --flowtix-violet: #7b5cff;
+  --flowtix-blue: #4f8bff;
+  --flowtix-fuchsia: #c05cff;
+  --flowtix-cyan: #22d3ee;
+  --flowtix-panel: rgba(11, 15, 34, 0.78);
+  --flowtix-panel-strong: rgba(18, 22, 49, 0.9);
+}
+
+body.flowtix-root {
+  position: relative;
+  isolation: isolate;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 76% 8%, rgba(123, 92, 255, 0.12), transparent 30%),
+    radial-gradient(circle at 10% 48%, rgba(79, 139, 255, 0.10), transparent 34%),
+    linear-gradient(180deg, #070a18 0%, #080b1b 42%, #070a18 100%);
+}
+
+.flowtix-ambient-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 84% 12%, rgba(123, 92, 255, 0.14), transparent 28%),
+    radial-gradient(circle at 12% 65%, rgba(79, 139, 255, 0.12), transparent 30%);
+}
+
+.flowtix-ambient-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(rgba(124, 139, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124, 139, 255, 0.12) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(circle at 50% 28%, black 0%, transparent 72%);
+}
+
+.flowtix-ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(90px);
+  will-change: transform;
+}
+
+.flowtix-ambient-orb-one {
+  width: min(680px, 70vw);
+  height: min(680px, 70vw);
+  right: -180px;
+  top: -220px;
+  opacity: 0.42;
+  background: radial-gradient(circle at 30% 30%, #8b5cf6 0%, #4f3cc0 35%, transparent 70%);
+  animation: flowtixFloatOne 12s ease-in-out infinite;
+}
+
+.flowtix-ambient-orb-two {
+  width: min(520px, 66vw);
+  height: min(520px, 66vw);
+  left: -170px;
+  top: 34%;
+  opacity: 0.34;
+  background: radial-gradient(circle at 40% 40%, #4f8bff 0%, #2a5bd7 45%, transparent 75%);
+  animation: flowtixFloatTwo 14s ease-in-out infinite;
+}
+
+.flowtix-ambient-orb-three {
+  width: min(720px, 78vw);
+  height: min(720px, 78vw);
+  left: 30%;
+  bottom: -360px;
+  opacity: 0.22;
+  background: radial-gradient(circle at 50% 50%, #7a2a8a 0%, #3a2a7a 40%, transparent 70%);
+  animation: flowtixDrift 16s ease-in-out infinite reverse;
+}
+
+.flowtix-ambient-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+}
+
+.flowtix-marketing-shell,
+.flowtix-dashboard-shell,
+.flowtix-platform-shell,
+.flowtix-auth-page,
+.flowtix-utility-page {
+  position: relative;
+  background: transparent;
+}
+
+.flowtix-glass-card,
+.flowtix-auth-card,
+.flowtix-utility-card {
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background:
+    linear-gradient(180deg, rgba(21, 25, 56, 0.68), rgba(11, 15, 34, 0.74));
+  box-shadow:
+    0 20px 70px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  backdrop-filter: blur(20px);
+}
+
+.flowtix-glass-card:hover {
+  border-color: rgba(123, 92, 255, 0.26);
+  box-shadow:
+    0 26px 80px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(123, 92, 255, 0.08),
+    0 0 34px rgba(123, 92, 255, 0.10);
+}
+
+.flowtix-dashboard-shell main,
+.flowtix-platform-shell main {
+  position: relative;
+}
+
+.flowtix-dashboard-shell main::before,
+.flowtix-platform-shell main::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle at 72% 0%, rgba(123, 92, 255, 0.055), transparent 28%);
+}
+
+.flowtix-auth-page,
+.flowtix-utility-page {
+  min-height: 100vh;
+}
+
+.flowtix-auth-card,
+.flowtix-utility-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.flowtix-auth-card::before,
+.flowtix-utility-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(123, 92, 255, 0.85), rgba(79, 139, 255, 0.7), transparent);
+}
+
+@keyframes flowtixFloatOne {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(-48px, 34px, 0) scale(1.05); }
+}
+
+@keyframes flowtixFloatTwo {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(52px, -26px, 0) scale(1.04); }
+}
+
+@keyframes flowtixDrift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  33% { transform: translate3d(40px, -18px, 0); }
+  66% { transform: translate3d(-26px, 22px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .flowtix-ambient-orb-one,
+  .flowtix-ambient-orb-two,
+  .flowtix-ambient-orb-three {
+    animation: none !important;
+  }
+}

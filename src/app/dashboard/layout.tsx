@@ -124,7 +124,7 @@ export default async function DashboardLayout({
     'User'
 
   return (
-    <div className="min-h-screen bg-[#07111F] text-white">
+    <div className="flowtix-dashboard-shell min-h-screen bg-transparent text-white">
       <SessionTracker />
       <GuideHelpButton />
 
@@ -142,7 +142,7 @@ export default async function DashboardLayout({
       </div>
 
       <div className="lg:pl-[280px]">
-        <div className="border-b border-white/10 bg-[#07111F]/90 py-5 backdrop-blur-xl">
+        <div className="border-b border-white/[0.06] bg-[#070A18]/60 py-4 backdrop-blur-2xl">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 lg:px-8">
             <div className="text-sm text-slate-400">
               Flowtix Dashboard
@@ -151,7 +151,7 @@ export default async function DashboardLayout({
             <div className="hidden items-center gap-4 text-slate-400 sm:flex">
               <span>Signed in as</span>
 
-              <span className="rounded-full bg-white/5 px-3 py-2 text-white">
+              <span className="rounded-full border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-white/85">
                 {userEmail}
               </span>
             </div>
