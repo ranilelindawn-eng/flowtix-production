@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { decryptIntegrationSecret } from '@/lib/integrations/crypto'
+import { decryptIntegrationSecret, encryptIntegrationSecret } from '@/lib/integrations/crypto'
 import { createTelephonyAdminClient } from '@/lib/telephony/admin'
 import { listOwnedProviderNumbers } from '@/lib/telephony/provider-admin'
 import {
@@ -55,6 +55,29 @@ function sourceIdentity(input: {
   const spaceUrl = normalizeSpaceUrl(input.config.space_url)
   if (!projectId || !spaceUrl) return ''
   return `${projectId}|${spaceUrl}`
+}
+
+function getPlatformSignalWireEnvironmentSource(): {
+  config: Record<string, unknown>
+  credentials: Credentials
+} | null {
+  const projectId = text(process.env.SIGNALWIRE_PROJECT_ID)
+  const apiToken = text(process.env.SIGNALWIRE_API_TOKEN)
+  const spaceUrl = normalizeSpaceUrl(process.env.SIGNALWIRE_SPACE_URL)
+
+  const configuredValues = [projectId, apiToken, spaceUrl].filter(Boolean).length
+  if (configuredValues === 0) return null
+
+  if (configuredValues !== 3) {
+    throw new Error(
+      'Flowtix platform calling configuration is incomplete. SIGNALWIRE_PROJECT_ID, SIGNALWIRE_API_TOKEN, and SIGNALWIRE_SPACE_URL must all be configured.',
+    )
+  }
+
+  return {
+    config: { space_url: spaceUrl },
+    credentials: { projectId, apiToken },
+  }
 }
 
 /**
@@ -127,17 +150,15 @@ async function provisionPlatformSignalWireConnection(
     )
   }
 
+  const environmentSource = getPlatformSignalWireEnvironmentSource()
   const sourceIds = (sourceIntegrations ?? []).map((row) => row.id)
-  if (sourceIds.length === 0) {
-    throw new Error(
-      'Flowtix calling infrastructure is not configured yet. Contact Flowtix support.',
-    )
-  }
 
-  const { data: sourceSecrets, error: sourceSecretError } = await admin
-    .from('organization_integration_secrets')
-    .select('integration_id,encrypted_credentials,credential_version,updated_at')
-    .in('integration_id', sourceIds)
+  const { data: sourceSecrets, error: sourceSecretError } = sourceIds.length > 0
+    ? await admin
+        .from('organization_integration_secrets')
+        .select('integration_id,encrypted_credentials,credential_version,updated_at')
+        .in('integration_id', sourceIds)
+    : { data: [], error: null }
 
   if (sourceSecretError) {
     throw new Error(
@@ -167,26 +188,43 @@ async function provisionPlatformSignalWireConnection(
     }
   })
 
-  if (usableSources.length === 0) {
+  if (!environmentSource && usableSources.length === 0) {
     throw new Error(
-      'Flowtix calling infrastructure is missing valid provider credentials. Contact Flowtix support.',
+      'Flowtix platform calling is not configured. Configure the platform SignalWire credentials before subscribers place outbound calls.',
     )
   }
 
-  const providerIdentities = new Set(
-    usableSources.map((source) => source.identity),
-  )
-  if (providerIdentities.size !== 1) {
-    throw new Error(
-      'Flowtix calling infrastructure has multiple provider accounts and requires platform review.',
+  if (!environmentSource) {
+    const providerIdentities = new Set(
+      usableSources.map((source) => source.identity),
     )
+    if (providerIdentities.size !== 1) {
+      throw new Error(
+        'Flowtix calling infrastructure has multiple provider accounts and requires platform review.',
+      )
+    }
   }
 
-  const source = [...usableSources].sort((left, right) => {
+  const databaseSource = [...usableSources].sort((left, right) => {
     const leftUpdated = Date.parse(text(left.secret.updated_at)) || 0
     const rightUpdated = Date.parse(text(right.secret.updated_at)) || 0
     return rightUpdated - leftUpdated
   })[0]
+
+  const sourceConfig = environmentSource?.config ?? databaseSource?.integration.config ?? {}
+  const encryptedCredentials = environmentSource
+    ? encryptIntegrationSecret(environmentSource.credentials)
+    : databaseSource?.secret.encrypted_credentials
+  const credentialVersion = environmentSource
+    ? 1
+    : databaseSource?.secret.credential_version ?? 1
+
+  if (!encryptedCredentials) {
+    throw new Error(
+      'Flowtix platform calling credentials are unavailable. Contact Flowtix support.',
+    )
+  }
+
   const now = new Date().toISOString()
 
   const { data: createdIntegration, error: integrationError } = await admin
@@ -197,7 +235,7 @@ async function provisionPlatformSignalWireConnection(
         provider: SIGNALWIRE_PROVIDER,
         enabled: true,
         status: 'connected',
-        config: source.integration.config ?? {},
+        config: sourceConfig,
         connected_by: null,
         connected_at: now,
         last_error: null,
@@ -220,8 +258,8 @@ async function provisionPlatformSignalWireConnection(
       {
         integration_id: createdIntegration.id,
         organization_id: organizationId,
-        encrypted_credentials: source.secret.encrypted_credentials,
-        credential_version: source.secret.credential_version ?? 1,
+        encrypted_credentials: encryptedCredentials,
+        credential_version: credentialVersion,
         updated_at: now,
       },
       { onConflict: 'integration_id' },
