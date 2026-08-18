@@ -1,36 +1,75 @@
 import type { Metadata } from 'next'
 import FlowtixLandingPage from '@/components/landing/FlowtixLandingPage'
+import JsonLd from '@/components/seo/JsonLd'
+import {
+  FLOWTIX_DEFAULT_DESCRIPTION,
+  FLOWTIX_SITE_URL,
+  FLOWTIX_SOCIAL_IMAGE,
+} from '@/lib/seo'
+
+const title = 'Flowtix | AI Cloud Dialer & CRM for Sales Teams'
+const description =
+  'Flowtix combines cloud calling, CRM, sales automation, AI-assisted workflows, analytics, pipelines, campaigns, and team collaboration in one secure workspace.'
+const organizationId = `${FLOWTIX_SITE_URL}/#organization`
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': organizationId,
+  name: 'Flowtix',
+  url: FLOWTIX_SITE_URL,
+  logo: {
+    '@type': 'ImageObject',
+    url: `${FLOWTIX_SITE_URL}/flowtix-logo-512.png`,
+    contentUrl: `${FLOWTIX_SITE_URL}/flowtix-logo-512.png`,
+    width: 512,
+    height: 512,
+  },
+  description: FLOWTIX_DEFAULT_DESCRIPTION,
+}
+
+const websiteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  '@id': `${FLOWTIX_SITE_URL}/#website`,
+  name: 'Flowtix',
+  alternateName: 'flowtix.work',
+  url: FLOWTIX_SITE_URL,
+  description: FLOWTIX_DEFAULT_DESCRIPTION,
+  inLanguage: 'en',
+  publisher: {
+    '@id': organizationId,
+  },
+}
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.flowtix.work'),
   title: {
-    absolute: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
+    absolute: title,
   },
-  description:
-    'Flowtix brings CRM, cloud communications, workflow automation, AI-assisted sales tools, analytics, pipelines, and team collaboration into one workspace.',
-  alternates: { canonical: '/' },
+  description,
+  alternates: {
+    canonical: FLOWTIX_SITE_URL,
+  },
   openGraph: {
     type: 'website',
-    url: 'https://www.flowtix.work',
+    url: FLOWTIX_SITE_URL,
     siteName: 'Flowtix',
-    title: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
-    description:
-      'Manage customer relationships, communications, automation, AI-assisted workflows, analytics, and team activity from one sales workspace.',
+    title,
+    description,
     images: [
       {
-        url: '/social-preview.png',
+        url: FLOWTIX_SOCIAL_IMAGE,
         width: 1200,
         height: 630,
-        alt: 'Flowtix AI cloud communications CRM for sales teams',
+        alt: 'Flowtix AI cloud dialer and CRM for sales teams',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Flowtix | AI Cloud Communications CRM for Sales Teams',
-    description:
-      'Manage customer relationships, communications, automation, AI-assisted workflows, analytics, and team activity from one sales workspace.',
-    images: ['/social-preview.png'],
+    title,
+    description,
+    images: [FLOWTIX_SOCIAL_IMAGE],
   },
   robots: {
     index: true,
@@ -45,33 +84,11 @@ export const metadata: Metadata = {
   },
 }
 
-const softwareSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'Flowtix',
-  applicationCategory: 'BusinessApplication',
-  operatingSystem: 'Web',
-  url: 'https://www.flowtix.work',
-  description:
-    'Multi-tenant CRM and cloud communications SaaS for sales teams, call centers, virtual assistants, agencies, and growing businesses.',
-  featureList: [
-    'Customer relationship management',
-    'Sales pipelines',
-    'Workflow automation',
-    'Team and role management',
-    'Analytics and reporting',
-    'Cloud communications workflows',
-    'AI-assisted sales workflows',
-  ],
-}
-
 export default function Home() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
-      />
+      <JsonLd data={organizationSchema} />
+      <JsonLd data={websiteSchema} />
       <FlowtixLandingPage />
     </>
   )

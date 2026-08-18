@@ -1,7 +1,14 @@
 import type { Metadata } from 'next'
 
 export const FLOWTIX_SITE_URL = 'https://www.flowtix.work'
-export const FLOWTIX_SOCIAL_IMAGE = '/social-preview.png'
+export const FLOWTIX_SOCIAL_IMAGE = `${FLOWTIX_SITE_URL}/social-preview.png`
+export const FLOWTIX_SITE_NAME = 'Flowtix'
+export const FLOWTIX_DEFAULT_DESCRIPTION =
+  'AI cloud dialer and CRM for sales teams managing contacts, pipelines, calls, automation, analytics, and team workflows.'
+
+export function absoluteFlowtixUrl(path: string) {
+  return new URL(path === '/' ? '/' : path, `${FLOWTIX_SITE_URL}/`).toString()
+}
 
 export function createMarketingMetadata({
   title,
@@ -12,20 +19,19 @@ export function createMarketingMetadata({
   description: string
   path: string
 }): Metadata {
-  const canonicalPath = path === '/' ? '/' : path
-  const canonicalUrl = `${FLOWTIX_SITE_URL}${path === '/' ? '' : path}`
-  const socialTitle = `${title} | Flowtix`
+  const canonicalUrl = absoluteFlowtixUrl(path)
+  const socialTitle = `${title} | ${FLOWTIX_SITE_NAME}`
 
   return {
     title,
     description,
     alternates: {
-      canonical: canonicalPath,
+      canonical: canonicalUrl,
     },
     openGraph: {
       type: 'website',
       locale: 'en_US',
-      siteName: 'Flowtix',
+      siteName: FLOWTIX_SITE_NAME,
       url: canonicalUrl,
       title: socialTitle,
       description,
@@ -34,7 +40,7 @@ export function createMarketingMetadata({
           url: FLOWTIX_SOCIAL_IMAGE,
           width: 1200,
           height: 630,
-          alt: 'Flowtix AI cloud communications CRM for sales teams',
+          alt: 'Flowtix AI cloud dialer and CRM for sales teams',
         },
       ],
     },

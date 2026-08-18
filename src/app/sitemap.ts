@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next'
-
-const SITE_URL = 'https://www.flowtix.work'
+import { FLOWTIX_SITE_URL } from '@/lib/seo'
 
 const routes = [
   '',
@@ -39,7 +38,7 @@ const highPriorityRoutes = new Set([
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return routes.map((route) => ({
-    url: `${SITE_URL}${route}`,
+    url: `${FLOWTIX_SITE_URL}${route}`,
     changeFrequency: route === '' ? 'weekly' : 'monthly',
     priority: route === '' ? 1 : highPriorityRoutes.has(route) ? 0.8 : 0.6,
   }))

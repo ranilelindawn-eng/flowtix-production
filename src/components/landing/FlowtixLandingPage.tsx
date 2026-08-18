@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
@@ -24,7 +25,6 @@ import {
   Zap,
 } from 'lucide-react'
 
-import Logo from '@/components/Logo'
 import {
   FLOWTIX_PLAN_ORDER,
   FLOWTIX_PLANS,
@@ -54,26 +54,31 @@ const features = [
     icon: PhoneCall,
     title: 'Cloud Dialer',
     copy: 'Call from the Flowtix workspace with provider-connected numbers, contact context, recordings, and call controls.',
+    href: '/ai-cloud-dialer',
   },
   {
     icon: BrainCircuit,
     title: 'AI Assistant',
     copy: 'Turn conversations into summaries, coaching insights, follow-up drafts, and useful next actions.',
+    href: '/ai-features',
   },
   {
     icon: Layers3,
     title: 'Pipelines & CRM',
     copy: 'Organize contacts, companies, deals, tasks, activities, and sales progress in one connected workspace.',
+    href: '/sales-crm',
   },
   {
     icon: Workflow,
     title: 'Automation',
     copy: 'Coordinate sequences, campaigns, post-call follow-up, and background work with controlled automation.',
+    href: '/sales-automation',
   },
   {
     icon: BarChart3,
     title: 'Analytics',
     copy: 'Review call, agent, campaign, sales, and operational performance from your Flowtix reporting workspace.',
+    href: '/features',
   },
 ]
 
@@ -87,8 +92,14 @@ const proofPoints = [
 function Brand() {
   return (
     <Link href="/" className="inline-flex items-center gap-3" aria-label="Flowtix home">
-      <span className="grid h-10 w-10 place-items-center rounded-xl border border-violet-300/30 bg-gradient-to-br from-blue-500/30 to-fuchsia-500/30 shadow-[0_0_28px_rgba(139,92,246,.22)]">
-        <Logo className="h-7 w-7" />
+      <span className="grid h-10 w-10 place-items-center overflow-hidden rounded-xl border border-cyan-300/30 bg-[#07111f] shadow-[0_0_28px_rgba(14,165,233,.22)]">
+        <Image
+          src="/flowtix-logo-512.png"
+          alt=""
+          width={40}
+          height={40}
+          className="h-full w-full object-cover"
+        />
       </span>
       <span className="text-xl font-semibold tracking-tight text-white">Flowtix</span>
     </Link>
@@ -148,50 +159,34 @@ function AmbientBackground() {
   )
 }
 
-function ProductVisual() {
+function BrandBannerVisual() {
   const reduceMotion = useReducedMotion()
+
   return (
-    <div className="relative mx-auto w-full max-w-[760px]">
-      <motion.div initial={reduceMotion ? false : { opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="relative overflow-hidden rounded-[28px] border border-violet-300/20 bg-[#07101f]/95 shadow-[0_35px_100px_-35px_rgba(37,99,235,.75)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <div className="flex gap-2"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div>
-          <span className="text-[10px] uppercase tracking-[.2em] text-slate-500">Flowtix workspace</span>
-        </div>
-        <div className="grid min-h-[430px] md:grid-cols-[145px_1fr]">
-          <aside className="hidden border-r border-white/10 bg-[#050a14] p-4 md:block">
-            <div className="flex items-center gap-2 text-sm font-semibold text-white"><Logo className="h-6 w-6" /> Flowtix</div>
-            <div className="mt-7 space-y-2 text-[11px] text-slate-500">
-              {['Dashboard', 'Contacts', 'Pipelines', 'Calls', 'Campaigns', 'AI Workspace', 'Reports', 'Settings'].map((item, index) => <div key={item} className={`rounded-lg px-3 py-2.5 ${index === 0 ? 'bg-blue-600/20 text-blue-200' : ''}`}>{item}</div>)}
-            </div>
-          </aside>
-          <div className="p-5 sm:p-7">
-            <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-violet-300">Sales command center</p>
-            <h3 className="mt-2 text-xl font-semibold text-white">One workspace for the sales conversation.</h3>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              {[
-                [PhoneCall, 'Cloud calling', 'Provider-connected calling and call records'],
-                [ContactRound, 'CRM context', 'Contacts, companies, tasks, and deals'],
-                [BrainCircuit, 'AI assistance', 'Summaries, analysis, and follow-up support'],
-                [Workflow, 'Automation', 'Sequences, campaigns, and post-call workflows'],
-              ].map(([Icon, title, copy]) => {
-                const ItemIcon = Icon as typeof PhoneCall
-                return <div key={title as string} className="rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4"><ItemIcon className="h-5 w-5 text-cyan-300" /><p className="mt-4 text-sm font-semibold text-white">{title as string}</p><p className="mt-2 text-xs leading-5 text-slate-500">{copy as string}</p></div>
-              })}
-            </div>
-            <div className="mt-4 rounded-2xl border border-violet-300/15 bg-gradient-to-r from-blue-500/[0.08] to-fuchsia-500/[0.08] p-4">
-              <div className="flex items-center gap-3"><Sparkles className="h-5 w-5 text-violet-300" /><div><p className="text-sm font-semibold text-white">AI-assisted follow-up</p><p className="mt-1 text-xs text-slate-500">Use connected conversation records to support summaries and next actions.</p></div></div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-      <motion.div className="absolute -left-5 bottom-10 hidden w-48 rounded-2xl border border-emerald-300/20 bg-[#081528]/95 p-4 shadow-2xl sm:block" animate={reduceMotion ? undefined : { y: [0, -8, 0] }} transition={{ duration: 4, repeat: Infinity }}>
-        <p className="flex items-center gap-2 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Calling workspace</p>
-        <p className="mt-3 text-sm font-semibold text-white">Call controls</p><p className="mt-1 text-xs text-slate-500">Contact context • Notes • Activity</p>
-      </motion.div>
-      <motion.div id="ai" className="absolute -right-4 top-8 hidden w-52 rounded-2xl border border-fuchsia-300/20 bg-[#0a1327]/95 p-4 shadow-2xl xl:block" animate={reduceMotion ? undefined : { y: [0, 8, 0] }} transition={{ duration: 5, repeat: Infinity }}>
-        <p className="flex items-center gap-2 text-xs font-semibold text-white"><Bot className="h-4 w-4 text-violet-300" /> AI Assistant</p><p className="mt-3 text-[11px] leading-5 text-slate-400">Conversation summaries, coaching context, and follow-up assistance inside the workspace.</p>
-      </motion.div>
-    </div>
+    <motion.div
+      initial={reduceMotion ? false : { opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8 }}
+      className="relative mx-auto w-full max-w-[760px] overflow-hidden rounded-[28px] border border-cyan-300/25 bg-[#07101f] shadow-[0_35px_100px_-35px_rgba(14,165,233,.78)]"
+    >
+      <Image
+        src="/flowtix-hero-banner.png"
+        alt="Flowtix.work AI cloud dialer and CRM"
+        width={1270}
+        height={375}
+        priority
+        sizes="(max-width: 1024px) 100vw, 760px"
+        className="h-auto w-full object-cover"
+      />
+      <div className="border-t border-white/10 bg-[#050a14]/95 px-5 py-4 sm:px-6">
+        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-cyan-300">
+          AI cloud dialer · CRM · automation · analytics
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-400">
+          Bring calling, customer context, AI assistance, workflows, and reporting into one Flowtix workspace.
+        </p>
+      </div>
+    </motion.div>
   )
 }
 
@@ -209,7 +204,7 @@ function Hero() {
           </div>
           <div className="mt-7 flex flex-wrap gap-x-6 gap-y-3 text-xs text-slate-500"><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> No credit card</span><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Secure billing</span><span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> Cancel during trial</span></div>
         </div>
-        <ProductVisual />
+        <BrandBannerVisual />
       </div>
     </section>
   )
@@ -220,7 +215,7 @@ function FeatureSection() {
     <section id="features" className="border-y border-white/[0.06] bg-[#020611]/65 py-20 sm:py-24">
       <div className="mx-auto max-w-[1480px] px-5 sm:px-8 lg:px-10">
         <p className="text-xs font-semibold uppercase tracking-[.2em] text-violet-300">Built for modern sales teams</p><h2 className="mt-4 text-3xl font-semibold tracking-[-.04em] text-white sm:text-4xl">Everything you need to sell smarter.</h2>
-        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-5">{features.map((feature, index) => <article key={feature.title} className="group rounded-2xl border border-white/[0.09] bg-gradient-to-b from-white/[0.035] to-transparent p-6 transition duration-300 hover:-translate-y-1 hover:border-violet-300/25"><span className={`grid h-11 w-11 place-items-center rounded-xl ${['bg-emerald-500/10 text-emerald-300','bg-violet-500/10 text-violet-300','bg-cyan-500/10 text-cyan-300','bg-amber-500/10 text-amber-300','bg-emerald-500/10 text-emerald-300'][index]}`}><feature.icon className="h-5 w-5" /></span><h3 className="mt-5 font-semibold text-white">{feature.title}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{feature.copy}</p><Link href={index === 1 ? '/ai-features' : '/features'} className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-300">Learn more <ArrowRight className="h-3.5 w-3.5" /></Link></article>)}</div>
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-5">{features.map((feature, index) => <article key={feature.title} className="group rounded-2xl border border-white/[0.09] bg-gradient-to-b from-white/[0.035] to-transparent p-6 transition duration-300 hover:-translate-y-1 hover:border-violet-300/25"><span className={`grid h-11 w-11 place-items-center rounded-xl ${['bg-emerald-500/10 text-emerald-300','bg-violet-500/10 text-violet-300','bg-cyan-500/10 text-cyan-300','bg-amber-500/10 text-amber-300','bg-emerald-500/10 text-emerald-300'][index]}`}><feature.icon className="h-5 w-5" /></span><h3 className="mt-5 font-semibold text-white">{feature.title}</h3><p className="mt-3 text-sm leading-6 text-slate-500">{feature.copy}</p><Link href={feature.href} className="mt-5 inline-flex items-center gap-2 text-xs font-semibold text-blue-300">Learn more <ArrowRight className="h-3.5 w-3.5" /></Link></article>)}</div>
       </div>
     </section>
   )
@@ -252,7 +247,7 @@ function FinalCTA() {
   return (
     <section className="pb-20 sm:pb-24">
       <div className="mx-auto max-w-[1480px] px-5 sm:px-8 lg:px-10">
-        <div className="relative overflow-hidden rounded-2xl border border-fuchsia-300/25 bg-gradient-to-r from-violet-600/30 via-blue-600/20 to-fuchsia-600/30 p-7 sm:p-10"><div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,.08),transparent_25%),radial-gradient(circle_at_85%_70%,rgba(59,130,246,.18),transparent_30%)]" /><div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-5"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10"><Logo className="h-9 w-9" /></span><div><h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Ready to power your conversations?</h2><p className="mt-2 text-sm text-slate-300">Bring your sales workflow together with Flowtix.</p></div></div><Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-fuchsia-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg">Start Your 7-Day Free Trial <ArrowRight className="h-4 w-4" /></Link></div></div>
+        <div className="relative overflow-hidden rounded-2xl border border-fuchsia-300/25 bg-gradient-to-r from-violet-600/30 via-blue-600/20 to-fuchsia-600/30 p-7 sm:p-10"><div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,.08),transparent_25%),radial-gradient(circle_at_85%_70%,rgba(59,130,246,.18),transparent_30%)]" /><div className="relative flex flex-col gap-7 lg:flex-row lg:items-center lg:justify-between"><div className="flex items-center gap-5"><span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-white/15 bg-white/10"><Image src="/flowtix-logo-512.png" alt="" width={36} height={36} className="h-9 w-9 rounded-lg object-cover" /></span><div><h2 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">Ready to power your conversations?</h2><p className="mt-2 text-sm text-slate-300">Bring your sales workflow together with Flowtix.</p></div></div><Link href="/signup" className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-fuchsia-500 px-6 py-3.5 text-sm font-semibold text-white shadow-lg">Start Your 7-Day Free Trial <ArrowRight className="h-4 w-4" /></Link></div></div>
         <div className="mt-8 grid gap-6 md:grid-cols-3"><div className="flex gap-4"><Zap className="h-6 w-6 text-violet-300" /><div><p className="font-semibold text-white">Fast onboarding</p><p className="mt-1 text-sm text-slate-500">Create your workspace and configure the tools your team needs.</p></div></div><div className="flex gap-4"><LockKeyhole className="h-6 w-6 text-violet-300" /><div><p className="font-semibold text-white">Secure & reliable</p><p className="mt-1 text-sm text-slate-500">Organization isolation, permissions, and security controls are built in.</p></div></div><div className="flex gap-4"><Headphones className="h-6 w-6 text-violet-300" /><div><p className="font-semibold text-white">Support that scales</p><p className="mt-1 text-sm text-slate-500">Support options grow with your Flowtix plan.</p></div></div></div>
       </div>
     </section>

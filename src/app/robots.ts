@@ -1,6 +1,5 @@
 import type { MetadataRoute } from 'next'
-
-const SITE_URL = 'https://www.flowtix.work'
+import { FLOWTIX_SITE_URL } from '@/lib/seo'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -8,16 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: [
-          '/api/',
-          '/auth/',
-          '/dashboard/',
-          '/platform/',
-          '/invite/',
-        ],
+        disallow: ['/api/', '/auth/'],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    sitemap: `${FLOWTIX_SITE_URL}/sitemap.xml`,
+    host: FLOWTIX_SITE_URL,
   }
 }
