@@ -1027,7 +1027,7 @@ export default function TeamChatDock({
             void refreshPresence()
           }
         }}
-        className="fixed bottom-5 right-28 z-[80] flex min-w-[164px] items-center justify-between gap-3 rounded-2xl border border-violet-400/55 bg-[#0B1221]/95 px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(0,0,0,.48)] backdrop-blur-2xl transition hover:border-violet-300 hover:bg-[#111A2E]"
+        className="fixed bottom-5 right-28 z-[80] flex min-w-[154px] items-center justify-between gap-3 rounded-xl border border-violet-400/45 bg-[#0B1221]/95 px-3.5 py-2.5 text-[13px] font-semibold text-white shadow-[0_16px_45px_rgba(0,0,0,.42)] backdrop-blur-2xl transition hover:border-violet-300/80 hover:bg-[#111A2E]"
         aria-label={panelOpen ? 'Close Team Chat' : 'Open Team Chat'}
       >
         <span className="flex items-center gap-2.5">
@@ -1047,27 +1047,27 @@ export default function TeamChatDock({
 
       {panelOpen ? (
         <section
-          className="fixed bottom-20 right-4 z-[79] flex h-[640px] max-h-[calc(100vh-7rem)] w-[calc(100vw-2rem)] max-w-[900px] flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#07111F] text-white shadow-[0_30px_100px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:right-6 lg:w-[calc(100vw-324px)] xl:w-[860px]"
+          className="fixed bottom-20 right-4 z-[79] flex h-[570px] max-h-[calc(100vh-6.5rem)] w-[calc(100vw-2rem)] max-w-[820px] flex-col overflow-hidden rounded-2xl border border-violet-300/15 bg-[#08111E] text-white shadow-[0_28px_90px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:right-6 lg:w-[min(820px,calc(100vw-2rem))]"
           aria-label="Flowtix Team Chat"
         >
-          <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0B1525]/95 px-4">
+          <header className="flex h-[56px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0B1423]/98 px-3.5">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/20 text-violet-200">
                 <MessageCircle className="h-4 w-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-sm font-semibold">Team Chat</h2>
+                  <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-white">Team Chat</h2>
                   <span className="h-2 w-2 rounded-full bg-emerald-400" />
                 </div>
-                <p className="text-[11px] text-slate-500">Internal organization messaging</p>
+                <p className="text-[10px] font-medium text-slate-400">Internal organization messaging</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={beginNewConversation}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+                className="!rounded-lg !border !border-white/[0.06] !bg-transparent p-1.5 !text-slate-400 transition hover:!bg-white/[0.06] hover:!text-white"
                 aria-label="Start a new team chat"
               >
                 <Edit3 className="h-4 w-4" />
@@ -1093,19 +1093,19 @@ export default function TeamChatDock({
 
           <div className="flex min-h-0 flex-1">
             <aside
-              className={`flex w-[310px] shrink-0 flex-col border-r border-white/[0.08] bg-[#091424] max-md:w-[42%] ${mobileThreadOpen ? 'max-sm:hidden' : 'max-sm:w-full'}`}
+              className={`flex w-[270px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0A1322] max-md:w-[42%] ${mobileThreadOpen ? 'max-sm:hidden' : 'max-sm:w-full'}`}
             >
-              <div className="space-y-3 border-b border-white/[0.07] p-3">
+              <div className="space-y-2 border-b border-white/[0.07] px-3 py-2.5">
                 <div className="relative">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
                   <input
                     value={searchQuery}
                     onChange={(event) => setSearchQuery(event.target.value)}
                     placeholder="Search people or groups..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-[#07101D] py-2.5 pl-9 pr-3 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400/45"
+                    className="w-full rounded-lg border border-white/[0.09] bg-[#08111D] py-2 pl-9 pr-3 text-[12px] font-medium text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-violet-400/50"
                   />
                 </div>
-                <div className="flex gap-1 rounded-xl bg-white/[0.025] p-1 text-[11px]">
+                <div className="flex gap-1 border-b border-white/[0.05] pb-0.5 text-[11px] font-medium">
                   {(
                     [
                       ['all', 'All'],
@@ -1117,10 +1117,10 @@ export default function TeamChatDock({
                       key={value}
                       type="button"
                       onClick={() => setView(value)}
-                      className={`flex-1 rounded-lg px-2 py-2 transition ${
+                      className={`flex-1 rounded-md px-2 py-2 transition ${
                         view === value
-                          ? 'bg-violet-500/15 text-violet-200'
-                          : 'text-slate-500 hover:bg-white/[0.04] hover:text-slate-300'
+                          ? '!border-0 !bg-violet-500/15 !text-violet-100 shadow-[inset_0_-2px_0_rgba(139,92,246,.9)]'
+                          : '!border-0 !bg-transparent !text-slate-400 hover:!bg-white/[0.04] hover:!text-slate-100'
                       }`}
                     >
                       {label}
@@ -1137,14 +1137,14 @@ export default function TeamChatDock({
                 ) : filteredConversations.length === 0 ? (
                   <div className="px-4 py-10 text-center">
                     <MessageCircle className="mx-auto h-7 w-7 text-slate-700" />
-                    <p className="mt-3 text-xs font-medium text-slate-400">No chats yet</p>
-                    <p className="mt-1 text-[11px] leading-5 text-slate-600">
+                    <p className="mt-3 text-[13px] font-semibold text-slate-200">No chats yet</p>
+                    <p className="mt-1 text-[11px] leading-5 text-slate-400">
                       Start a direct message or create an organization group.
                     </p>
                     <button
                       type="button"
                       onClick={beginNewConversation}
-                      className="mt-4 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 py-2 text-[11px] font-medium text-violet-200 hover:bg-violet-500/15"
+                      className="mt-4 !rounded-lg !border !border-violet-400/25 !bg-violet-500/10 px-3 py-2 text-[11px] font-semibold !text-violet-100 hover:!bg-violet-500/20"
                     >
                       New chat
                     </button>
@@ -1165,10 +1165,10 @@ export default function TeamChatDock({
                           key={conversation.id}
                           type="button"
                           onClick={() => openConversation(conversation.id)}
-                          className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                          className={`flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left transition ${
                             activeConversationId === conversation.id
-                              ? 'bg-[#15243B] ring-1 ring-violet-400/15'
-                              : 'hover:bg-white/[0.035]'
+                              ? '!border-0 !bg-[#1A2437] ring-1 ring-violet-400/20'
+                              : '!border-0 !bg-transparent hover:!bg-white/[0.045]'
                           }`}
                         >
                           <ChatAvatar
@@ -1179,17 +1179,17 @@ export default function TeamChatDock({
                           />
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center justify-between gap-2">
-                              <span className="truncate text-xs font-semibold text-slate-100">
+                              <span className="truncate text-[12px] font-semibold text-slate-100">
                                 {display.label}
                               </span>
-                              <span className="shrink-0 text-[10px] text-slate-600">
+                              <span className="shrink-0 text-[10px] font-medium text-slate-500">
                                 {formatRelativeTime(
                                   conversation.lastMessageAt ?? conversation.createdAt,
                                 )}
                               </span>
                             </span>
                             <span className="mt-1 flex items-center justify-between gap-2">
-                              <span className="truncate text-[11px] text-slate-500">
+                              <span className="truncate text-[11px] text-slate-400">
                                 {conversation.lastMessageBody ||
                                   (conversation.kind === 'group'
                                     ? `${conversation.memberCount} members`
@@ -1215,7 +1215,7 @@ export default function TeamChatDock({
                 <button
                   type="button"
                   onClick={beginNewConversation}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.025] px-3 py-2.5 text-[11px] font-medium text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
+                  className="flex w-full items-center justify-center gap-2 !rounded-lg !border !border-white/[0.08] !bg-transparent px-3 py-2.5 text-[11px] font-semibold !text-slate-300 transition hover:!bg-white/[0.05] hover:!text-white"
                 >
                   <MessageSquarePlus className="h-3.5 w-3.5" />
                   New conversation
@@ -1224,41 +1224,41 @@ export default function TeamChatDock({
             </aside>
 
             <div
-              className={`relative min-w-0 flex-1 flex-col bg-[#07111F] ${mobileThreadOpen ? 'flex' : 'flex max-sm:hidden'}`}
+              className={`relative min-w-0 flex-1 flex-col bg-[#08111E] ${mobileThreadOpen ? 'flex' : 'flex max-sm:hidden'}`}
             >
               {composerMode ? (
-                <div className="absolute inset-0 z-20 flex flex-col bg-[#081321]/[0.99]">
-                  <div className="flex h-[58px] items-center gap-3 border-b border-white/[0.08] px-4">
+                <div className="absolute inset-0 z-20 flex flex-col bg-[#08111E]/[0.995]">
+                  <div className="flex h-[54px] items-center gap-3 border-b border-white/[0.08] px-3.5">
                     <button
                       type="button"
                       onClick={() => setComposerMode(null)}
-                      className="rounded-lg p-2 text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                      className="!rounded-lg !border !border-white/[0.06] !bg-transparent p-1.5 !text-slate-400 hover:!bg-white/[0.05] hover:!text-white"
                       aria-label="Back to chat"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
                     <div>
-                      <h3 className="text-sm font-semibold text-white">
+                      <h3 className="text-[14px] font-semibold text-white">
                         {composerMode === 'manage-group' ? 'Group settings' : 'New conversation'}
                       </h3>
-                      <p className="text-[11px] text-slate-500">
+                      <p className="text-[11px] text-slate-400">
                         Only members of this organization are available.
                       </p>
                     </div>
                   </div>
 
                   {composerMode !== 'manage-group' ? (
-                    <div className="mx-4 mt-4 flex gap-1 rounded-xl bg-white/[0.025] p-1 text-xs">
+                    <div className="mx-4 mt-3 flex gap-1 rounded-lg border border-white/[0.06] bg-[#0A1422] p-1 text-[12px] font-medium">
                       <button
                         type="button"
                         onClick={() => {
                           setNewChatTab('direct')
                           setComposerMode('direct')
                         }}
-                        className={`flex-1 rounded-lg px-3 py-2.5 ${
+                        className={`flex-1 rounded-md px-3 py-2.5 ${
                           newChatTab === 'direct'
-                            ? 'bg-violet-500/15 text-violet-200'
-                            : 'text-slate-500'
+                            ? '!border-0 !bg-violet-500/20 !text-violet-100'
+                            : '!border-0 !bg-transparent !text-slate-400'
                         }`}
                       >
                         Direct message
@@ -1309,7 +1309,7 @@ export default function TeamChatDock({
                                   {member.email ?? member.role}
                                 </span>
                               </span>
-                              <MessageCircle className="h-4 w-4 text-slate-600" />
+                              <MessageCircle className="h-4 w-4 text-slate-500" />
                             </button>
                           ))
                         )}
@@ -1317,7 +1317,7 @@ export default function TeamChatDock({
                     ) : (
                       <div className="space-y-4">
                         <label className="block">
-                          <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                          <span className="mb-2 block text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
                             Group name
                           </span>
                           <input
@@ -1325,21 +1325,21 @@ export default function TeamChatDock({
                             onChange={(event) => setGroupName(event.target.value)}
                             maxLength={80}
                             placeholder="e.g. Sales Team"
-                            className="w-full rounded-xl border border-white/[0.09] bg-[#07101D] px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-400/45"
+                            className="w-full rounded-lg border border-white/[0.10] bg-[#0A1422] px-3 py-2.5 text-[13px] font-medium text-white outline-none placeholder:text-slate-500 focus:border-violet-400/55"
                           />
                         </label>
 
                         <div>
                           <div className="mb-2 flex items-center justify-between">
-                            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                            <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-slate-400">
                               Members
                             </span>
-                            <span className="text-[10px] text-slate-600">
+                            <span className="text-[10px] text-slate-400">
                               {selectedGroupMembers.length + 1} selected
                             </span>
                           </div>
-                          <div className="space-y-1 rounded-xl border border-white/[0.07] bg-white/[0.015] p-2">
-                            <div className="flex items-center gap-3 rounded-lg bg-violet-500/[0.05] px-3 py-2.5">
+                          <div className="space-y-1 rounded-xl border border-white/[0.07] bg-[#0A1422]/80 p-2">
+                            <div className="flex items-center gap-3 rounded-lg bg-violet-500/[0.10] px-3 py-2.5 ring-1 ring-violet-400/15">
                               <ChatAvatar
                                 label={currentUserName}
                                 avatarUrl={currentUserAvatarUrl}
@@ -1350,7 +1350,7 @@ export default function TeamChatDock({
                                 <p className="truncate text-xs font-medium text-slate-200">
                                   {currentUserName}
                                 </p>
-                                <p className="truncate text-[10px] text-slate-600">You · {currentUserEmail}</p>
+                                <p className="truncate text-[10px] text-slate-500">You · {currentUserEmail}</p>
                               </div>
                               <Check className="h-4 w-4 text-violet-300" />
                             </div>
@@ -1366,7 +1366,7 @@ export default function TeamChatDock({
                                   type="button"
                                   disabled={requiredCreator}
                                   onClick={() => toggleMemberSelection(member.userId)}
-                                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-white/[0.035] disabled:cursor-default disabled:opacity-80"
+                                  className="flex w-full items-center gap-3 !rounded-lg !border-0 !bg-transparent px-3 py-2.5 text-left hover:!bg-white/[0.045] disabled:cursor-default disabled:opacity-80"
                                 >
                                   <ChatAvatar
                                     label={displayMemberName(member)}
@@ -1378,7 +1378,7 @@ export default function TeamChatDock({
                                     <span className="block truncate text-xs font-medium text-slate-200">
                                       {displayMemberName(member)}
                                     </span>
-                                    <span className="block truncate text-[10px] text-slate-600">
+                                    <span className="block truncate text-[10px] text-slate-500">
                                       {requiredCreator
                                         ? `Group creator · ${member.email ?? member.role}`
                                         : member.email ?? member.role}
@@ -1430,7 +1430,7 @@ export default function TeamChatDock({
 
               {activeConversation && activeDisplay ? (
                 <>
-                  <div className="flex h-[58px] shrink-0 items-center justify-between border-b border-white/[0.08] px-4">
+                  <div className="flex h-[56px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0A1322] px-3.5">
                     <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                       <button
                         type="button"
@@ -1447,10 +1447,10 @@ export default function TeamChatDock({
                         online={activeOnline}
                       />
                       <div className="min-w-0">
-                        <h3 className="truncate text-xs font-semibold text-white">
+                        <h3 className="truncate text-[13px] font-semibold text-white">
                           {activeDisplay.label}
                         </h3>
-                        <p className="mt-0.5 text-[10px] text-slate-500">
+                        <p className="mt-0.5 text-[10px] font-medium text-slate-400">
                           {activeConversation.kind === 'group'
                             ? `${activeConversation.memberCount} members · ${activeOnlineCount} online`
                             : activeOnline
@@ -1464,7 +1464,7 @@ export default function TeamChatDock({
                         <button
                           type="button"
                           onClick={beginManageGroup}
-                          className="rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.05] hover:text-white"
+                          className="!rounded-lg !border-0 !bg-transparent p-1.5 !text-slate-400 transition hover:!bg-white/[0.06] hover:!text-white"
                           aria-label="Manage group"
                         >
                           <MoreHorizontal className="h-4 w-4" />
@@ -1483,7 +1483,7 @@ export default function TeamChatDock({
 
                   <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                     {loadingConversationId === activeConversation.id && currentMessages.length === 0 ? (
-                      <div className="flex h-full items-center justify-center text-slate-600">
+                      <div className="flex h-full items-center justify-center text-slate-500">
                         <Loader2 className="h-5 w-5 animate-spin" />
                       </div>
                     ) : currentMessages.length === 0 ? (
@@ -1498,7 +1498,7 @@ export default function TeamChatDock({
                         <p className="mt-3 text-sm font-semibold text-slate-200">
                           {activeDisplay.label}
                         </p>
-                        <p className="mt-1 max-w-sm text-[11px] leading-5 text-slate-600">
+                        <p className="mt-1 max-w-sm text-[11px] leading-5 text-slate-400">
                           This is the beginning of this internal Flowtix conversation.
                         </p>
                       </div>
@@ -1530,21 +1530,21 @@ export default function TeamChatDock({
                               ) : null}
                               <div className={`max-w-[78%] ${isOwn ? 'text-right' : 'text-left'}`}>
                                 {!isOwn && activeConversation.kind === 'group' ? (
-                                  <p className="mb-1 pl-1 text-[10px] font-medium text-slate-500">
+                                  <p className="mb-1 pl-1 text-[10px] font-semibold text-slate-400">
                                     {senderName}
                                   </p>
                                 ) : null}
                                 <div
-                                  className={`inline-block rounded-2xl px-3.5 py-2.5 text-left text-xs leading-5 shadow-sm ${
+                                  className={`inline-block rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-[1.45] shadow-sm ${
                                     isOwn
                                       ? 'rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white'
-                                      : 'rounded-bl-md border border-white/[0.07] bg-[#152032] text-slate-100'
+                                      : 'rounded-bl-md border border-white/[0.08] bg-[#1A2434] text-slate-50'
                                   }`}
                                 >
                                   <p className="whitespace-pre-wrap break-words">{message.body}</p>
                                   <div
                                     className={`mt-1.5 flex items-center gap-1 text-[9px] ${
-                                      isOwn ? 'justify-end text-violet-100/70' : 'text-slate-500'
+                                      isOwn ? 'justify-end text-violet-100/80' : 'text-slate-400'
                                     }`}
                                   >
                                     <span>{formatMessageTime(message.createdAt)}</span>
@@ -1569,7 +1569,7 @@ export default function TeamChatDock({
                     )}
                   </div>
 
-                  <div className="min-h-[28px] px-4 text-[10px] text-slate-500">
+                  <div className="min-h-[28px] px-4 text-[10px] font-medium text-slate-400">
                     {activeTypingMembers.length > 0 ? (
                       <div className="flex items-center gap-2">
                         <span className="flex gap-0.5">
@@ -1586,8 +1586,8 @@ export default function TeamChatDock({
                     ) : null}
                   </div>
 
-                  <form onSubmit={sendMessage} className="border-t border-white/[0.08] px-3 py-3">
-                    <div className="flex items-end gap-2 rounded-2xl border border-white/[0.09] bg-[#0B1626] p-2 focus-within:border-violet-400/35">
+                  <form onSubmit={sendMessage} className="border-t border-white/[0.08] bg-[#0A1322] px-3 py-2.5">
+                    <div className="flex items-end gap-2 rounded-xl border border-white/[0.10] bg-[#111B2A] p-1.5 shadow-inner focus-within:border-violet-400/45">
                       <textarea
                         value={drafts[activeConversation.id] ?? ''}
                         onChange={(event) =>
@@ -1597,7 +1597,7 @@ export default function TeamChatDock({
                         rows={1}
                         maxLength={4000}
                         placeholder="Type a message..."
-                        className="max-h-28 min-h-[36px] flex-1 resize-none bg-transparent px-2 py-2 text-xs leading-5 text-white outline-none placeholder:text-slate-600"
+                        className="max-h-28 min-h-[38px] flex-1 resize-none bg-transparent px-2.5 py-2 text-[13px] leading-5 text-slate-50 outline-none placeholder:text-slate-400"
                       />
                       <button
                         type="button"
@@ -1607,7 +1607,7 @@ export default function TeamChatDock({
                             `${drafts[activeConversation.id] ?? ''}🙂`,
                           )
                         }
-                        className="mb-1 rounded-lg p-2 text-slate-500 transition hover:bg-white/[0.05] hover:text-slate-300"
+                        className="mb-1 !rounded-lg !border-0 !bg-transparent p-2 !text-slate-400 transition hover:!bg-white/[0.05] hover:!text-slate-200"
                         aria-label="Add emoji"
                       >
                         <Smile className="h-4 w-4" />
@@ -1628,7 +1628,7 @@ export default function TeamChatDock({
                         )}
                       </button>
                     </div>
-                    <p className="mt-1.5 px-2 text-[9px] text-slate-700">
+                    <p className="mt-1.5 px-2 text-[9px] text-slate-500">
                       Enter to send · Shift+Enter for a new line
                     </p>
                   </form>
@@ -1638,14 +1638,14 @@ export default function TeamChatDock({
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-violet-400/15 bg-violet-500/[0.07] text-violet-300">
                     <MessageCircle className="h-6 w-6" />
                   </div>
-                  <h3 className="mt-4 text-sm font-semibold text-slate-200">Your team, one click away</h3>
-                  <p className="mt-2 max-w-sm text-[11px] leading-5 text-slate-600">
+                  <h3 className="mt-4 text-[14px] font-semibold text-slate-100">Your team, one click away</h3>
+                  <p className="mt-2 max-w-sm text-[11px] leading-5 text-slate-400">
                     Open a direct chat or group. Team Chat stays available while you move between Flowtix modules.
                   </p>
                   <button
                     type="button"
                     onClick={beginNewConversation}
-                    className="mt-4 inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-violet-500"
+                    className="mt-4 inline-flex items-center gap-2 !rounded-xl !border-0 !bg-violet-600 px-4 py-2.5 text-[12px] font-semibold !text-white shadow-[0_8px_24px_rgba(124,58,237,.28)] hover:!bg-violet-500"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Start a chat
@@ -1671,10 +1671,10 @@ export default function TeamChatDock({
             </div>
           ) : null}
 
-          <footer className="flex h-[52px] shrink-0 items-center gap-2 border-t border-white/[0.08] bg-[#091424] px-3">
+          <footer className="flex h-[48px] shrink-0 items-center gap-2 border-t border-white/[0.08] bg-[#0A1322] px-2.5">
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
               {openTabs.length === 0 ? (
-                <div className="flex items-center gap-2 text-[10px] text-slate-600">
+                <div className="flex items-center gap-2 text-[10px] text-slate-400">
                   <UserRound className="h-3.5 w-3.5" />
                   Chats you open will stay here while you work.
                 </div>
@@ -1687,8 +1687,8 @@ export default function TeamChatDock({
                       key={conversation.id}
                       className={`group flex min-w-[150px] max-w-[190px] items-center rounded-xl border transition ${
                         isActive
-                          ? 'border-violet-400/25 bg-violet-500/[0.10]'
-                          : 'border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.045]'
+                          ? 'border-violet-400/30 bg-violet-500/[0.14]'
+                          : 'border-white/[0.08] bg-white/[0.025] hover:bg-white/[0.05]'
                       }`}
                     >
                       <button
@@ -1719,7 +1719,7 @@ export default function TeamChatDock({
                       <button
                         type="button"
                         onClick={() => closeConversationTab(conversation.id)}
-                        className="mr-1 rounded p-1 text-slate-600 opacity-0 transition hover:text-slate-300 group-hover:opacity-100 focus:opacity-100"
+                        className="mr-1 rounded p-1 text-slate-500 opacity-0 transition hover:text-slate-300 group-hover:opacity-100 focus:opacity-100"
                         aria-label={`Close ${display.label} chat tab`}
                       >
                         <X className="h-3 w-3" />
