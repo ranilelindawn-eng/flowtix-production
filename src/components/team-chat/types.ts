@@ -38,6 +38,17 @@ export type TeamChatMessage = {
   readByCount: number
 }
 
+export type TeamChatMessageReaction = {
+  id: string
+  organizationId: string
+  conversationId: string
+  messageId: string
+  userId: string
+  emoji: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type TeamChatTyping = {
   conversationId: string
   userId: string

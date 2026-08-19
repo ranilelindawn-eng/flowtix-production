@@ -35,6 +35,7 @@ import type {
   TeamChatConversation,
   TeamChatMember,
   TeamChatMessage,
+  TeamChatMessageReaction,
   TeamChatPresence,
   TeamChatTyping,
 } from '@/components/team-chat/types'
@@ -55,6 +56,53 @@ type ComposerMode = 'direct' | 'group' | 'manage-group' | null
 
 const MAX_OPEN_TABS = 4
 const ONLINE_WINDOW_MS = 120_000
+const RECENT_EMOJI_LIMIT = 18
+
+type EmojiCategoryKey =
+  | 'recent'
+  | 'smileys'
+  | 'gestures'
+  | 'hearts'
+  | 'work'
+  | 'celebrate'
+
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '😡', '✅', '🔥'] as const
+
+const EMOJI_CATEGORIES: ReadonlyArray<{
+  key: EmojiCategoryKey
+  label: string
+  icon: string
+}> = [
+  { key: 'recent', label: 'Recent', icon: '🕘' },
+  { key: 'smileys', label: 'Smileys', icon: '😀' },
+  { key: 'gestures', label: 'Gestures', icon: '👍' },
+  { key: 'hearts', label: 'Hearts', icon: '❤️' },
+  { key: 'work', label: 'Work', icon: '💼' },
+  { key: 'celebrate', label: 'Celebrate', icon: '🎉' },
+]
+
+const EMOJI_OPTIONS: Record<Exclude<EmojiCategoryKey, 'recent'>, readonly string[]> = {
+  smileys: [
+    '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '🙂', '😉', '😍',
+    '🥰', '😘', '😎', '🤓', '🤔', '🫡', '😴', '😢', '😭', '😤', '😡', '🤯',
+  ],
+  gestures: [
+    '👍', '👎', '👌', '✌️', '🤞', '🤝', '👏', '🙌', '🙏', '💪', '👀', '👉',
+    '👈', '☝️', '✋', '🤚', '🫶', '🤟', '🤙', '👋', '✅', '❌', '💯', '🫵',
+  ],
+  hearts: [
+    '❤️', '🩷', '🧡', '💛', '💚', '💙', '🩵', '💜', '🤍', '🖤', '🤎', '💔',
+    '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '♥️', '🥰', '😍',
+  ],
+  work: [
+    '💼', '📞', '📱', '💻', '⌨️', '📧', '📩', '📅', '🗓️', '📝', '📌', '📊',
+    '📈', '📉', '🎯', '💡', '🔔', '⏰', '🔗', '📎', '🔒', '🔑', '🧠', '🤖',
+  ],
+  celebrate: [
+    '🎉', '🎊', '🥳', '🔥', '⭐', '🌟', '✨', '🏆', '🥇', '🚀', '💯', '👏',
+    '🙌', '🍾', '🎁', '🎈', '💥', '⚡', '✅', '💪', '😎', '🤩', '❤️', '🎯',
+  ],
+}
 
 function isRecord(value: unknown): value is RawRecord {
   return typeof value === 'object' && value !== null
@@ -178,6 +226,43 @@ function parseMessage(value: unknown): TeamChatMessage | null {
     body,
     createdAt,
     readByCount: toNumberValue(value.read_by_count),
+  }
+}
+
+function parseReaction(value: unknown): TeamChatMessageReaction | null {
+  if (!isRecord(value)) return null
+
+  const id = toStringValue(value.id)
+  const organizationId = toStringValue(value.organization_id)
+  const conversationId = toStringValue(value.conversation_id)
+  const messageId = toStringValue(value.message_id)
+  const userId = toStringValue(value.user_id)
+  const emoji = toStringValue(value.emoji)
+  const createdAt = toStringValue(value.created_at)
+  const updatedAt = toStringValue(value.updated_at)
+
+  if (
+    !id ||
+    !organizationId ||
+    !conversationId ||
+    !messageId ||
+    !userId ||
+    !emoji ||
+    !createdAt ||
+    !updatedAt
+  ) {
+    return null
+  }
+
+  return {
+    id,
+    organizationId,
+    conversationId,
+    messageId,
+    userId,
+    emoji,
+    createdAt,
+    updatedAt,
   }
 }
 
@@ -323,6 +408,14 @@ export default function TeamChatDock({
   const [typingByConversation, setTypingByConversation] = useState<
     Record<string, TeamChatTyping[]>
   >({})
+  const [reactionsByConversation, setReactionsByConversation] = useState<
+    Record<string, TeamChatMessageReaction[]>
+  >({})
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false)
+  const [emojiCategory, setEmojiCategory] = useState<EmojiCategoryKey>('smileys')
+  const [recentEmojis, setRecentEmojis] = useState<string[]>([])
+  const [reactionMenuMessageId, setReactionMenuMessageId] = useState<string | null>(null)
+  const [reactionSavingMessageId, setReactionSavingMessageId] = useState<string | null>(null)
   const [loadingBootstrap, setLoadingBootstrap] = useState(true)
   const [loadingConversationId, setLoadingConversationId] = useState<string | null>(null)
   const [sendingConversationId, setSendingConversationId] = useState<string | null>(null)
@@ -340,6 +433,7 @@ export default function TeamChatDock({
   const typingConversationRef = useRef<string | null>(null)
   const lastTypingSentRef = useRef(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     activeConversationIdRef.current = activeConversationId
@@ -366,6 +460,17 @@ export default function TeamChatDock({
   const currentMessages = activeConversationId
     ? messagesByConversation[activeConversationId] ?? []
     : []
+
+  const currentReactions = activeConversationId
+    ? reactionsByConversation[activeConversationId] ?? []
+    : []
+
+  const activeReactionsByMessage = new Map<string, TeamChatMessageReaction[]>()
+  for (const reaction of currentReactions) {
+    const existing = activeReactionsByMessage.get(reaction.messageId) ?? []
+    existing.push(reaction)
+    activeReactionsByMessage.set(reaction.messageId, existing)
+  }
 
   const isUserOnline = useCallback(
     (userId: string) => {
@@ -482,6 +587,33 @@ export default function TeamChatDock({
     [supabase],
   )
 
+  const refreshReactions = useCallback(
+    async (conversationId: string) => {
+      const { data, error } = await supabase
+        .from('team_chat_message_reactions')
+        .select('id,organization_id,conversation_id,message_id,user_id,emoji,created_at,updated_at')
+        .eq('organization_id', organizationId)
+        .eq('conversation_id', conversationId)
+        .not('emoji', 'is', null)
+
+      if (error) {
+        console.error('Unable to load Team Chat reactions:', error)
+        return
+      }
+
+      const parsed = (Array.isArray(data) ? data : [])
+        .map(parseReaction)
+        .filter((reaction): reaction is TeamChatMessageReaction => Boolean(reaction))
+        .filter((reaction) => reaction.organizationId === organizationId)
+
+      setReactionsByConversation((current) => ({
+        ...current,
+        [conversationId]: parsed,
+      }))
+    },
+    [organizationId, supabase],
+  )
+
   const markConversationRead = useCallback(
     async (conversationId: string) => {
       const { error } = await supabase.rpc('team_chat_mark_read', {
@@ -521,8 +653,10 @@ export default function TeamChatDock({
         ...current,
         [conversationId]: parsed,
       }))
+
+      await refreshReactions(conversationId)
     },
-    [organizationId, supabase],
+    [organizationId, refreshReactions, supabase],
   )
 
   const touchPresence = useCallback(async () => {
@@ -564,6 +698,8 @@ export default function TeamChatDock({
 
       setPanelOpen(true)
       setComposerMode(null)
+      setEmojiPickerOpen(false)
+      setReactionMenuMessageId(null)
       setActiveConversationId(conversationId)
       setOpenConversationIds((current) => {
         const next = [...current.filter((id) => id !== conversationId), conversationId]
@@ -780,6 +916,34 @@ export default function TeamChatDock({
           })
         },
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'team_chat_message_reactions',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const nextRow = isRecord(payload.new) ? payload.new : null
+          const conversationId = nextRow ? toStringValue(nextRow.conversation_id) : null
+          if (conversationId) void refreshReactions(conversationId)
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'team_chat_message_reactions',
+          filter: `organization_id=eq.${organizationId}`,
+        },
+        (payload) => {
+          const nextRow = isRecord(payload.new) ? payload.new : null
+          const conversationId = nextRow ? toStringValue(nextRow.conversation_id) : null
+          if (conversationId) void refreshReactions(conversationId)
+        },
+      )
       .subscribe((status, error) => {
         if (status === 'CHANNEL_ERROR') {
           console.error('Team Chat Realtime channel error:', error)
@@ -794,6 +958,7 @@ export default function TeamChatDock({
     markConversationRead,
     organizationId,
     refreshConversations,
+    refreshReactions,
     supabase,
   ])
 
@@ -978,6 +1143,87 @@ export default function TeamChatDock({
     }
   }
 
+  const rememberEmoji = (emoji: string) => {
+    const next = [emoji, ...recentEmojis.filter((item) => item !== emoji)].slice(
+      0,
+      RECENT_EMOJI_LIMIT,
+    )
+    setRecentEmojis(next)
+    try {
+      window.localStorage.setItem(
+        `flowtix-team-chat-recent-emojis-${currentUserId}`,
+        JSON.stringify(next),
+      )
+    } catch {
+      // Local storage is optional. Emoji insertion still works without it.
+    }
+  }
+
+  const toggleEmojiPicker = () => {
+    const opening = !emojiPickerOpen
+    setEmojiPickerOpen(opening)
+    setReactionMenuMessageId(null)
+
+    if (!opening || recentEmojis.length > 0) return
+
+    try {
+      const stored = window.localStorage.getItem(
+        `flowtix-team-chat-recent-emojis-${currentUserId}`,
+      )
+      const parsed: unknown = stored ? JSON.parse(stored) : null
+      if (Array.isArray(parsed)) {
+        const safe = parsed
+          .filter((item): item is string => typeof item === 'string' && item.length <= 16)
+          .slice(0, RECENT_EMOJI_LIMIT)
+        if (safe.length > 0) setRecentEmojis(safe)
+      }
+    } catch {
+      // Ignore malformed or unavailable local storage.
+    }
+  }
+
+  const insertEmoji = (conversationId: string, emoji: string) => {
+    const currentDraft = drafts[conversationId] ?? ''
+    const textarea = composerTextareaRef.current
+    const selectionStart = textarea?.selectionStart ?? currentDraft.length
+    const selectionEnd = textarea?.selectionEnd ?? currentDraft.length
+    const nextDraft =
+      currentDraft.slice(0, selectionStart) + emoji + currentDraft.slice(selectionEnd)
+
+    handleDraftChange(conversationId, nextDraft.slice(0, 4000))
+    rememberEmoji(emoji)
+
+    window.requestAnimationFrame(() => {
+      const activeTextarea = composerTextareaRef.current
+      if (!activeTextarea) return
+      const nextCaret = Math.min(selectionStart + emoji.length, nextDraft.length, 4000)
+      activeTextarea.focus()
+      activeTextarea.setSelectionRange(nextCaret, nextCaret)
+    })
+  }
+
+  const setMessageReaction = async (messageId: string, emoji: string) => {
+    if (!activeConversationId || reactionSavingMessageId) return
+
+    setReactionSavingMessageId(messageId)
+    setErrorMessage(null)
+    try {
+      const { error } = await supabase.rpc('team_chat_set_reaction', {
+        p_message_id: messageId,
+        p_emoji: emoji,
+      })
+      if (error) throw error
+
+      await refreshReactions(activeConversationId)
+      setReactionMenuMessageId(null)
+    } catch (error) {
+      console.error('Unable to update Team Chat reaction:', error)
+      setErrorMessage('Reaction could not be updated. Please try again.')
+    } finally {
+      setReactionSavingMessageId(null)
+    }
+  }
+
   const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!activeConversationId) return
@@ -987,6 +1233,8 @@ export default function TeamChatDock({
 
     setSendingConversationId(activeConversationId)
     setErrorMessage(null)
+    setEmojiPickerOpen(false)
+    setReactionMenuMessageId(null)
     try {
       const { data, error } = await supabase.rpc('team_chat_send_message', {
         p_conversation_id: activeConversationId,
@@ -1561,11 +1809,36 @@ export default function TeamChatDock({
                                 ? 'Seen'
                                 : `Seen by ${message.readByCount}`
                               : 'Sent'
+                          const messageReactions =
+                            activeReactionsByMessage.get(message.id) ?? []
+                          const reactionGroups = new Map<
+                            string,
+                            { count: number; names: string[]; reactedByCurrentUser: boolean }
+                          >()
+
+                          for (const reaction of messageReactions) {
+                            const existing = reactionGroups.get(reaction.emoji) ?? {
+                              count: 0,
+                              names: [],
+                              reactedByCurrentUser: false,
+                            }
+                            const reactionMember = memberByUserId.get(reaction.userId)
+                            existing.count += 1
+                            existing.names.push(
+                              reaction.userId === currentUserId
+                                ? `${currentDisplayName} (You)`
+                                : displayMemberName(reactionMember),
+                            )
+                            if (reaction.userId === currentUserId) {
+                              existing.reactedByCurrentUser = true
+                            }
+                            reactionGroups.set(reaction.emoji, existing)
+                          }
 
                           return (
                             <div
                               key={message.id}
-                              className={`flex items-end gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}
+                              className={`group relative flex items-end gap-2 ${isOwn ? 'justify-end' : 'justify-start'}`}
                             >
                               {!isOwn ? (
                                 <ChatAvatar
@@ -1611,6 +1884,68 @@ export default function TeamChatDock({
                                     ) : null}
                                   </div>
                                 </div>
+
+                                <div
+                                  className={`relative mt-1 flex flex-wrap items-center gap-1 ${
+                                    isOwn ? 'justify-end' : 'justify-start'
+                                  }`}
+                                >
+                                  {Array.from(reactionGroups.entries()).map(([emoji, summary]) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      disabled={reactionSavingMessageId === message.id}
+                                      onClick={() => void setMessageReaction(message.id, emoji)}
+                                      title={summary.names.join(', ')}
+                                      aria-label={`${summary.count} reaction${summary.count === 1 ? '' : 's'}: ${emoji}`}
+                                      aria-pressed={summary.reactedByCurrentUser}
+                                      className={`inline-flex min-h-6 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[11px] transition ${
+                                        summary.reactedByCurrentUser
+                                          ? 'border-violet-400/45 bg-violet-500/15 text-violet-100'
+                                          : 'border-white/[0.08] bg-[#111A2A] text-slate-300 hover:bg-white/[0.07]'
+                                      }`}
+                                    >
+                                      <span>{emoji}</span>
+                                      <span className="text-[9px] font-semibold">{summary.count}</span>
+                                    </button>
+                                  ))}
+
+                                  <button
+                                    type="button"
+                                    disabled={reactionSavingMessageId === message.id}
+                                    onClick={() => {
+                                      setEmojiPickerOpen(false)
+                                      setReactionMenuMessageId((current) =>
+                                        current === message.id ? null : message.id,
+                                      )
+                                    }}
+                                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-transparent text-[12px] text-slate-500 opacity-70 transition hover:border-white/[0.08] hover:bg-white/[0.06] hover:text-slate-200 sm:opacity-0 sm:group-hover:opacity-100"
+                                    aria-label="React to message"
+                                  >
+                                    <Smile className="h-3.5 w-3.5" />
+                                  </button>
+
+                                  {reactionMenuMessageId === message.id ? (
+                                    <div
+                                      className={`absolute bottom-8 z-30 flex items-center gap-1 rounded-full border border-white/[0.10] bg-[#111A2A]/98 p-1.5 shadow-[0_16px_45px_rgba(0,0,0,.45)] backdrop-blur-xl ${
+                                        isOwn ? 'right-0' : 'left-0'
+                                      }`}
+                                    >
+                                      {QUICK_REACTIONS.map((emoji) => (
+                                        <button
+                                          key={emoji}
+                                          type="button"
+                                          disabled={reactionSavingMessageId === message.id}
+                                          onClick={() => void setMessageReaction(message.id, emoji)}
+                                          className="flex h-8 w-8 items-center justify-center rounded-full text-[18px] transition hover:-translate-y-0.5 hover:bg-white/[0.08] disabled:opacity-50"
+                                          aria-label={`React with ${emoji}`}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
                           )
@@ -1637,9 +1972,59 @@ export default function TeamChatDock({
                     ) : null}
                   </div>
 
-                  <form onSubmit={sendMessage} className="border-t border-white/[0.08] bg-[#0A1322] px-3 py-2.5">
+                  <form
+                    onSubmit={sendMessage}
+                    className="relative border-t border-white/[0.08] bg-[#0A1322] px-3 py-2.5"
+                  >
+                    {emojiPickerOpen ? (
+                      <div className="absolute bottom-[70px] right-3 z-40 w-[min(310px,calc(100vw-3rem))] overflow-hidden rounded-2xl border border-white/[0.10] bg-[#101A29]/[0.99] shadow-[0_22px_65px_rgba(0,0,0,.52)] backdrop-blur-2xl">
+                        <div className="flex items-center gap-1 border-b border-white/[0.07] px-2 py-2">
+                          {EMOJI_CATEGORIES.map((category) => (
+                            <button
+                              key={category.key}
+                              type="button"
+                              onClick={() => setEmojiCategory(category.key)}
+                              title={category.label}
+                              aria-label={category.label}
+                              aria-pressed={emojiCategory === category.key}
+                              className={`flex h-8 min-w-8 flex-1 items-center justify-center rounded-lg text-[15px] transition ${
+                                emojiCategory === category.key
+                                  ? 'bg-violet-500/20 ring-1 ring-violet-400/30'
+                                  : 'hover:bg-white/[0.06]'
+                              }`}
+                            >
+                              {category.icon}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="max-h-52 overflow-y-auto p-2.5">
+                          <p className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            {EMOJI_CATEGORIES.find((category) => category.key === emojiCategory)?.label}
+                          </p>
+                          <div className="grid grid-cols-8 gap-1">
+                            {(emojiCategory === 'recent'
+                              ? recentEmojis.length > 0
+                                ? recentEmojis
+                                : [...QUICK_REACTIONS]
+                              : EMOJI_OPTIONS[emojiCategory]
+                            ).map((emoji) => (
+                              <button
+                                key={`${emojiCategory}-${emoji}`}
+                                type="button"
+                                onClick={() => insertEmoji(activeConversation.id, emoji)}
+                                className="flex h-8 w-8 items-center justify-center rounded-lg text-[19px] transition hover:scale-110 hover:bg-white/[0.08]"
+                                aria-label={`Insert ${emoji}`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
                     <div className="flex items-end gap-2 rounded-xl border border-white/[0.10] bg-[#111B2A] p-1.5 shadow-inner focus-within:border-violet-400/45">
                       <textarea
+                        ref={composerTextareaRef}
                         value={drafts[activeConversation.id] ?? ''}
                         onChange={(event) =>
                           handleDraftChange(activeConversation.id, event.target.value)
@@ -1652,14 +2037,14 @@ export default function TeamChatDock({
                       />
                       <button
                         type="button"
-                        onClick={() =>
-                          handleDraftChange(
-                            activeConversation.id,
-                            `${drafts[activeConversation.id] ?? ''}🙂`,
-                          )
-                        }
-                        className="mb-1 !rounded-lg !border-0 !bg-transparent p-2 !text-slate-400 transition hover:!bg-white/[0.05] hover:!text-slate-200"
-                        aria-label="Add emoji"
+                        onClick={toggleEmojiPicker}
+                        className={`mb-1 !rounded-lg !border-0 p-2 transition ${
+                          emojiPickerOpen
+                            ? '!bg-violet-500/15 !text-violet-200'
+                            : '!bg-transparent !text-slate-400 hover:!bg-white/[0.05] hover:!text-slate-200'
+                        }`}
+                        aria-label="Open emoji picker"
+                        aria-expanded={emojiPickerOpen}
                       >
                         <Smile className="h-4 w-4" />
                       </button>
