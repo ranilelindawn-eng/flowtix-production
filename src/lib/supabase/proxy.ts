@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
+
 export async function updateSession(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') ?? randomUUID()
   const requestHeaders = new Headers(request.headers)
@@ -142,11 +144,86 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (request.nextUrl.pathname.startsWith('/api/')) {
+    let trustedSupabase: ReturnType<typeof createServiceRoleClient>
+
+    try {
+      trustedSupabase = createServiceRoleClient()
+    } catch (error) {
+      console.error('Unable to initialize trusted API security client.', error)
+      return NextResponse.json(
+        { error: 'Request security check unavailable.' },
+        {
+          status: 503,
+          headers: {
+            'retry-after': '5',
+            'x-request-id': requestId,
+          },
+        },
+      )
+    }
+
     const bucket = `api:${ipAddress ?? 'unknown'}:${request.nextUrl.pathname}`
-    const { data: allowed } = await supabase.rpc('consume_rate_limit', { p_bucket_key: bucket, p_limit: 300, p_window_seconds: 60 })
+    const { data: allowed, error: rateLimitError } = await trustedSupabase.rpc(
+      'consume_rate_limit',
+      {
+        p_bucket_key: bucket,
+        p_limit: 300,
+        p_window_seconds: 60,
+      },
+    )
+
+    if (rateLimitError) {
+      console.error('Trusted API rate-limit check failed.', {
+        requestId,
+        path: request.nextUrl.pathname,
+        message: rateLimitError.message,
+      })
+      return NextResponse.json(
+        { error: 'Request security check unavailable.' },
+        {
+          status: 503,
+          headers: {
+            'retry-after': '5',
+            'x-request-id': requestId,
+          },
+        },
+      )
+    }
+
     const blockedReason = allowed === false ? 'rate_limit' : null
-    await supabase.rpc('record_api_request_event', { p_request_id: requestId, p_method: request.method, p_path: request.nextUrl.pathname, p_ip_address: ipAddress, p_user_agent: userAgent, p_blocked_reason: blockedReason })
-    if (allowed === false) return NextResponse.json({ error: 'Too many requests.' }, { status: 429, headers: { 'retry-after': '60', 'x-request-id': requestId } })
+    const { error: telemetryError } = await trustedSupabase.rpc(
+      'record_api_request_event',
+      {
+        p_request_id: requestId,
+        p_method: request.method,
+        p_path: request.nextUrl.pathname,
+        p_user_id: user?.id ?? null,
+        p_ip_address: ipAddress,
+        p_user_agent: userAgent,
+        p_blocked_reason: blockedReason,
+      },
+    )
+
+    if (telemetryError) {
+      console.error('Trusted API telemetry write failed.', {
+        requestId,
+        path: request.nextUrl.pathname,
+        message: telemetryError.message,
+      })
+    }
+
+    if (allowed === false) {
+      return NextResponse.json(
+        { error: 'Too many requests.' },
+        {
+          status: 429,
+          headers: {
+            'retry-after': '60',
+            'x-request-id': requestId,
+          },
+        },
+      )
+    }
   }
 
   const securityHeaders: Record<string,string> = {
