@@ -106,24 +106,48 @@ export async function POST(request: Request) {
           : {}
 
       try {
-        const recording = await startSignalWireCallRecording({
-          organizationId: organization.organization_id,
-          providerCallId,
-        })
+        const { data: recordingPolicy, error: recordingPolicyError } = await admin
+          .from('organizations')
+          .select('recording_enabled')
+          .eq('id', organization.organization_id)
+          .single()
 
-        await admin
-          .from('calls')
-          .update({
-            metadata: {
-              ...currentMetadata,
-              recording_requested_at: now,
-              recording_provider_sid: recording.recordingSid,
-              recording_error: null,
-            },
-            updated_at: now,
+        if (recordingPolicyError) throw new Error(recordingPolicyError.message)
+
+        if (recordingPolicy?.recording_enabled === true) {
+          const recording = await startSignalWireCallRecording({
+            organizationId: organization.organization_id,
+            callId: call.id,
+            providerCallId,
           })
-          .eq('id', call.id)
-          .eq('organization_id', organization.organization_id)
+
+          await admin
+            .from('calls')
+            .update({
+              metadata: {
+                ...currentMetadata,
+                recording_requested_at: now,
+                recording_provider_sid: recording.recordingSid,
+                recording_error: null,
+              },
+              updated_at: now,
+            })
+            .eq('id', call.id)
+            .eq('organization_id', organization.organization_id)
+        } else {
+          await admin
+            .from('calls')
+            .update({
+              metadata: {
+                ...currentMetadata,
+                recording_skipped: 'organization_recording_disabled',
+                recording_error: null,
+              },
+              updated_at: now,
+            })
+            .eq('id', call.id)
+            .eq('organization_id', organization.organization_id)
+        }
       } catch (recordingError) {
         console.error('[Flowtix telephony] unable to start provider recording:', recordingError)
         await admin
