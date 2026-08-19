@@ -223,29 +223,29 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
   }
 
   return (
-    <div className="-m-6 flex h-[calc(100dvh-7rem)] min-h-0 overflow-hidden border border-white/10 bg-slate-950 sm:rounded-3xl lg:-mx-4 lg:my-0 xl:-mx-8 2xl:-mx-12">
-      <aside className="hidden w-80 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-slate-950/80 xl:w-96 lg:flex">
-        <div className="border-b border-white/10 p-4">
+    <div className="-m-6 flex h-[calc(100dvh-7rem)] min-h-0 overflow-hidden rounded-none border border-slate-800/80 bg-gradient-to-br from-[#06111f] via-[#07192c] to-[#04111c] shadow-[0_24px_80px_rgba(2,12,27,0.45)] sm:rounded-3xl lg:-mx-4 lg:my-0 xl:-mx-8 2xl:-mx-12">
+      <aside className="hidden w-80 shrink-0 flex-col overflow-hidden border-r border-slate-800/80 bg-[#06101c]/95 xl:w-96 lg:flex">
+        <div className="border-b border-slate-800/80 px-4 py-5">
           <button
             type="button"
             onClick={startNewChat}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-blue-400/20 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 px-4 py-3 font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.25)] transition hover:from-blue-500 hover:via-blue-500 hover:to-cyan-400"
           >
             <Plus className="h-4 w-4" /> New chat
           </button>
           <div className="relative mt-3">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search conversations"
-              className="w-full rounded-xl border border-white/10 bg-white/[0.04] py-2.5 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
+              className="w-full rounded-2xl border border-slate-800 bg-slate-900/70 py-2.5 pl-9 pr-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 transition focus:border-cyan-500/60 focus:bg-slate-900"
             />
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
-          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Recent chats</p>
+          <p className="px-2 pb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recent chats</p>
           <div className="space-y-1">
             {filteredConversations.map((conversation) => (
               <button
@@ -253,7 +253,7 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
                 type="button"
                 onClick={() => void openConversation(conversation.id)}
                 className={`w-full rounded-xl px-3 py-3 text-left transition ${
-                  conversation.id === activeId ? 'bg-blue-500/15 text-white' : 'text-slate-300 hover:bg-white/[0.05]'
+                  conversation.id === activeId ? 'border border-cyan-500/30 bg-cyan-500/10 text-white shadow-[0_8px_24px_rgba(34,211,238,0.08)]' : 'border border-transparent bg-slate-900/40 text-slate-300 hover:border-slate-700/80 hover:bg-slate-900/70'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -266,36 +266,36 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
               </button>
             ))}
             {!filteredConversations.length ? (
-              <p className="px-3 py-8 text-center text-sm text-slate-500">No conversations yet.</p>
+              <p className="rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-3 py-8 text-center text-sm text-slate-500">No conversations yet.</p>
             ) : null}
           </div>
         </div>
       </aside>
 
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-[#071321]">
-        <header className="shrink-0 flex items-center justify-between border-b border-white/10 px-5 py-4 sm:px-7 xl:px-10">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-gradient-to-b from-[#071523] via-[#071321] to-[#06111d]">
+        <header className="shrink-0 flex items-center justify-between border-b border-slate-800/80 bg-slate-950/20 px-5 py-4 backdrop-blur-sm sm:px-7 xl:px-10">
           <div>
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-cyan-300" />
               <h1 className="text-lg font-semibold text-white">AI Workspace</h1>
             </div>
-            <p className="mt-1 text-xs text-slate-500">Tenant-isolated assistant for your Flowtix workspace</p>
+            <p className="mt-1 text-xs text-slate-400">Tenant-isolated assistant for your Flowtix workspace</p>
           </div>
           <div className="flex items-center gap-2">
             <select
               value={agentKey}
               onChange={(event) => setAgentKey(event.target.value)}
               disabled={Boolean(activeConversation)}
-              className="rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none disabled:opacity-60"
+              className="rounded-2xl border border-slate-800 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 outline-none transition focus:border-cyan-500/60 disabled:opacity-60"
             >
               {agents.map((agent) => <option key={agent.key} value={agent.key}>{agent.label}</option>)}
             </select>
             {activeId ? (
               <>
-                <button type="button" onClick={() => void archiveConversation()} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white" title="Archive">
+                <button type="button" onClick={() => void archiveConversation()} className="rounded-xl border border-transparent p-2 text-slate-400 transition hover:border-slate-700 hover:bg-slate-900/80 hover:text-white" title="Archive">
                   <Archive className="h-4 w-4" />
                 </button>
-                <button type="button" onClick={() => void deleteConversation()} className="rounded-lg p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-300" title="Delete">
+                <button type="button" onClick={() => void deleteConversation()} className="rounded-xl border border-transparent p-2 text-slate-400 transition hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300" title="Delete">
                   <Trash2 className="h-4 w-4" />
                 </button>
               </>
@@ -305,49 +305,49 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
 
         <div ref={messageViewportRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 sm:px-7 xl:px-10">
           {error ? (
-            <div className="mx-auto mb-5 max-w-5xl rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">{error}</div>
+            <div className="mx-auto mb-5 max-w-5xl rounded-2xl border border-red-500/20 bg-red-500/8 p-4 text-sm text-red-200 shadow-[0_10px_30px_rgba(127,29,29,0.18)]">{error}</div>
           ) : null}
 
           {loadingConversation ? (
-            <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-blue-400" /></div>
+            <div className="flex h-full items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-cyan-400" /></div>
           ) : messages.length ? (
             <div className="mx-auto w-full max-w-5xl space-y-6">
               {messages.map((message) => (
                 <article key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' ? (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300"><Bot className="h-5 w-5" /></div>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300"><Bot className="h-5 w-5" /></div>
                   ) : null}
-                  <div className={`group max-w-[86%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'bg-blue-600 text-white' : 'border border-white/10 bg-white/[0.04] text-slate-200'}`}>
+                  <div className={`group max-w-[86%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'border border-blue-400/20 bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_10px_30px_rgba(37,99,235,0.18)]' : 'border border-slate-800 bg-slate-900/65 text-slate-200 shadow-[0_10px_30px_rgba(2,12,27,0.12)]'}`}>
                     <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
                     {message.role === 'assistant' ? (
-                      <button type="button" onClick={() => void navigator.clipboard.writeText(message.content)} className="mt-2 inline-flex items-center gap-1 text-xs text-slate-500 opacity-0 transition group-hover:opacity-100">
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(message.content)} className="mt-2 inline-flex items-center gap-1 text-xs text-slate-400 opacity-0 transition group-hover:opacity-100">
                         <Copy className="h-3 w-3" /> Copy
                       </button>
                     ) : null}
                   </div>
                   {message.role === 'user' ? (
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300"><UserRound className="h-5 w-5" /></div>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-blue-400/20 bg-blue-500/10 text-blue-300"><UserRound className="h-5 w-5" /></div>
                   ) : null}
                 </article>
               ))}
               {sending ? (
                 <div className="flex gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-400/10 text-cyan-300"><Bot className="h-5 w-5" /></div>
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-slate-400"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-900/65 px-4 py-3 text-slate-400"><Loader2 className="h-5 w-5 animate-spin" /></div>
                 </div>
               ) : null}
             </div>
           ) : (
             <div className="mx-auto flex h-full w-full max-w-5xl flex-col items-center justify-center py-12 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-400 text-white shadow-xl shadow-blue-950/50">
+              <div className="flex h-16 w-16 items-center justify-center rounded-[1.35rem] border border-cyan-400/20 bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-400 text-white shadow-[0_18px_40px_rgba(8,47,73,0.45)]">
                 <Sparkles className="h-8 w-8" />
               </div>
               <h2 className="mt-6 text-3xl font-bold text-white">How can Flowtix AI help?</h2>
-              <p className="mt-3 max-w-xl leading-7 text-slate-400">Use the {selectedAgent.label} for CRM planning, outreach, call preparation, and practical next actions.</p>
-              <p className="mt-1 text-sm text-slate-500">{selectedAgent.description}</p>
+              <p className="mt-3 max-w-2xl leading-7 text-slate-300">Use the {selectedAgent.label} for CRM planning, outreach, call preparation, and practical next actions in a focused, tenant-isolated workspace.</p>
+              <p className="mt-1 text-sm text-slate-400">{selectedAgent.description}</p>
               <div className="mt-8 grid w-full gap-3 sm:grid-cols-2">
                 {starters.map((starter) => (
-                  <button key={starter} type="button" onClick={() => chooseStarter(starter)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left text-sm leading-6 text-slate-300 transition hover:border-blue-400/40 hover:bg-blue-500/5">
+                  <button key={starter} type="button" onClick={() => chooseStarter(starter)} className="rounded-2xl border border-slate-800 bg-slate-900/55 p-4 text-left text-sm leading-6 text-slate-300 transition hover:border-cyan-500/35 hover:bg-slate-900/80 hover:text-white">
                     {starter}
                   </button>
                 ))}
@@ -356,9 +356,9 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
           )}
         </div>
 
-        <div className="shrink-0 border-t border-white/10 bg-[#071321]/95 p-4 backdrop-blur sm:px-7 xl:px-10">
+        <div className="shrink-0 border-t border-slate-800/80 bg-[#06111d]/95 p-4 backdrop-blur-sm sm:px-7 xl:px-10">
           <form onSubmit={(event) => void sendMessage(event)} className="mx-auto w-full max-w-5xl">
-            <div className="flex items-end gap-3 rounded-2xl border border-white/10 bg-slate-950 p-3 focus-within:border-blue-500">
+            <div className="flex items-end gap-3 rounded-[1.5rem] border border-slate-800 bg-slate-950/90 p-3 shadow-[0_14px_40px_rgba(2,12,27,0.25)] transition focus-within:border-cyan-500/60 focus-within:bg-slate-950">
               <textarea
                 ref={composerRef}
                 value={draft}
@@ -372,13 +372,13 @@ export default function AIWorkspace({ initialConversations }: { initialConversat
                 rows={1}
                 maxLength={20_000}
                 placeholder="Ask Flowtix AI anything…"
-                className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm text-white outline-none placeholder:text-slate-500"
+                className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm leading-6 text-slate-100 outline-none placeholder:text-slate-500"
               />
-              <button type="submit" disabled={!draft.trim() || sending} className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40">
+              <button type="submit" disabled={!draft.trim() || sending} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-[0_10px_24px_rgba(37,99,235,0.22)] transition hover:from-blue-500 hover:to-cyan-400 disabled:cursor-not-allowed disabled:opacity-40">
                 {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </button>
             </div>
-            <p className="mt-2 text-center text-xs text-slate-600">AI can make mistakes. Verify important customer, legal, billing, and compliance information.</p>
+            <p className="mt-2 text-center text-xs text-slate-500">AI can make mistakes. Verify important customer, legal, billing, and compliance information.</p>
           </form>
         </div>
       </section>
