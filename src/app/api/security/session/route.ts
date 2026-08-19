@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { NextResponse } from 'next/server'
 
 import { getRequestIdentity } from '@/lib/security/platform'
@@ -6,11 +7,16 @@ import { createServiceRoleClient } from '@/lib/supabase/service-role'
 
 export async function POST() {
   const supabase = await createClient()
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const authSessionId =
+    !claimsError && typeof claimsData?.claims?.session_id === 'string'
+      ? claimsData.claims.session_id
+      : null
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
+  if (!user || !authSessionId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -66,11 +72,12 @@ export async function POST() {
       userId: user.id,
       message: deviceError.message,
     })
-    return NextResponse.json(
-      { error: 'Unable to record device.' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Unable to record device.' }, { status: 500 })
   }
+
+  const sessionFingerprint = createHash('sha256')
+    .update(`${user.id}:${authSessionId}`)
+    .digest('hex')
 
   const { error: sessionError } = await trustedSupabase
     .from('user_sessions')
@@ -78,7 +85,9 @@ export async function POST() {
       {
         user_id: user.id,
         organization_id: organizationId,
-        session_fingerprint: identity.fingerprint,
+        auth_session_id: authSessionId,
+        session_fingerprint: sessionFingerprint,
+        device_fingerprint: identity.fingerprint,
         ip_address: identity.ipAddress,
         user_agent: identity.userAgent,
         device_name: identity.deviceName,
@@ -90,7 +99,7 @@ export async function POST() {
           browser: identity.browser,
         },
       },
-      { onConflict: 'user_id,session_fingerprint' },
+      { onConflict: 'user_id,auth_session_id' },
     )
 
   if (sessionError) {
@@ -104,5 +113,5 @@ export async function POST() {
     )
   }
 
-  return NextResponse.json({ ok: true, fingerprint: identity.fingerprint })
+  return NextResponse.json({ ok: true, fingerprint: sessionFingerprint })
 }

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
@@ -25,20 +25,52 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  await supabase.auth.getClaims()
-  const { data: { user } } = await supabase.auth.getUser()
-  const ipAddress = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? null
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims()
+  const authSessionId =
+    !claimsError && typeof claimsData?.claims?.session_id === 'string'
+      ? claimsData.claims.session_id
+      : null
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  const ipAddress =
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    request.headers.get('x-real-ip') ??
+    null
   const userAgent = request.headers.get('user-agent') ?? 'Unknown browser'
 
-  if (user) {
-    const fingerprint = createHash('sha256').update(`${user.id}:${userAgent}:${ipAddress ?? ''}`).digest('hex')
-    const { data: revoked } = await supabase.from('user_sessions').select('id').eq('user_id', user.id).eq('session_fingerprint', fingerprint).not('revoked_at', 'is', null).maybeSingle()
-    if (revoked && (request.nextUrl.pathname.startsWith('/dashboard') || request.nextUrl.pathname.startsWith('/platform'))) {
-      await supabase.auth.signOut({ scope: 'local' })
-      const loginUrl = request.nextUrl.clone()
-      loginUrl.pathname = '/login'
-      loginUrl.searchParams.set('reason', 'session_revoked')
-      return NextResponse.redirect(loginUrl)
+  if (user && authSessionId) {
+    const { data: revoked } = await supabase
+      .from('user_sessions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('auth_session_id', authSessionId)
+      .not('revoked_at', 'is', null)
+      .maybeSingle()
+
+    if (revoked) {
+      if (request.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Session revoked.' },
+          {
+            status: 401,
+            headers: {
+              'x-request-id': requestId,
+            },
+          },
+        )
+      }
+
+      if (
+        request.nextUrl.pathname.startsWith('/dashboard') ||
+        request.nextUrl.pathname.startsWith('/platform')
+      ) {
+        await supabase.auth.signOut({ scope: 'local' })
+        const loginUrl = request.nextUrl.clone()
+        loginUrl.pathname = '/login'
+        loginUrl.searchParams.set('reason', 'session_revoked')
+        return NextResponse.redirect(loginUrl)
+      }
     }
   }
 
@@ -86,8 +118,7 @@ export async function updateSession(request: NextRequest) {
             'entitlements' in entitlementRow &&
             Array.isArray(entitlementRow.entitlements)
               ? entitlementRow.entitlements.filter(
-                  (value: unknown): value is string =>
-                    typeof value === 'string',
+                  (value: unknown): value is string => typeof value === 'string',
                 )
               : []
 
@@ -226,7 +257,7 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  const securityHeaders: Record<string,string> = {
+  const securityHeaders: Record<string, string> = {
     'x-request-id': requestId,
     'x-content-type-options': 'nosniff',
     'x-frame-options': 'DENY',
@@ -234,8 +265,9 @@ export async function updateSession(request: NextRequest) {
     'permissions-policy': 'camera=(), microphone=(self), geolocation=()',
     'cross-origin-opener-policy': 'same-origin',
     'cross-origin-resource-policy': 'same-origin',
-    'content-security-policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paymongo.com https://*.signalwire.com wss://*.signalwire.com; media-src 'self' blob: https:; form-action 'self' https://checkout.paymongo.com; upgrade-insecure-requests",
+    'content-security-policy':
+      "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; img-src 'self' data: blob: https:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.paymongo.com https://*.signalwire.com wss://*.signalwire.com; media-src 'self' blob: https:; form-action 'self' https://checkout.paymongo.com; upgrade-insecure-requests",
   }
-  Object.entries(securityHeaders).forEach(([key,value]) => response.headers.set(key,value))
+  Object.entries(securityHeaders).forEach(([key, value]) => response.headers.set(key, value))
   return response
 }
