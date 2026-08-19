@@ -1016,7 +1016,7 @@ export default function TeamChatDock({
             void refreshPresence()
           }
         }}
-        className="fixed bottom-5 left-4 z-[80] flex min-w-[164px] items-center justify-between gap-3 rounded-2xl border border-violet-400/55 bg-[#0B1221]/95 px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(0,0,0,.48)] backdrop-blur-2xl transition hover:border-violet-300 hover:bg-[#111A2E] lg:left-6"
+        className="fixed bottom-5 right-28 z-[80] flex min-w-[164px] items-center justify-between gap-3 rounded-2xl border border-violet-400/55 bg-[#0B1221]/95 px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_55px_rgba(0,0,0,.48)] backdrop-blur-2xl transition hover:border-violet-300 hover:bg-[#111A2E]"
         aria-label={panelOpen ? 'Close Team Chat' : 'Open Team Chat'}
       >
         <span className="flex items-center gap-2.5">
@@ -1036,7 +1036,7 @@ export default function TeamChatDock({
 
       {panelOpen ? (
         <section
-          className="fixed bottom-20 left-4 z-[79] flex h-[640px] max-h-[calc(100vh-7rem)] w-[calc(100vw-2rem)] max-w-[900px] flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#07111F] text-white shadow-[0_30px_100px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:left-[300px] lg:w-[calc(100vw-324px)] xl:w-[860px]"
+          className="fixed bottom-20 right-4 z-[79] flex h-[640px] max-h-[calc(100vh-7rem)] w-[calc(100vw-2rem)] max-w-[900px] flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#07111F] text-white shadow-[0_30px_100px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:right-6 lg:w-[calc(100vw-324px)] xl:w-[860px]"
           aria-label="Flowtix Team Chat"
         >
           <header className="flex h-[62px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0B1525]/95 px-4">
