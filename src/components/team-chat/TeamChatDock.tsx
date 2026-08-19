@@ -1117,7 +1117,7 @@ export default function TeamChatDock({
                       key={value}
                       type="button"
                       onClick={() => setView(value)}
-                      className={`flex-1 rounded-md px-2 py-2 transition ${
+                      className={`flex-1 !rounded-md !border-0 px-2 py-2 transition focus-visible:!outline-none focus-visible:!ring-0 ${
                         view === value
                           ? '!border-0 !bg-violet-500/15 !text-violet-100 shadow-[inset_0_-2px_0_rgba(139,92,246,.9)]'
                           : '!border-0 !bg-transparent !text-slate-400 hover:!bg-white/[0.04] hover:!text-slate-100'
@@ -1269,10 +1269,10 @@ export default function TeamChatDock({
                           setNewChatTab('group')
                           setComposerMode('group')
                         }}
-                        className={`flex-1 rounded-lg px-3 py-2.5 ${
+                        className={`flex-1 !rounded-md !border-0 px-3 py-2.5 transition focus-visible:!outline-none focus-visible:!ring-0 ${
                           newChatTab === 'group'
-                            ? 'bg-violet-500/15 text-violet-200'
-                            : 'text-slate-500'
+                            ? '!bg-violet-500/20 !text-violet-100'
+                            : '!bg-transparent !text-slate-400 hover:!bg-white/[0.04] hover:!text-slate-100'
                         }`}
                       >
                         Group chat
@@ -1294,7 +1294,7 @@ export default function TeamChatDock({
                               type="button"
                               disabled={creatingConversation}
                               onClick={() => void createDirectConversation(member.userId)}
-                              className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-white/[0.04] disabled:opacity-50"
+                              className="flex w-full items-center gap-3 !rounded-xl !border !border-transparent !bg-transparent px-3 py-3 text-left !shadow-none transition hover:!border-transparent hover:!bg-white/[0.04] focus-visible:!outline-none focus-visible:!ring-0 disabled:opacity-50"
                             >
                               <ChatAvatar
                                 label={displayMemberName(member)}
@@ -1366,7 +1366,7 @@ export default function TeamChatDock({
                                   type="button"
                                   disabled={requiredCreator}
                                   onClick={() => toggleMemberSelection(member.userId)}
-                                  className="flex w-full items-center gap-3 !rounded-lg !border-0 !bg-transparent px-3 py-2.5 text-left hover:!bg-white/[0.045] disabled:cursor-default disabled:opacity-80"
+                                  className="flex w-full items-center gap-3 !rounded-lg !border !border-transparent !bg-transparent px-3 py-2.5 text-left !shadow-none hover:!border-transparent hover:!bg-white/[0.045] focus-visible:!outline-none focus-visible:!ring-0 disabled:cursor-default disabled:opacity-80"
                                 >
                                   <ChatAvatar
                                     label={displayMemberName(member)}
