@@ -601,18 +601,28 @@ export default function TeamChatDock({
       }
     }, 60_000)
 
+    const memberDirectoryRefresh = window.setInterval(() => {
+      if (panelOpen && document.visibilityState === 'visible') {
+        void refreshMembers()
+      }
+    }, 15_000)
+
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
         void touchPresence()
+        if (panelOpen) {
+          void refreshMembers()
+        }
       }
     }
 
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
       window.clearInterval(heartbeat)
+      window.clearInterval(memberDirectoryRefresh)
       document.removeEventListener('visibilitychange', onVisibility)
     }
-  }, [touchPresence])
+  }, [panelOpen, refreshMembers, touchPresence])
 
   useEffect(() => {
     return () => {
@@ -1012,6 +1022,7 @@ export default function TeamChatDock({
           setPanelOpen(opening)
           if (opening) {
             void touchPresence()
+            void refreshMembers()
             void refreshConversations()
             void refreshPresence()
           }
