@@ -1551,7 +1551,10 @@ export default function TeamChatDock({
                         {currentMessages.map((message) => {
                           const isOwn = message.senderUserId === currentUserId
                           const sender = memberByUserId.get(message.senderUserId)
-                          const senderName = isOwn ? 'You' : displayMemberName(sender)
+                          const senderName = isOwn
+                            ? currentUserName.trim() || 'You'
+                            : displayMemberName(sender)
+                          const senderLabel = isOwn ? `${senderName} · You` : senderName
                           const readLabel =
                             message.readByCount > 0
                               ? activeConversation.kind === 'direct'
@@ -1573,11 +1576,15 @@ export default function TeamChatDock({
                                 />
                               ) : null}
                               <div className={`max-w-[78%] ${isOwn ? 'text-right' : 'text-left'}`}>
-                                {!isOwn && activeConversation.kind === 'group' ? (
-                                  <p className="mb-1 pl-1 text-[10px] font-semibold text-slate-400">
-                                    {senderName}
-                                  </p>
-                                ) : null}
+                                <p
+                                  className={`mb-1 px-1 text-[10px] font-semibold ${
+                                    isOwn
+                                      ? 'text-right text-violet-200/90'
+                                      : 'text-left text-slate-300'
+                                  }`}
+                                >
+                                  {senderLabel}
+                                </p>
                                 <div
                                   className={`inline-block rounded-2xl px-3.5 py-2.5 text-left text-[13px] leading-[1.45] shadow-sm ${
                                     isOwn
