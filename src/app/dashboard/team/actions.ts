@@ -100,8 +100,7 @@ export async function inviteTeamMember(
   formData: FormData,
 ): Promise<TeamActionState> {
   try {
-    const { supabase, user, organization } =
-      await requireTeamManager()
+    const { supabase, organization } = await requireTeamManager()
 
     const email = normalizeEmail(formData.get('email'))
     const role = normalizeRole(formData.get('role'))
@@ -150,17 +149,18 @@ export async function inviteTeamMember(
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
 
-    const { data: invitation, error } = await supabase
-      .from('organization_invitations')
-      .insert({
-        organization_id: organization.organization_id,
-        email,
-        role,
-        invited_by: user.id,
-        expires_at: expiresAt.toISOString(),
-      })
-      .select('token')
-      .single()
+    const { data: invitationData, error } = await supabase.rpc(
+      'create_organization_invitation',
+      {
+        p_organization_id: organization.organization_id,
+        p_email: email,
+        p_role: role,
+        p_expires_at: expiresAt.toISOString(),
+      },
+    )
+    const invitation = Array.isArray(invitationData)
+      ? invitationData[0] ?? null
+      : invitationData
 
     if (error) {
       throw new Error(

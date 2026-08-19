@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 
 import { enqueueGmailSync, resolveGmailOrganization } from '@/lib/communications/gmail-inbox'
+import { verifyGooglePubSubOidc } from '@/lib/security/google-pubsub-oidc'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,16 +53,30 @@ function normalizedHistoryId(value: unknown, rawPayload: string) {
 export async function POST(request: Request) {
   try {
     const expectedSecret = process.env.GMAIL_PUBSUB_WEBHOOK_SECRET?.trim()
-    if (!expectedSecret) {
+    const oidcConfigured = Boolean(
+      process.env.GMAIL_PUBSUB_OIDC_AUDIENCE?.trim() &&
+        process.env.GMAIL_PUBSUB_OIDC_SERVICE_ACCOUNT_EMAIL?.trim(),
+    )
+
+    if (!expectedSecret && !oidcConfigured) {
       return NextResponse.json(
         { error: 'Gmail Pub/Sub webhook is not configured.' },
         { status: 503 },
       )
     }
 
+    const oidcAuthorized = oidcConfigured
+      ? await verifyGooglePubSubOidc(request)
+      : false
     const url = new URL(request.url)
     const suppliedSecret = url.searchParams.get('token')?.trim() ?? ''
-    if (!suppliedSecret || !safeEqual(suppliedSecret, expectedSecret)) {
+    const legacyAuthorized = Boolean(
+      expectedSecret && suppliedSecret && safeEqual(suppliedSecret, expectedSecret),
+    )
+
+    // S5 transition: accept authenticated Pub/Sub OIDC first, while preserving
+    // the existing URL-secret path until production delivery is confirmed.
+    if (!oidcAuthorized && !legacyAuthorized) {
       return NextResponse.json({ error: 'Unauthorized Gmail push.' }, { status: 401 })
     }
 

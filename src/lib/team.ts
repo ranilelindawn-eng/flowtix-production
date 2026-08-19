@@ -23,7 +23,6 @@ export type TeamInvitation = {
   organization_id: string
   email: string
   role: TeamRole
-  token: string
   invited_by: string
   accepted_by: string | null
   expires_at: string
@@ -317,7 +316,6 @@ export async function getInvitations(): Promise<
       organization_id,
       email,
       role,
-      token,
       invited_by,
       accepted_by,
       expires_at,
@@ -351,7 +349,6 @@ export async function getInvitations(): Promise<
         organization_id: invitation.organization_id,
         email: invitation.email,
         role: invitation.role,
-        token: invitation.token,
         invited_by: invitation.invited_by,
         accepted_by: invitation.accepted_by,
         expires_at: invitation.expires_at,
