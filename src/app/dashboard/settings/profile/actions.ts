@@ -31,15 +31,57 @@ export async function saveProfileSettings(formData: FormData) {
     throw new Error('You must be signed in to update your profile.')
   }
 
-  const { error } = await supabase.auth.updateUser({
+  const normalizedAvatarUrl = avatarUrl || null
+
+  const { data: existingProfile, error: profileLoadError } = await supabase
+    .from('profiles')
+    .select('full_name,avatar_url')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileLoadError) {
+    throw new Error(`Failed to load profile: ${profileLoadError.message}`)
+  }
+
+  const { data: updatedProfile, error: profileError } = await supabase
+    .from('profiles')
+    .update({
+      full_name: fullName,
+      avatar_url: normalizedAvatarUrl,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id)
+    .select('id')
+    .maybeSingle()
+
+  if (profileError || !updatedProfile) {
+    throw new Error(
+      `Failed to update Flowtix profile: ${profileError?.message ?? 'Profile row was not found.'}`,
+    )
+  }
+
+  const { error: metadataError } = await supabase.auth.updateUser({
     data: {
       full_name: fullName,
-      avatar_url: avatarUrl || null,
+      avatar_url: normalizedAvatarUrl,
     },
   })
 
-  if (error) {
-    throw new Error(`Failed to update profile: ${error.message}`)
+  if (metadataError) {
+    const { error: rollbackError } = await supabase
+      .from('profiles')
+      .update({
+        full_name: existingProfile?.full_name ?? null,
+        avatar_url: existingProfile?.avatar_url ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', user.id)
+
+    if (rollbackError) {
+      console.error('Unable to roll back Flowtix profile after metadata failure:', rollbackError)
+    }
+
+    throw new Error(`Failed to update account profile: ${metadataError.message}`)
   }
 
   revalidatePath('/dashboard/settings/profile')

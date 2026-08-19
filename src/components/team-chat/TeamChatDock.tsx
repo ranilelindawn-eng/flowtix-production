@@ -186,7 +186,11 @@ function parsePresence(value: unknown): TeamChatPresence | null {
   const userId = toStringValue(value.user_id)
   const lastSeenAt = toStringValue(value.last_seen_at)
   if (!userId || !lastSeenAt) return null
-  return { userId, lastSeenAt }
+  return {
+    userId,
+    lastSeenAt,
+    isOnline: value.is_online === true,
+  }
 }
 
 function parseTyping(value: unknown): TeamChatTyping | null {
@@ -315,7 +319,7 @@ export default function TeamChatDock({
   const [openConversationIds, setOpenConversationIds] = useState<string[]>([])
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [presence, setPresence] = useState<Record<string, string>>({})
+  const [presence, setPresence] = useState<Record<string, TeamChatPresence>>({})
   const [typingByConversation, setTypingByConversation] = useState<
     Record<string, TeamChatTyping[]>
   >({})
@@ -349,6 +353,11 @@ export default function TeamChatDock({
     return new Map(members.map((member) => [member.userId, member]))
   }, [members])
 
+  const currentMember = memberByUserId.get(currentUserId)
+  const currentDisplayName = currentMember ? displayMemberName(currentMember) : currentUserName
+  const currentDisplayEmail = currentMember?.email?.trim() || currentUserEmail
+  const currentDisplayAvatarUrl = currentMember?.avatarUrl ?? currentUserAvatarUrl
+
   const activeConversation = useMemo(
     () => conversations.find((conversation) => conversation.id === activeConversationId) ?? null,
     [activeConversationId, conversations],
@@ -360,9 +369,9 @@ export default function TeamChatDock({
 
   const isUserOnline = useCallback(
     (userId: string) => {
-      const lastSeen = presence[userId]
-      if (!lastSeen) return false
-      const timestamp = new Date(lastSeen).getTime()
+      const status = presence[userId]
+      if (!status?.isOnline) return false
+      const timestamp = new Date(status.lastSeenAt).getTime()
       return Number.isFinite(timestamp) && clockTick - timestamp <= ONLINE_WINDOW_MS
     },
     [clockTick, presence],
@@ -439,15 +448,15 @@ export default function TeamChatDock({
   const refreshPresence = useCallback(async () => {
     const { data, error } = await supabase
       .from('team_chat_presence')
-      .select('user_id,last_seen_at')
+      .select('user_id,last_seen_at,is_online')
       .eq('organization_id', organizationId)
 
     if (error) throw error
 
-    const nextPresence: Record<string, string> = {}
+    const nextPresence: Record<string, TeamChatPresence> = {}
     for (const row of Array.isArray(data) ? data : []) {
       const parsed = parsePresence(row)
-      if (parsed) nextPresence[parsed.userId] = parsed.lastSeenAt
+      if (parsed) nextPresence[parsed.userId] = parsed
     }
     setPresence(nextPresence)
   }, [organizationId, supabase])
@@ -523,7 +532,11 @@ export default function TeamChatDock({
     const timestamp = typeof data === 'string' ? data : new Date().toISOString()
     setPresence((current) => ({
       ...current,
-      [currentUserId]: timestamp,
+      [currentUserId]: {
+        userId: currentUserId,
+        lastSeenAt: timestamp,
+        isOnline: true,
+      },
     }))
   }, [currentUserId, supabase])
 
@@ -637,6 +650,30 @@ export default function TeamChatDock({
   }, [setTypingState])
 
   useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        void touchPresence()
+        return
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setPresence((current) => ({
+          ...current,
+          [currentUserId]: {
+            userId: currentUserId,
+            lastSeenAt: new Date().toISOString(),
+            isOnline: false,
+          },
+        }))
+      }
+    })
+
+    return () => {
+      data.subscription.unsubscribe()
+    }
+  }, [currentUserId, supabase, touchPresence])
+
+  useEffect(() => {
     const channel = supabase
       .channel(`flowtix-team-chat-${organizationId}`)
       .on(
@@ -716,7 +753,7 @@ export default function TeamChatDock({
           if (!row) return
           setPresence((current) => ({
             ...current,
-            [row.userId]: row.lastSeenAt,
+            [row.userId]: row,
           }))
         },
       )
@@ -1041,13 +1078,16 @@ export default function TeamChatDock({
             {totalUnread > 99 ? '99+' : totalUnread}
           </span>
         ) : (
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" aria-label="Team Chat online" />
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${isUserOnline(currentUserId) ? 'bg-emerald-400' : 'bg-slate-500'}`}
+            aria-label={isUserOnline(currentUserId) ? 'Online' : 'Offline'}
+          />
         )}
       </button>
 
       {panelOpen ? (
         <section
-          className="fixed bottom-20 right-4 z-[79] flex h-[570px] max-h-[calc(100vh-6.5rem)] w-[calc(100vw-2rem)] max-w-[820px] flex-col overflow-hidden rounded-2xl border border-violet-300/15 bg-[#08111E] text-white shadow-[0_28px_90px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:right-6 lg:w-[min(820px,calc(100vw-2rem))]"
+          className="fixed bottom-20 right-4 z-[79] flex h-[580px] max-h-[calc(100vh-6.5rem)] w-[calc(100vw-2rem)] max-w-[840px] flex-col overflow-hidden rounded-2xl border border-violet-300/15 bg-[#08111E] text-white shadow-[0_28px_90px_rgba(0,0,0,.58)] backdrop-blur-2xl lg:right-6 lg:w-[min(840px,calc(100vw-2rem))]"
           aria-label="Flowtix Team Chat"
         >
           <header className="flex h-[56px] shrink-0 items-center justify-between border-b border-white/[0.08] bg-[#0B1423]/98 px-3.5">
@@ -1058,7 +1098,10 @@ export default function TeamChatDock({
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-[14px] font-semibold tracking-[-0.01em] text-white">Team Chat</h2>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <span
+                    className={`h-2 w-2 rounded-full ${isUserOnline(currentUserId) ? 'bg-emerald-400' : 'bg-slate-500'}`}
+                    aria-label={isUserOnline(currentUserId) ? 'Online' : 'Offline'}
+                  />
                 </div>
                 <p className="text-[10px] font-medium text-slate-400">Internal organization messaging</p>
               </div>
@@ -1075,7 +1118,7 @@ export default function TeamChatDock({
               <button
                 type="button"
                 onClick={() => setPanelOpen(false)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+                className="!rounded-lg !border !border-transparent !bg-transparent p-1.5 !text-slate-400 !shadow-none transition hover:!bg-white/[0.06] hover:!text-white focus-visible:!outline-none focus-visible:!ring-0"
                 aria-label="Minimize Team Chat"
               >
                 <Minus className="h-4 w-4" />
@@ -1083,7 +1126,7 @@ export default function TeamChatDock({
               <button
                 type="button"
                 onClick={() => setPanelOpen(false)}
-                className="rounded-lg p-2 text-slate-400 transition hover:bg-white/[0.06] hover:text-white"
+                className="!rounded-lg !border !border-transparent !bg-transparent p-1.5 !text-slate-400 !shadow-none transition hover:!bg-white/[0.06] hover:!text-white focus-visible:!outline-none focus-visible:!ring-0"
                 aria-label="Close Team Chat"
               >
                 <X className="h-4 w-4" />
@@ -1093,7 +1136,7 @@ export default function TeamChatDock({
 
           <div className="flex min-h-0 flex-1">
             <aside
-              className={`flex w-[270px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0A1322] max-md:w-[42%] ${mobileThreadOpen ? 'max-sm:hidden' : 'max-sm:w-full'}`}
+              className={`flex w-[280px] shrink-0 flex-col border-r border-white/[0.08] bg-[#0A1322] max-md:w-[42%] ${mobileThreadOpen ? 'max-sm:hidden' : 'max-sm:w-full'}`}
             >
               <div className="space-y-2 border-b border-white/[0.07] px-3 py-2.5">
                 <div className="relative">
@@ -1195,7 +1238,7 @@ export default function TeamChatDock({
                                     ? `${conversation.memberCount} members`
                                     : online
                                       ? 'Online'
-                                      : 'Start a conversation')}
+                                      : 'Offline')}
                               </span>
                               {conversation.unreadCount > 0 ? (
                                 <span className="flex min-w-5 shrink-0 items-center justify-center rounded-full bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -1305,8 +1348,9 @@ export default function TeamChatDock({
                                 <span className="block truncate text-xs font-semibold text-slate-100">
                                   {displayMemberName(member)}
                                 </span>
-                                <span className="mt-0.5 block truncate text-[11px] text-slate-500">
-                                  {member.email ?? member.role}
+                                <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                                  {isUserOnline(member.userId) ? 'Online' : 'Offline'}
+                                  {member.email ? ` · ${member.email}` : ''}
                                 </span>
                               </span>
                               <MessageCircle className="h-4 w-4 text-slate-500" />
@@ -1341,16 +1385,16 @@ export default function TeamChatDock({
                           <div className="space-y-1 rounded-xl border border-white/[0.07] bg-[#0A1422]/80 p-2">
                             <div className="flex items-center gap-3 rounded-lg bg-violet-500/[0.10] px-3 py-2.5 ring-1 ring-violet-400/15">
                               <ChatAvatar
-                                label={currentUserName}
-                                avatarUrl={currentUserAvatarUrl}
+                                label={currentDisplayName}
+                                avatarUrl={currentDisplayAvatarUrl}
                                 online
                                 size="sm"
                               />
                               <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-medium text-slate-200">
-                                  {currentUserName}
+                                <p className="truncate text-[12px] font-semibold text-slate-100">
+                                  {currentDisplayName}
                                 </p>
-                                <p className="truncate text-[10px] text-slate-500">You · {currentUserEmail}</p>
+                                <p className="truncate text-[10px] text-slate-500">You · {currentDisplayEmail}</p>
                               </div>
                               <Check className="h-4 w-4 text-violet-300" />
                             </div>
@@ -1375,7 +1419,7 @@ export default function TeamChatDock({
                                     size="sm"
                                   />
                                   <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-xs font-medium text-slate-200">
+                                    <span className="block truncate text-[12px] font-semibold text-slate-100">
                                       {displayMemberName(member)}
                                     </span>
                                     <span className="block truncate text-[10px] text-slate-500">

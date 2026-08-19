@@ -48,4 +48,5 @@ export type TeamChatTyping = {
 export type TeamChatPresence = {
   userId: string
   lastSeenAt: string
+  isOnline: boolean
 }

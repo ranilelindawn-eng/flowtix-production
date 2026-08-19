@@ -32,6 +32,16 @@ export default async function ProfileSettingsPage() {
     )
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('full_name,avatar_url')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (profileError) {
+    console.error('Unable to load profile settings:', profileError)
+  }
+
   return (
     <div className="space-y-8">
       <div>
@@ -40,7 +50,7 @@ export default async function ProfileSettingsPage() {
         </h1>
 
         <p className="mt-2 text-muted-foreground">
-          Update your personal information.
+          Update your personal information. Your name and profile photo are used in Team Chat and member-facing Flowtix views.
         </p>
       </div>
 
@@ -48,10 +58,15 @@ export default async function ProfileSettingsPage() {
         userId={user.id}
         email={user.email ?? ''}
         fullName={
-          (user.user_metadata?.full_name as string | undefined) ?? ''
+          profile?.full_name?.trim() ||
+          (user.user_metadata?.full_name as string | undefined) ||
+          user.email?.split('@')[0] ||
+          ''
         }
         avatarUrl={
-          (user.user_metadata?.avatar_url as string | undefined) ?? null
+          profile?.avatar_url ??
+          (user.user_metadata?.avatar_url as string | undefined) ??
+          null
         }
       />
     </div>

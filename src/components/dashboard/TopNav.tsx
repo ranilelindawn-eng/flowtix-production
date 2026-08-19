@@ -76,9 +76,34 @@ export default function TopNav({
 
     try {
       const supabase = createClient()
+
+      const { error: presenceError } = await supabase.rpc(
+        'team_chat_set_presence',
+        { p_online: false },
+      )
+
+      if (presenceError) {
+        console.warn(
+          'Unable to mark Team Chat presence offline before sign out:',
+          presenceError,
+        )
+      }
+
       const { error } = await supabase.auth.signOut()
 
       if (error) {
+        const { error: restorePresenceError } = await supabase.rpc(
+          'team_chat_set_presence',
+          { p_online: true },
+        )
+
+        if (restorePresenceError) {
+          console.warn(
+            'Unable to restore Team Chat presence after failed sign out:',
+            restorePresenceError,
+          )
+        }
+
         console.error('Unable to sign out:', error)
         setLogoutError(
           getUserFacingErrorMessage(error, {
