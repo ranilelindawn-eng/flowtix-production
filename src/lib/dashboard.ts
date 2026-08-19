@@ -57,6 +57,22 @@ type DashboardCallRow = {
   created_at: string
 }
 
+type DashboardOpportunityRow = {
+  id: string
+  status: string
+  value: number | string | null
+  currency: string | null
+  won_at: string | null
+  closed_at: string | null
+  updated_at: string
+}
+
+export type DashboardSalesTrendPoint = {
+  label: string
+  currentRevenue: number
+  previousRevenue: number
+}
+
 export type RecentCallWithContact = {
   id: string
   contactName: string
@@ -96,10 +112,19 @@ export type DashboardFollowUp = {
 }
 
 export type DashboardData = {
+  organizationId: string
   userName: string
   organizationName: string
+  currencyCode: string
 
   totalContacts: number
+  openDeals: number
+  wonDeals: number
+  pipelineValue: number
+  wonRevenue: number
+  emailsToday: number
+  meetingsToday: number
+  tasksCompletedToday: number
   totalCalls: number
   callsToday: number
   connectedCalls: number
@@ -116,6 +141,7 @@ export type DashboardData = {
   callsOverTime: CallsOverTimePoint[]
   callOutcomes: CallOutcomePoint[]
   recentActivity: DashboardActivity[]
+  salesTrend: DashboardSalesTrendPoint[]
   overdueFollowUps: DashboardFollowUp[]
   todayFollowUps: DashboardFollowUp[]
   upcomingFollowUps: DashboardFollowUp[]
@@ -127,10 +153,19 @@ function createEmptyDashboardData(
   error?: string,
 ): DashboardData {
   return {
+    organizationId: '',
     userName: 'there',
     organizationName: 'Flowtix workspace',
+    currencyCode: 'USD',
 
     totalContacts: 0,
+    openDeals: 0,
+    wonDeals: 0,
+    pipelineValue: 0,
+    wonRevenue: 0,
+    emailsToday: 0,
+    meetingsToday: 0,
+    tasksCompletedToday: 0,
     totalCalls: 0,
     callsToday: 0,
     connectedCalls: 0,
@@ -147,6 +182,7 @@ function createEmptyDashboardData(
     callsOverTime: createEmptyCallsOverTime('UTC'),
     callOutcomes: [],
     recentActivity: [],
+    salesTrend: createEmptySalesTrend('UTC'),
     overdueFollowUps: [],
     todayFollowUps: [],
     upcomingFollowUps: [],
@@ -372,6 +408,77 @@ function createCallsOverTime(
 
     if (point) {
       point.calls += 1
+    }
+  }
+
+  return points
+}
+
+function createEmptySalesTrend(
+  timeZone: string,
+): DashboardSalesTrendPoint[] {
+  const todayKey = getTodayDateKey(timeZone)
+  const formatter = new Intl.DateTimeFormat('en', {
+    timeZone: 'UTC',
+    weekday: 'short',
+  })
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const currentDateKey = addDaysToDateKey(todayKey, -(6 - index))
+    const labelDate = new Date(`${currentDateKey}T12:00:00.000Z`)
+
+    return {
+      label: formatter.format(labelDate),
+      currentRevenue: 0,
+      previousRevenue: 0,
+    }
+  })
+}
+
+function getOpportunityValue(value: DashboardOpportunityRow['value']): number {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
+}
+
+function createSalesTrend(
+  opportunities: DashboardOpportunityRow[],
+  timeZone: string,
+): DashboardSalesTrendPoint[] {
+  const normalizedTimeZone = normalizeTimeZone(timeZone)
+  const todayKey = getTodayDateKey(normalizedTimeZone)
+  const points = createEmptySalesTrend(normalizedTimeZone)
+  const currentDateKeys = points.map((_, index) =>
+    addDaysToDateKey(todayKey, -(6 - index)),
+  )
+  const previousDateKeys = points.map((_, index) =>
+    addDaysToDateKey(todayKey, -(13 - index)),
+  )
+  const currentIndexByDate = new Map(
+    currentDateKeys.map((dateKey, index) => [dateKey, index]),
+  )
+  const previousIndexByDate = new Map(
+    previousDateKeys.map((dateKey, index) => [dateKey, index]),
+  )
+
+  for (const opportunity of opportunities) {
+    if (opportunity.status.trim().toLowerCase() !== 'won') continue
+
+    const closedAtValue =
+      opportunity.won_at || opportunity.closed_at || opportunity.updated_at
+    const closedAt = new Date(closedAtValue)
+    if (Number.isNaN(closedAt.getTime())) continue
+
+    const dateKey = getDateKeyInTimeZone(closedAt, normalizedTimeZone)
+    const value = getOpportunityValue(opportunity.value)
+    const currentIndex = currentIndexByDate.get(dateKey)
+    if (currentIndex !== undefined) {
+      points[currentIndex].currentRevenue += value
+      continue
+    }
+
+    const previousIndex = previousIndexByDate.get(dateKey)
+    if (previousIndex !== undefined) {
+      points[previousIndex].previousRevenue += value
     }
   }
 
@@ -778,6 +885,7 @@ export async function getDashboardData(
           ascending: true,
         })
         .limit(200),
+
     ])
 
     const queryErrors = [
@@ -796,6 +904,55 @@ export async function getDashboardData(
 
     if (queryErrors.length > 0) {
       throw queryErrors[0]
+    }
+
+    const [
+      opportunitiesResult,
+      emailsTodayCountResult,
+      meetingsTodayCountResult,
+      tasksCompletedTodayCountResult,
+    ] = await Promise.all([
+      supabase
+        .from('opportunities')
+        .select('id,status,value,currency,won_at,closed_at,updated_at')
+        .eq('organization_id', organizationId),
+      supabase
+        .from('communication_messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('channel', 'email')
+        .eq('direction', 'outbound')
+        .in('status', ['sent', 'delivered'])
+        .gte('created_at', todayIso)
+        .lt('created_at', tomorrowIso),
+      supabase
+        .from('calendar_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .in('event_type', ['meeting', 'demo'])
+        .neq('status', 'cancelled')
+        .gte('starts_at', todayIso)
+        .lt('starts_at', tomorrowIso),
+      supabase
+        .from('contact_tasks')
+        .select('id', { count: 'exact', head: true })
+        .eq('organization_id', organizationId)
+        .eq('status', 'completed')
+        .gte('completed_at', todayIso)
+        .lt('completed_at', tomorrowIso),
+    ])
+
+    if (opportunitiesResult.error) {
+      console.warn('Dashboard sales metrics unavailable:', opportunitiesResult.error)
+    }
+    if (emailsTodayCountResult.error) {
+      console.warn('Dashboard email metric unavailable:', emailsTodayCountResult.error)
+    }
+    if (meetingsTodayCountResult.error) {
+      console.warn('Dashboard meeting metric unavailable:', meetingsTodayCountResult.error)
+    }
+    if (tasksCompletedTodayCountResult.error) {
+      console.warn('Dashboard completed-task metric unavailable:', tasksCompletedTodayCountResult.error)
     }
 
     const recentContacts =
@@ -817,6 +974,29 @@ export async function getDashboardData(
     const pendingTasks =
       (pendingTasksResult.data ??
         []) as DashboardTaskRow[]
+
+    const opportunities =
+      (opportunitiesResult.data ??
+        []) as DashboardOpportunityRow[]
+
+    const openOpportunities = opportunities.filter((opportunity) => {
+      const status = opportunity.status.trim().toLowerCase()
+      return status !== 'won' && status !== 'lost'
+    })
+    const wonOpportunities = opportunities.filter(
+      (opportunity) => opportunity.status.trim().toLowerCase() === 'won',
+    )
+    const pipelineValue = openOpportunities.reduce(
+      (total, opportunity) => total + getOpportunityValue(opportunity.value),
+      0,
+    )
+    const wonRevenue = wonOpportunities.reduce(
+      (total, opportunity) => total + getOpportunityValue(opportunity.value),
+      0,
+    )
+    const currencyCode =
+      opportunities.find((opportunity) => opportunity.currency?.trim())?.currency?.trim().toUpperCase() ||
+      'USD'
 
     const contactIds = Array.from(
       new Set([
@@ -881,12 +1061,21 @@ export async function getDashboardData(
     const totalCalls = allCalls.length
 
     return {
+      organizationId,
       userName:
         profile?.full_name?.trim() || 'there',
       organizationName,
+      currencyCode,
 
       totalContacts:
         contactsCountResult.count ?? 0,
+      openDeals: openOpportunities.length,
+      wonDeals: wonOpportunities.length,
+      pipelineValue,
+      wonRevenue,
+      emailsToday: emailsTodayCountResult.count ?? 0,
+      meetingsToday: meetingsTodayCountResult.count ?? 0,
+      tasksCompletedToday: tasksCompletedTodayCountResult.count ?? 0,
       totalCalls,
       callsToday:
         callsTodayCountResult.count ?? 0,
@@ -920,6 +1109,10 @@ export async function getDashboardData(
       recentActivity: createRecentActivity(
         recentContacts,
         recentCalls,
+      ),
+      salesTrend: createSalesTrend(
+        opportunities,
+        normalizedTimeZone,
       ),
       overdueFollowUps: followUps.overdue,
       todayFollowUps: followUps.today,

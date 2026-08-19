@@ -128,7 +128,7 @@ export default function StatsCard({
       : normalizeProgress(progress)
 
   const card = (
-    <article className="group relative h-full overflow-hidden rounded-3xl border border-white/10 bg-[#0B1726]/90 p-6 shadow-[0_30px_80px_-45px_rgba(13,54,124,0.65)] transition duration-300 hover:-translate-y-1 hover:border-white/20 hover:bg-[#0E1C2E]">
+    <article className="group relative h-full overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B1726]/92 p-5 shadow-[0_24px_70px_-48px_rgba(79,70,229,0.85)] transition duration-300 hover:-translate-y-0.5 hover:border-violet-400/20 hover:bg-[#0E1C2E]">
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b ${selectedTone.glow} to-transparent opacity-70 transition duration-300 group-hover:opacity-100`}
@@ -137,26 +137,26 @@ export default function StatsCard({
       <div className="relative">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">
+            <p className="text-sm font-medium text-slate-400">
               {label}
             </p>
 
-            <p className="mt-4 truncate text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            <p className="mt-2 truncate text-2xl font-semibold tracking-tight text-white sm:text-3xl">
               {value}
             </p>
           </div>
 
           <div
-            className={`inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-lg font-semibold shadow-inner ${selectedTone.icon}`}
+            className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-base font-semibold shadow-inner ${selectedTone.icon}`}
           >
             {icon}
           </div>
         </div>
 
-        <div className="mt-5 flex min-h-7 flex-wrap items-center gap-2">
+        <div className="mt-3 flex min-h-6 flex-wrap items-center gap-2">
           {trend ? (
             <span
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${getTrendStyles(
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${getTrendStyles(
                 trendDirection,
               )}`}
             >
@@ -169,7 +169,7 @@ export default function StatsCard({
 
           {delta ? (
             <span
-              className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${selectedTone.badge}`}
+              className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${selectedTone.badge}`}
             >
               {delta}
             </span>
@@ -177,7 +177,7 @@ export default function StatsCard({
         </div>
 
         {normalizedProgress !== undefined ? (
-          <div className="mt-5">
+          <div className="mt-4">
             <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-500">
               <span>Progress</span>
               <span>{Math.round(normalizedProgress)}%</span>
@@ -200,7 +200,7 @@ export default function StatsCard({
   if (!href) return card
 
   return (
-    <Link href={href} aria-label={`Open ${label}`} className="block rounded-3xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400">
+    <Link href={href} aria-label={`Open ${label}`} className="block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
       {card}
     </Link>
   )

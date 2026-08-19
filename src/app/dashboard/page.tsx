@@ -10,6 +10,7 @@ import {
 
 import { getDashboardData } from '@/lib/dashboard'
 import FollowUpWidget from '@/components/dashboard/FollowUpWidget'
+import DashboardLiveRefresh from '@/components/dashboard/DashboardLiveRefresh'
 
 import { getCurrentOrganizationTimezone } from '@/lib/team'
 type IconProps = {
@@ -232,6 +233,70 @@ function UserPlusIcon({ className = 'h-5 w-5' }: IconProps) {
   )
 }
 
+function MailIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4 7 8 6 8-6" />
+    </svg>
+  )
+}
+
+function TrophyIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 4h8v4a4 4 0 0 1-8 0V4Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6" />
+    </svg>
+  )
+}
+
+function DollarIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 8.5c-.8-1-2-1.5-3.6-1.5-2 0-3.4 1-3.4 2.5 0 3.7 7 1.7 7 5.3 0 1.4-1.4 2.5-3.5 2.5-1.8 0-3.1-.6-4-1.8M12 5v14" />
+    </svg>
+  )
+}
+
+function CheckIcon({ className = 'h-5 w-5' }: IconProps) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      className={className}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m7.5 12 3 3 6-7" />
+    </svg>
+  )
+}
+
 function getGreeting(timeZone: string): string {
   const hourPart = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -379,6 +444,60 @@ function getOutcomeTone(index: number): string {
   return tones[index % tones.length]
 }
 
+function formatCurrency(value: number, currencyCode: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      maximumFractionDigits: 0,
+    }).format(value)
+  } catch {
+    return `${currencyCode} ${Math.round(value).toLocaleString('en-US')}`
+  }
+}
+
+function getDashboardDateRange(timeZone: string): string {
+  const end = new Date()
+  const start = new Date(end)
+  start.setUTCDate(end.getUTCDate() - 6)
+
+  const formatter = new Intl.DateTimeFormat('en', {
+    timeZone,
+    month: 'short',
+    day: 'numeric',
+  })
+  const yearFormatter = new Intl.DateTimeFormat('en', {
+    timeZone,
+    year: 'numeric',
+  })
+
+  return `${formatter.format(start)} – ${formatter.format(end)}, ${yearFormatter.format(end)}`
+}
+
+function getChartPoints(values: number[], maximum: number): string {
+  if (values.length === 0) return ''
+
+  const width = 640
+  const height = 220
+  const horizontalPadding = 28
+  const topPadding = 24
+  const bottomPadding = 34
+  const usableWidth = width - horizontalPadding * 2
+  const usableHeight = height - topPadding - bottomPadding
+  const safeMaximum = Math.max(maximum, 1)
+
+  return values
+    .map((value, index) => {
+      const x =
+        values.length === 1
+          ? width / 2
+          : horizontalPadding + (index / (values.length - 1)) * usableWidth
+      const y = topPadding + usableHeight - (Math.max(value, 0) / safeMaximum) * usableHeight
+      return `${x.toFixed(1)},${y.toFixed(1)}`
+    })
+    .join(' ')
+}
+
 function AnalyticsCard({
   title,
   description,
@@ -438,70 +557,50 @@ export default async function DashboardPage() {
     dashboard.averageCallDurationSeconds,
   )
 
-  const callsProgress = Math.min(
-    Math.max(dashboard.connectedRate, 0),
-    100,
-  )
-
-  const stats = [
+  const primaryStats = [
     {
       label: 'Total Contacts',
       value: dashboard.totalContacts,
       delta: 'Live database',
       icon: <UsersIcon />,
-      tone: 'cyan' as const,
+      tone: 'violet' as const,
       href: '/dashboard/contacts',
     },
     {
-      label: 'Total Calls',
-      value: dashboard.totalCalls,
-      delta: 'All time',
-      icon: <PhoneIcon />,
-      tone: 'blue' as const,
-      href: '/dashboard/calls',
-    },
-    {
-      label: 'Calls Today',
-      value: dashboard.callsToday,
-      delta: 'Today',
-      icon: <CalendarIcon />,
-      tone: 'violet' as const,
-      href: '/dashboard/calls',
-    },
-    {
-      label: 'Connected Rate',
-      value: connectedRate,
-      delta: 'Successful calls',
-      icon: <ActivityIcon />,
-      progress: callsProgress,
-      tone: 'emerald' as const,
-      href: '/dashboard/call-analytics',
-    },
-    {
-      label: 'Average Duration',
-      value: averageDuration,
-      delta: 'Per connected call',
-      icon: <ClockIcon />,
-      tone: 'amber' as const,
-      href: '/dashboard/call-analytics',
-    },
-    {
-      label: 'Total Minutes',
-      value: dashboard.totalCallMinutes,
-      delta: 'Conversation time',
+      label: 'Deals in Pipeline',
+      value: dashboard.openDeals,
+      delta: `${formatCurrency(dashboard.pipelineValue, dashboard.currencyCode)} pipeline`,
       icon: <ChartIcon />,
-      tone: 'cyan' as const,
-      href: '/dashboard/call-analytics',
+      tone: 'emerald' as const,
+      href: '/dashboard/pipelines',
     },
     {
-      label: 'Active Campaigns',
-      value: dashboard.activeCampaigns,
-      delta: 'Currently active',
-      icon: <CampaignIcon />,
-      tone: 'rose' as const,
-      href: '/dashboard/campaigns',
+      label: 'Won Deals',
+      value: dashboard.wonDeals,
+      delta: 'Closed won',
+      icon: <TrophyIcon />,
+      tone: 'amber' as const,
+      href: '/dashboard/pipelines',
+    },
+    {
+      label: 'Revenue',
+      value: formatCurrency(dashboard.wonRevenue, dashboard.currencyCode),
+      delta: 'Won revenue',
+      icon: <DollarIcon />,
+      tone: 'blue' as const,
+      href: '/dashboard/sales-analytics',
     },
   ]
+
+  const operationalMetrics = [
+    { label: 'Total calls', value: dashboard.totalCalls, href: '/dashboard/calls' },
+    { label: 'Calls today', value: dashboard.callsToday, href: '/dashboard/calls' },
+    { label: 'Connected rate', value: connectedRate, href: '/dashboard/call-analytics' },
+    { label: 'Avg. duration', value: averageDuration, href: '/dashboard/call-analytics' },
+    { label: 'Total minutes', value: dashboard.totalCallMinutes, href: '/dashboard/call-analytics' },
+    { label: 'Active campaigns', value: dashboard.activeCampaigns, href: '/dashboard/campaigns' },
+  ]
+
 
   const recentContactRowHrefs = dashboard.recentContacts.map(
     (contact) => `/dashboard/contacts/${contact.id}`,
@@ -683,81 +782,282 @@ export default async function DashboardPage() {
     },
   )
 
+  const currentRevenueSeries = dashboard.salesTrend.map(
+    (point) => point.currentRevenue,
+  )
+  const previousRevenueSeries = dashboard.salesTrend.map(
+    (point) => point.previousRevenue,
+  )
+  const salesMaximum = Math.max(
+    ...currentRevenueSeries,
+    ...previousRevenueSeries,
+    1,
+  )
+  const currentSalesPoints = getChartPoints(
+    currentRevenueSeries,
+    salesMaximum,
+  )
+  const previousSalesPoints = getChartPoints(
+    previousRevenueSeries,
+    salesMaximum,
+  )
+  const thisWeekRevenue = currentRevenueSeries.reduce(
+    (total, value) => total + value,
+    0,
+  )
+  const previousWeekRevenue = previousRevenueSeries.reduce(
+    (total, value) => total + value,
+    0,
+  )
+  const revenueChange =
+    previousWeekRevenue > 0
+      ? ((thisWeekRevenue - previousWeekRevenue) / previousWeekRevenue) * 100
+      : thisWeekRevenue > 0
+        ? 100
+        : 0
+  const dateRangeLabel = getDashboardDateRange(timeZone)
+  const topActivities = [
+    {
+      label: 'Calls made',
+      value: dashboard.callsToday,
+      icon: <PhoneIcon className="h-4 w-4" />,
+      href: '/dashboard/calls',
+      tone: 'text-violet-300',
+    },
+    {
+      label: 'Emails sent',
+      value: dashboard.emailsToday,
+      icon: <MailIcon className="h-4 w-4" />,
+      href: '/dashboard/communications',
+      tone: 'text-blue-300',
+    },
+    {
+      label: 'Meetings',
+      value: dashboard.meetingsToday,
+      icon: <CalendarIcon className="h-4 w-4" />,
+      href: '/dashboard/calendar',
+      tone: 'text-fuchsia-300',
+    },
+    {
+      label: 'Tasks completed',
+      value: dashboard.tasksCompletedToday,
+      icon: <CheckIcon className="h-4 w-4" />,
+      href: '/dashboard/tasks',
+      tone: 'text-emerald-300',
+    },
+  ]
+
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#0C1728]/90 p-6 shadow-[0_30px_90px_-45px_rgba(13,54,124,0.75)] sm:p-8">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-cyan-400/10 blur-3xl"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -bottom-32 left-1/3 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl"
-        />
-
-        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-cyan-300">
-                {organizationName}
-              </p>
-
-              <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-                Live workspace
-              </span>
-            </div>
-
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-              {getGreeting(timeZone)}, {userName}.
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-              Monitor your sales activity, recent calls, contacts,
-              campaigns, and team performance from one central
-              workspace.
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/dashboard/dialer"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-semibold text-[#06111D] transition hover:bg-cyan-300"
-            >
-              <PhoneIcon className="h-4 w-4" />
-              Start calling
-            </Link>
-
-            <Link
-              href="/dashboard/contacts/new"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/10"
-            >
-              <PlusIcon className="h-4 w-4" />
-              New contact
-            </Link>
-          </div>
+    <div className="space-y-7">
+      <section className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-violet-300">
+            {organizationName}
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            {getGreeting(timeZone)}, {userName}! <span aria-hidden="true">👋</span>
+          </h1>
+          <p className="mt-2 text-sm text-slate-400">
+            Here&apos;s what&apos;s happening with your business today.
+          </p>
         </div>
 
-        {dashboard.error ? (
-          <div className="relative mt-6 rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
-            {dashboard.error}
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <span className="inline-flex items-center justify-center rounded-xl border border-white/[0.08] bg-[#0B1423]/85 px-4 py-2.5 text-xs font-medium text-slate-300">
+            {dateRangeLabel}
+          </span>
+          <DashboardLiveRefresh organizationId={dashboard.organizationId} />
+        </div>
       </section>
 
-      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat) => (
+      <section className="flex flex-wrap items-center gap-3">
+        <Link
+          href="/dashboard/dialer"
+          className="inline-flex min-h-11 items-center justify-center gap-2 !rounded-xl !border !border-violet-400/40 !bg-violet-600 px-5 py-2.5 text-sm font-semibold !text-white shadow-[0_12px_32px_rgba(124,58,237,0.28)] transition hover:!bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+        >
+          <PhoneIcon className="h-4 w-4" />
+          Start calling
+        </Link>
+
+        <Link
+          href="/dashboard/contacts/new"
+          className="inline-flex min-h-11 items-center justify-center gap-2 !rounded-xl !border !border-white/10 !bg-[#121D30] px-5 py-2.5 text-sm font-semibold !text-white transition hover:!border-violet-400/30 hover:!bg-[#17243A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-300"
+        >
+          <PlusIcon className="h-4 w-4" />
+          New contact
+        </Link>
+      </section>
+
+      {dashboard.error ? (
+        <div className="rounded-2xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">
+          {dashboard.error}
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {primaryStats.map((stat) => (
           <StatsCard
             key={stat.label}
             label={stat.label}
             value={stat.value}
             delta={stat.delta}
             icon={stat.icon}
-            progress={stat.progress}
             tone={stat.tone}
             href={stat.href}
           />
         ))}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.35fr_0.65fr]">
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B1726]/92 shadow-[0_24px_70px_-48px_rgba(79,70,229,0.8)]">
+          <div className="flex flex-col gap-3 border-b border-white/[0.08] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-white">Sales overview</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                Won revenue this week compared with last week.
+              </p>
+            </div>
+            <div className="flex items-center gap-4 text-[11px] font-medium text-slate-400">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2 w-5 rounded-full bg-violet-400" /> This week
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-px w-5 border-t border-dashed border-slate-500" /> Last week
+              </span>
+            </div>
+          </div>
+
+          <div className="px-5 pb-4 pt-5">
+            <div className="mb-1 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-2xl font-semibold tracking-tight text-white">
+                  {formatCurrency(thisWeekRevenue, dashboard.currencyCode)}
+                </p>
+                <p
+                  className={`mt-1 text-xs font-semibold ${
+                    revenueChange >= 0 ? 'text-emerald-300' : 'text-rose-300'
+                  }`}
+                >
+                  {revenueChange >= 0 ? '↗' : '↘'} {Math.abs(revenueChange).toFixed(1)}% vs last week
+                </p>
+              </div>
+              <Link
+                href="/dashboard/sales-analytics"
+                className="text-xs font-semibold text-violet-300 transition hover:text-violet-200"
+              >
+                View analytics →
+              </Link>
+            </div>
+
+            <svg
+              viewBox="0 0 640 220"
+              className="mt-2 h-[220px] w-full overflow-visible"
+              role="img"
+              aria-label="Sales revenue for this week and last week"
+            >
+              <defs>
+                <linearGradient id="dashboardSalesFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="rgb(139 92 246)" stopOpacity="0.24" />
+                  <stop offset="100%" stopColor="rgb(139 92 246)" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              {[50, 90, 130, 170].map((y) => (
+                <line
+                  key={y}
+                  x1="28"
+                  y1={y}
+                  x2="612"
+                  y2={y}
+                  stroke="rgba(148,163,184,0.10)"
+                  strokeWidth="1"
+                />
+              ))}
+              <polyline
+                points={previousSalesPoints}
+                fill="none"
+                stroke="rgb(100 116 139)"
+                strokeOpacity="0.55"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <polyline
+                points={currentSalesPoints}
+                fill="none"
+                stroke="rgb(139 92 246)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              {dashboard.salesTrend.map((point, index) => {
+                const x = 28 + (index / 6) * 584
+                return (
+                  <text
+                    key={`${point.label}-${index}`}
+                    x={x}
+                    y="214"
+                    textAnchor="middle"
+                    fill="rgb(100 116 139)"
+                    fontSize="11"
+                  >
+                    {point.label}
+                  </text>
+                )
+              })}
+            </svg>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0B1726]/92 shadow-[0_24px_70px_-48px_rgba(79,70,229,0.8)]">
+          <div className="border-b border-white/[0.08] px-5 py-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-white">Top activities</h2>
+                <p className="mt-1 text-xs text-slate-400">Today&apos;s organization activity.</p>
+              </div>
+              <span className="rounded-lg bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-400">
+                Today
+              </span>
+            </div>
+          </div>
+          <div className="divide-y divide-white/[0.06] px-5">
+            {topActivities.map((activity) => (
+              <Link
+                key={activity.label}
+                href={activity.href}
+                className="flex items-center justify-between gap-4 py-4 transition hover:translate-x-0.5"
+              >
+                <span className="flex items-center gap-3 text-sm font-medium text-slate-300">
+                  <span className={activity.tone}>{activity.icon}</span>
+                  {activity.label}
+                </span>
+                <span className="text-sm font-semibold text-white">{activity.value}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-sm font-semibold text-white">Live operations</h2>
+            <p className="mt-1 text-xs text-slate-500">Call and campaign metrics remain available at a glance.</p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {operationalMetrics.map((metric) => (
+            <Link
+              key={metric.label}
+              href={metric.href}
+              className="rounded-xl border border-white/[0.07] bg-[#0B1423]/80 px-4 py-3 transition hover:border-violet-400/20 hover:bg-[#111C2E]"
+            >
+              <p className="text-[11px] font-medium text-slate-500">{metric.label}</p>
+              <p className="mt-1 text-lg font-semibold text-white">{metric.value}</p>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <FollowUpWidget
